@@ -1,7 +1,3 @@
-(* @NESTEDCOMMENTS := 'Yes' *)
-(* @PATH := '\/Engineering\/signal processing' *)
-(* @OBJECTFLAGS := '0, 8' *)
-(* @SYMFILEFLAGS := '2048' *)
 FUNCTION AIN : REAL
 VAR_INPUT
 	in : DWORD;
@@ -33,7 +29,6 @@ for example a 15bit input (bits := 12) with sign at bit 15 (0..15) will deliver 
 an input value of 2#1111_1111_1111 will deliver 10.0 on the output (high value set to 10).
 
 *) 
-(* @END_DECLARATION := '0' *)
 (* extract the sign bit *)
 IF sign < 32 THEN
 	temp1 := SHR(in,sign);
@@ -65,10 +60,6 @@ hm	16. mar 2008	rev 1.5
 END_FUNCTION
 
 
-(* @NESTEDCOMMENTS := 'Yes' *)
-(* @PATH := '\/Engineering\/signal processing' *)
-(* @OBJECTFLAGS := '0, 8' *)
-(* @SYMFILEFLAGS := '2048' *)
 FUNCTION_BLOCK AIN1
 VAR_INPUT
 	in : DWORD;
@@ -108,7 +99,6 @@ tested by		tobias
 Ain1 converts signals from A/D converters or other digital sources to an internal real value.
 
 *) 
-(* @END_DECLARATION := '0' *)
 (* extract error bit *)
 error := ((SHR(in,error_bit) AND 16#0000_0001) = 1) OR (error_code_en AND error_code = in);
 IF error THEN
@@ -154,10 +144,6 @@ hm	10. mar. 2009	rev 1.3
 END_FUNCTION_BLOCK
 
 
-(* @NESTEDCOMMENTS := 'Yes' *)
-(* @PATH := '\/Engineering\/signal processing' *)
-(* @OBJECTFLAGS := '0, 8' *)
-(* @SYMFILEFLAGS := '2048' *)
 FUNCTION AOUT : DWORD
 VAR_INPUT
 	in : REAL;
@@ -189,7 +175,6 @@ an input higher or lower then the max or min value will set the respective max o
 
 
 *) 
-(* @END_DECLARATION := '0' *)
 (* if sign bit is defined *)
 IF sign < 32 THEN
 	sx := sign_R(in);
@@ -225,10 +210,6 @@ hm	23. feb 2008	rev 1.4
 END_FUNCTION
 
 
-(* @NESTEDCOMMENTS := 'Yes' *)
-(* @PATH := '\/Engineering\/signal processing' *)
-(* @OBJECTFLAGS := '0, 8' *)
-(* @SYMFILEFLAGS := '2048' *)
 FUNCTION AOUT1 : DWORD
 VAR_INPUT
 	in : REAL;
@@ -256,7 +237,6 @@ tested by		tobias
 this module conditions an internal real value for a D/A converter.
 
 *) 
-(* @END_DECLARATION := '0' *)
 (* if sign bit is defined *)
 IF sign < 32 THEN
 	sx := SIGN_R(in);
@@ -281,10 +261,6 @@ hm	23. feb 2008	rev 1.0
 END_FUNCTION
 
 
-(* @NESTEDCOMMENTS := 'Yes' *)
-(* @PATH := '\/Engineering\/signal processing' *)
-(* @OBJECTFLAGS := '0, 8' *)
-(* @SYMFILEFLAGS := '2048' *)
 FUNCTION BYTE_TO_RANGE : REAL
 VAR_INPUT
 	X : BYTE;
@@ -301,7 +277,6 @@ tested by		tobias
 Byte_to_Range converts a Byte into a real between low and high.
 
 *)
-(* @END_DECLARATION := '0' *)
 BYTE_TO_RANGE := (high - low) * X / 255.0 + low;
 
 
@@ -314,10 +289,6 @@ hm	9. jan 2008		rev 1.0
 END_FUNCTION
 
 
-(* @NESTEDCOMMENTS := 'Yes' *)
-(* @PATH := '\/Engineering\/signal processing' *)
-(* @OBJECTFLAGS := '0, 8' *)
-(* @SYMFILEFLAGS := '2048' *)
 FUNCTION_BLOCK DELAY
 VAR_INPUT
 	IN : REAL;
@@ -347,7 +318,6 @@ f N > 32 then the output will be delayed by 32 cycles.
 any high on rst will load the buffer with in.
 
 *)
-(* @END_DECLARATION := '0' *)
 stop := LIMIT(0,N,32) - 1;
 IF rst OR NOT init THEN
 	init := TRUE;
@@ -384,10 +354,6 @@ hm	23. mar. 2009	rev 1.5
 END_FUNCTION_BLOCK
 
 
-(* @NESTEDCOMMENTS := 'Yes' *)
-(* @PATH := '\/Engineering\/signal processing' *)
-(* @OBJECTFLAGS := '0, 8' *)
-(* @SYMFILEFLAGS := '2048' *)
 FUNCTION_BLOCK DELAY_4
 VAR_INPUT
 	in : REAL;
@@ -412,7 +378,6 @@ after 4 cycles the in value has shifted to the out 4 and will be discarded after
 the blocks can be cascaded.
 
 *)
-(* @END_DECLARATION := '0' *)
 out4 := out3;
 out3 := out2;
 out2 := out1;
@@ -428,10 +393,6 @@ hm 19.1.2007	rev 1.1
 END_FUNCTION_BLOCK
 
 
-(* @NESTEDCOMMENTS := 'Yes' *)
-(* @PATH := '\/Engineering\/signal processing' *)
-(* @OBJECTFLAGS := '0, 8' *)
-(* @SYMFILEFLAGS := '2048' *)
 FUNCTION_BLOCK FADE
 VAR_INPUT
 	IN1 : REAL;
@@ -457,7 +418,6 @@ When F = TRUE then Y = IN2 after the time TF, and when F = FALSE then Y = IN1.
 
 *)
 
-(* @END_DECLARATION := '0' *)
 rmx(rst := rst AND NOT F, set := rst AND F, pt := TF, up := F);
 Y := (in2 - In1) / 65535.0 * WORD_TO_REAL(rmx.out) + in1;
 
@@ -493,10 +453,6 @@ hm	24. jan. 2009	rev 1.3
 END_FUNCTION_BLOCK
 
 
-(* @NESTEDCOMMENTS := 'Yes' *)
-(* @PATH := '\/Engineering\/signal processing' *)
-(* @OBJECTFLAGS := '0, 8' *)
-(* @SYMFILEFLAGS := '2048' *)
 FUNCTION_BLOCK FILTER_DW
 VAR_INPUT
 	X : DWORD;
@@ -520,7 +476,6 @@ tested by		oscat
 FILTER_DW is an low pass filter with a programmable time T used for DWORD format.
  
 *)
-(* @END_DECLARATION := '0' *)
 (* read system time *)
 tx := T_PLC_MS();
 
@@ -547,10 +502,6 @@ hm	3. nov. 2008	REV 1.1
 END_FUNCTION_BLOCK
 
 
-(* @NESTEDCOMMENTS := 'Yes' *)
-(* @PATH := '\/Engineering\/signal processing' *)
-(* @OBJECTFLAGS := '0, 8' *)
-(* @SYMFILEFLAGS := '2048' *)
 FUNCTION_BLOCK FILTER_I
 VAR_INPUT
 	X : INT;
@@ -574,7 +525,6 @@ tested by	oscat
 FILTER_I is a low pass filter with a programmable time T used for INT format.
  
 *)
-(* @END_DECLARATION := '0' *)
 (* read system time *)
 tx := T_PLC_MS();
 
@@ -599,10 +549,6 @@ hm 8. nov. 2008	rev 1.0
 END_FUNCTION_BLOCK
 
 
-(* @NESTEDCOMMENTS := 'Yes' *)
-(* @PATH := '\/Engineering\/signal processing' *)
-(* @OBJECTFLAGS := '0, 8' *)
-(* @SYMFILEFLAGS := '2048' *)
 FUNCTION_BLOCK FILTER_MAV_DW
 VAR_INPUT
 	X : DWORD;
@@ -629,7 +575,6 @@ tested by		oscat
 FILTER_MAV_DW is a moving average filter with programmable length N for DWORD Data.
  
 *)
-(* @END_DECLARATION := '0' *)
 (* limit N to size of buffer *)
 N := MIN(N, 32);
 
@@ -669,10 +614,6 @@ hm	23. feb. 2009	rev 1.3
 END_FUNCTION_BLOCK
 
 
-(* @NESTEDCOMMENTS := 'Yes' *)
-(* @PATH := '\/Engineering\/signal processing' *)
-(* @OBJECTFLAGS := '0, 8' *)
-(* @SYMFILEFLAGS := '2048' *)
 FUNCTION_BLOCK FILTER_MAV_W
 VAR_INPUT
 	X : WORD;
@@ -700,7 +641,6 @@ tested by		oscat
 FILTER_MAV_W is a moving average filter with programmable length N for WORD Data.
  
 *)
-(* @END_DECLARATION := '0' *)
 (* limit N to size of buffer *)
 N := MIN(N, 32);
 
@@ -743,10 +683,6 @@ hm	26. mar. 2011	rev 1.4
 END_FUNCTION_BLOCK
 
 
-(* @NESTEDCOMMENTS := 'Yes' *)
-(* @PATH := '\/Engineering\/signal processing' *)
-(* @OBJECTFLAGS := '0, 8' *)
-(* @SYMFILEFLAGS := '2048' *)
 FUNCTION_BLOCK FILTER_W
 VAR_INPUT
 	X : WORD;
@@ -770,7 +706,6 @@ tested by	oscat
 FILTER_W is an low pass filter with a programmable time T used for WORD format.
  
 *)
-(* @END_DECLARATION := '0' *)
 (* read system time *)
 tx := T_PLC_MS();
 
@@ -802,10 +737,6 @@ hm	25. jan. 2011	rev 1.2
 END_FUNCTION_BLOCK
 
 
-(* @NESTEDCOMMENTS := 'Yes' *)
-(* @PATH := '\/Engineering\/signal processing' *)
-(* @OBJECTFLAGS := '0, 8' *)
-(* @SYMFILEFLAGS := '2048' *)
 FUNCTION_BLOCK FILTER_WAV
 VAR_INPUT
 	X : REAL;
@@ -830,7 +761,6 @@ tested by		oscat
 FILTER_WAV is a moving average filter with programmable length N for DWORD Data.
 
 *)
-(* @END_DECLARATION := '0' *)
 (* startup initialisation *)
 IF NOT init OR rst THEN
 	init := TRUE;

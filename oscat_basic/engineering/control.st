@@ -1,7 +1,3 @@
-(* @NESTEDCOMMENTS := 'Yes' *)
-(* @PATH := '\/Engineering\/control' *)
-(* @OBJECTFLAGS := '0, 8' *)
-(* @SYMFILEFLAGS := '2048' *)
 FUNCTION BAND_B : BYTE
 VAR_INPUT
 	X : BYTE;
@@ -19,7 +15,6 @@ BAND_B will limit X to B <= X <= 255-B. while X < B the resulkt will be 0 and wh
 otherwise the result = X.
 
 *)
-(* @END_DECLARATION := '0' *)
 IF X < B THEN
 	BAND_B := 0;
 ELSIF X > BYTE#255-B THEN
@@ -39,10 +34,6 @@ hm	21. nov. 2008	rev 1.0
 END_FUNCTION
 
 
-(* @NESTEDCOMMENTS := 'Yes' *)
-(* @PATH := '\/Engineering\/control' *)
-(* @OBJECTFLAGS := '0, 8' *)
-(* @SYMFILEFLAGS := '2048' *)
 FUNCTION_BLOCK CONTROL_SET1
 VAR_INPUT
 	Kt : REAL;
@@ -75,8 +66,6 @@ tested by		tobias
 takahashi calculates controller parameters for P, PI and PID controllers based on the ziegler nichols method.
 
 *)
-
-(* @END_DECLARATION := '0' *)
 IF pi AND PID THEN
 	KP := 0.0;
 	TN := 0.0;
@@ -107,10 +96,6 @@ hm	11. mar. 2009	rev 1.1
 END_FUNCTION_BLOCK
 
 
-(* @NESTEDCOMMENTS := 'Yes' *)
-(* @PATH := '\/Engineering\/control' *)
-(* @OBJECTFLAGS := '0, 8' *)
-(* @SYMFILEFLAGS := '2048' *)
 FUNCTION_BLOCK CONTROL_SET2
 VAR_INPUT
 	KS : REAL;
@@ -146,8 +131,6 @@ tested by		tobias
 takahashi calculates controller parameters for P, PI and PID controllers based on the ziegler nichols method.
 
 *)
-
-(* @END_DECLARATION := '0' *)
 IF TU > 0.0 AND KS > 0.0 THEN TX := TG / TU / KS; END_IF;
 IF pi AND PID THEN
 	KP := 0.0;
@@ -179,10 +162,6 @@ hm	11. mar. 2009	rev 1.1
 END_FUNCTION_BLOCK
 
 
-(* @NESTEDCOMMENTS := 'Yes' *)
-(* @PATH := '\/Engineering\/control' *)
-(* @OBJECTFLAGS := '0, 8' *)
-(* @SYMFILEFLAGS := '2048' *)
 FUNCTION CTRL_IN : REAL
 VAR_INPUT
 	SET_POINT, ACTUAL, NOISE : REAL;
@@ -196,8 +175,6 @@ tested by		tobias
 
 
 *)
-
-(* @END_DECLARATION := '0' *)
 (* calculate the process error DIFF *)
 CTRL_IN := DEAD_ZONE(SET_POINT - ACTUAL, NOISE);
 
@@ -210,10 +187,6 @@ hm 	2. jun. 2008 	rev 1.0
 END_FUNCTION
 
 
-(* @NESTEDCOMMENTS := 'Yes' *)
-(* @PATH := '\/Engineering\/control' *)
-(* @OBJECTFLAGS := '0, 8' *)
-(* @SYMFILEFLAGS := '2048' *)
 FUNCTION_BLOCK CTRL_OUT
 VAR_INPUT
 	CI, OFFSET, MAN_IN, LIM_L, LIM_H : REAL;
@@ -232,8 +205,6 @@ tested by	oscat
 
 
 *)
-
-(* @END_DECLARATION := '0' *)
 Y := SEL(MANUAL, CI, MAN_IN) + OFFSET;
 
 (* Limit the output *)
@@ -256,10 +227,6 @@ hm	5. nov. 2008	rev 1.1
 END_FUNCTION_BLOCK
 
 
-(* @NESTEDCOMMENTS := 'Yes' *)
-(* @PATH := '\/Engineering\/control' *)
-(* @OBJECTFLAGS := '0, 8' *)
-(* @SYMFILEFLAGS := '2048' *)
 FUNCTION_BLOCK CTRL_PI
 VAR_INPUT
 	ACT, SET, SUP, OFS, M_I : REAL;
@@ -299,8 +266,6 @@ while the input is between 0.9 and 1.1 of the set_point value.
 
 default values for KP = 1, TN = 1, TV = 1, LIMIT_L = -1000, LIMIT_H = +1000.
 *)
-
-(* @END_DECLARATION := '0' *)
 DIFF := CTRL_IN(SET, ACT, SUP);
 pi(in := DIFF, kp := KP, ki := KI, lim_l := LL, lim_h := LH, rst := RST);
 co(ci := pi.Y, OFFSET := OFS, man_in := M_I, lim_l := LL, lim_h := LH, MANUAL := MAN);
@@ -328,10 +293,6 @@ hm	20. jun. 2008	rev 2.0
 END_FUNCTION_BLOCK
 
 
-(* @NESTEDCOMMENTS := 'Yes' *)
-(* @PATH := '\/Engineering\/control' *)
-(* @OBJECTFLAGS := '0, 8' *)
-(* @SYMFILEFLAGS := '2048' *)
 FUNCTION_BLOCK CTRL_PID
 VAR_INPUT
 	ACT, SET, SUP, OFS, M_I : REAL;
@@ -367,8 +328,6 @@ limit_h and Limit_l set the possible output range of Y.
 the output flags lim will signal that the output limits are active.
 
 *)
-
-(* @END_DECLARATION := '0' *)
 DIFF := CTRL_IN(SET, ACT, SUP);
 pid(in := DIFF, kp := KP, tn := TN, tv := TV, lim_l := LL, lim_h := LH, rst := RST);
 co(ci := pid.Y, OFFSET := OFS, man_in := M_I, lim_l := LL, lim_h := LH, MANUAL := MAN);
@@ -403,10 +362,6 @@ hm	5. jan 2008	rev 1.6
 END_FUNCTION_BLOCK
 
 
-(* @NESTEDCOMMENTS := 'Yes' *)
-(* @PATH := '\/Engineering\/control' *)
-(* @OBJECTFLAGS := '0, 8' *)
-(* @SYMFILEFLAGS := '2048' *)
 FUNCTION_BLOCK CTRL_PWM
 VAR_INPUT
 	CI, MAN_IN : REAL;
@@ -427,8 +382,6 @@ tested by	oscat
 
 
 *)
-
-(* @END_DECLARATION := '0' *)
 PW(F := F, DC := SEL(MANUAL,CI,MAN_IN));
 Q := PW.Q;
 
@@ -444,10 +397,6 @@ hm	21. oct. 2008	rev 1.1
 END_FUNCTION_BLOCK
 
 
-(* @NESTEDCOMMENTS := 'Yes' *)
-(* @PATH := '\/Engineering\/control' *)
-(* @OBJECTFLAGS := '0, 8' *)
-(* @SYMFILEFLAGS := '2048' *)
 FUNCTION DEAD_BAND : REAL
 VAR_INPUT
 	X : REAL;
@@ -466,7 +415,6 @@ DEAD_BAND = X + L wenn X < -L
 DEAD_BAND = 0 wenn Abs(X) <= L
 
 *)
-(* @END_DECLARATION := '0' *)
 IF X > L THEN
 	DEAD_BAND := X - L;
 ELSIF X < -L THEN
@@ -489,10 +437,6 @@ hm	18. jan. 2011	rev 1.2
 END_FUNCTION
 
 
-(* @NESTEDCOMMENTS := 'Yes' *)
-(* @PATH := '\/Engineering\/control' *)
-(* @OBJECTFLAGS := '0, 8' *)
-(* @SYMFILEFLAGS := '2048' *)
 FUNCTION_BLOCK DEAD_BAND_A
 VAR_INPUT
 	X : REAL;
@@ -521,7 +465,6 @@ DEAD_BAND = 0 wenn Abs(X) <= L
 Die Breite der Totzone wird automatisch aus dem Signalrauschen errechnet.
 
 *)
-(* @END_DECLARATION := '0' *)
 (* filter the input signal *)
 tp1(in := X, T:= T);
 
@@ -551,10 +494,6 @@ hm	11. mar. 2009	rev 1.1
 END_FUNCTION_BLOCK
 
 
-(* @NESTEDCOMMENTS := 'Yes' *)
-(* @PATH := '\/Engineering\/control' *)
-(* @OBJECTFLAGS := '0, 8' *)
-(* @SYMFILEFLAGS := '2048' *)
 FUNCTION DEAD_ZONE : REAL
 VAR_INPUT
 	X : REAL;
@@ -571,7 +510,6 @@ dead_zone2 is a linear transfer function which follows a linear function except 
 Y = X if abs(x) > L otherwise its 0.
 
 *)
-(* @END_DECLARATION := '0' *)
 IF ABS(x) > L THEN
 	dead_zone := X;
 ELSE
@@ -592,10 +530,6 @@ hm	11. mar. 2009	rev 1.2
 END_FUNCTION
 
 
-(* @NESTEDCOMMENTS := 'Yes' *)
-(* @PATH := '\/Engineering\/control' *)
-(* @OBJECTFLAGS := '0, 8' *)
-(* @SYMFILEFLAGS := '2048' *)
 FUNCTION_BLOCK DEAD_ZONE2
 VAR_INPUT
 	X : REAL;
@@ -616,7 +550,6 @@ Y = X if abs(x) > L.
 for values of 0 +/- L a hysteresis function will hold the output at + or - L.
 
 *)
-(* @END_DECLARATION := '0' *)
 IF ABS(x) > L THEN
 	Y := X;
 ELSIF Y > 0.0 THEN
@@ -640,10 +573,6 @@ hm	11. mar. 2009	rev 1.1
 END_FUNCTION_BLOCK
 
 
-(* @NESTEDCOMMENTS := 'Yes' *)
-(* @PATH := '\/Engineering\/control' *)
-(* @OBJECTFLAGS := '0, 8' *)
-(* @SYMFILEFLAGS := '2048' *)
 FUNCTION_BLOCK FT_DERIV
 VAR_INPUT
 	in : REAL;
@@ -675,7 +604,6 @@ if K is not specified the default is 1.
 
 
 
-(* @END_DECLARATION := '0' *)
 (* read system time *)
 tx := T_PLC_US();
 tc := DWORD_TO_REAL(tx - last);
@@ -715,10 +643,6 @@ hm	11. mar. 2009	rev 1.5
 END_FUNCTION_BLOCK
 
 
-(* @NESTEDCOMMENTS := 'Yes' *)
-(* @PATH := '\/Engineering\/control' *)
-(* @OBJECTFLAGS := '0, 8' *)
-(* @SYMFILEFLAGS := '2048' *)
 FUNCTION_BLOCK FT_IMP
 VAR_INPUT
 	in : REAL;
@@ -740,7 +664,6 @@ tested by	oscat
 FT_IMP is 	an impulse filter (high pass filter) with the time T and factor K.
  
 *)
-(* @END_DECLARATION := '0' *)
 T1(in:= in, T:=T);
 out := (in - t1.out) * K;
 
@@ -752,10 +675,6 @@ hm 3.1.2007	rev 1.1
 END_FUNCTION_BLOCK
 
 
-(* @NESTEDCOMMENTS := 'Yes' *)
-(* @PATH := '\/Engineering\/control' *)
-(* @OBJECTFLAGS := '0, 8' *)
-(* @SYMFILEFLAGS := '2048' *)
 FUNCTION_BLOCK FT_INT
 VAR_INPUT
 	IN : REAL;
@@ -856,10 +775,6 @@ hm	10. mar. 2009	rev 2.2
 END_FUNCTION_BLOCK
 
 
-(* @NESTEDCOMMENTS := 'Yes' *)
-(* @PATH := '\/Engineering\/control' *)
-(* @OBJECTFLAGS := '0, 8' *)
-(* @SYMFILEFLAGS := '2048' *)
 FUNCTION_BLOCK FT_INT2
 VAR_INPUT
 	IN : REAL;
@@ -894,7 +809,6 @@ FT_INT2 has double presision accuracy (14 digits).
 
 
 *)
-(* @END_DECLARATION := '0' *)
 IF RST THEN
 	val := R2_SET(0.0);
 	out := 0.0;
@@ -931,10 +845,6 @@ hm	11. mar. 2009	rev 1.2
 END_FUNCTION_BLOCK
 
 
-(* @NESTEDCOMMENTS := 'Yes' *)
-(* @PATH := '\/Engineering\/control' *)
-(* @OBJECTFLAGS := '0, 8' *)
-(* @SYMFILEFLAGS := '2048' *)
 FUNCTION_BLOCK FT_PD
 VAR_INPUT
 	IN : REAL;
@@ -957,8 +867,6 @@ FT_PD is a PD controller.
 The PD controller works according to the fomula Y = KP *(IN + DERIV(e) ).
 
 *)
-
-(* @END_DECLARATION := '0' *)
 (* run differentiator *)
 diff(IN := IN, K := TV);
 
@@ -976,10 +884,6 @@ hm 	3. jun. 2008 	rev 1.0
 END_FUNCTION_BLOCK
 
 
-(* @NESTEDCOMMENTS := 'Yes' *)
-(* @PATH := '\/Engineering\/control' *)
-(* @OBJECTFLAGS := '0, 8' *)
-(* @SYMFILEFLAGS := '2048' *)
 FUNCTION_BLOCK FT_PDT1
 VAR_INPUT
 	IN : REAL;
@@ -1004,8 +908,6 @@ FT_PD is a PD controller.
 The PD controller works according to the fomula Y = KP *(IN + DERIV(e) ).
 
 *)
-
-(* @END_DECLARATION := '0' *)
 (* run differentiator *)
 diff(IN := IN, K := TV);
 
@@ -1026,10 +928,6 @@ hm 	3. jun. 2008 	rev 1.0
 END_FUNCTION_BLOCK
 
 
-(* @NESTEDCOMMENTS := 'Yes' *)
-(* @PATH := '\/Engineering\/control' *)
-(* @OBJECTFLAGS := '0, 8' *)
-(* @SYMFILEFLAGS := '2048' *)
 FUNCTION_BLOCK FT_PI
 VAR_INPUT
 	IN : REAL;
@@ -1061,8 +959,6 @@ the output flags lim will signal that the output limits are active.
 
 default values for KP = 1, KI = 1, ILIM_L = -1E37, iLIM_H = +1E38.
 *)
-
-(* @END_DECLARATION := '0' *)
 (* run integrator *)
 integ(IN := IN, K := KI, RUN := IEN, RST := RST, OUT_MIN := ILIM_L, OUT_MAX := ILIM_H);
 
@@ -1081,10 +977,6 @@ hm 	3. jun. 2008 	rev 2.0
 END_FUNCTION_BLOCK
 
 
-(* @NESTEDCOMMENTS := 'Yes' *)
-(* @PATH := '\/Engineering\/control' *)
-(* @OBJECTFLAGS := '0, 8' *)
-(* @SYMFILEFLAGS := '2048' *)
 FUNCTION_BLOCK FT_PID
 VAR_INPUT
 	IN : REAL;
@@ -1118,8 +1010,6 @@ the output flags lim will signal that the output limits are active.
 
 default values for KP = 1, KI = 1, ILIM_L = -1E37, iLIM_H = +1E38.
 *)
-
-(* @END_DECLARATION := '0' *)
 (* run integrator only if TN > 0 *)
 IF TN > 0.0 THEN
 	integ(IN := IN, K := 1.0 / TN, RUN := IEN, RST := RST, OUT_MIN := ILIM_L, OUT_MAX := ILIM_H);
@@ -1149,10 +1039,6 @@ hm	11. mar. 2009	rev 2.1
 END_FUNCTION_BLOCK
 
 
-(* @NESTEDCOMMENTS := 'Yes' *)
-(* @PATH := '\/Engineering\/control' *)
-(* @OBJECTFLAGS := '0, 8' *)
-(* @SYMFILEFLAGS := '2048' *)
 FUNCTION_BLOCK FT_PIDW
 VAR_INPUT
 	IN : REAL;
@@ -1186,8 +1072,6 @@ the output flags lim will signal that the output limits are active.
 
 default values for KP = 1, KI = 1, ILIM_L = -1E37, iLIM_H = +1E38.
 *)
-
-(* @END_DECLARATION := '0' *)
 (* run the integrator *)
 IF tn = 0.0 OR rst THEN
 	integ(E := FALSE, Y := YI);
@@ -1230,10 +1114,6 @@ hm	11. mar. 2009	rev 1.2
 END_FUNCTION_BLOCK
 
 
-(* @NESTEDCOMMENTS := 'Yes' *)
-(* @PATH := '\/Engineering\/control' *)
-(* @OBJECTFLAGS := '0, 8' *)
-(* @SYMFILEFLAGS := '2048' *)
 FUNCTION_BLOCK FT_PIDWL
 VAR_INPUT
 	IN : REAL;
@@ -1266,8 +1146,6 @@ the output flags lim will signal that the output limits are active.
 
 default values for KP = 1, KI = 1, ILIM_L = -1E37, iLIM_H = +1E38.
 *)
-
-(* @END_DECLARATION := '0' *)
 (* if rst then *)
 IF rst THEN
 	piwl(rst := TRUE);
@@ -1316,10 +1194,6 @@ hm	13. nov. 2009	rev 1.3
 END_FUNCTION_BLOCK
 
 
-(* @NESTEDCOMMENTS := 'Yes' *)
-(* @PATH := '\/Engineering\/control' *)
-(* @OBJECTFLAGS := '0, 8' *)
-(* @SYMFILEFLAGS := '2048' *)
 FUNCTION_BLOCK FT_PIW
 VAR_INPUT
 	IN : REAL;
@@ -1352,8 +1226,6 @@ the controller is equipped with anti wind_up circuitry that stops the integrator
 
 default values for KP = 1, KI = 1, ILIM_L = -1E37, iLIM_H = +1E38.
 *)
-
-(* @END_DECLARATION := '0' *)
 (* run integrator *)
 integ(IN := IN, K := KI, RUN := NOT LIM, RST := RST);
 
@@ -1382,10 +1254,6 @@ hm 	3. jun. 2008 	rev 1.0
 END_FUNCTION_BLOCK
 
 
-(* @NESTEDCOMMENTS := 'Yes' *)
-(* @PATH := '\/Engineering\/control' *)
-(* @OBJECTFLAGS := '0, 8' *)
-(* @SYMFILEFLAGS := '2048' *)
 FUNCTION_BLOCK FT_PIWL
 VAR_INPUT
 	IN : REAL;
@@ -1423,8 +1291,6 @@ the integrator ist equipped with anti wind-up circuitry which limits trhe total 
 
 default values for KP = 1, KI = 1, ILIM_L = -1E37, iLIM_H = +1E38.
 *)
-
-(* @END_DECLARATION := '0' *)
 (* initialize at power_up *)
 IF NOT init OR RST THEN
 	init := TRUE;
@@ -1490,10 +1356,6 @@ hm	11. mar. 2009	rev 1.3
 END_FUNCTION_BLOCK
 
 
-(* @NESTEDCOMMENTS := 'Yes' *)
-(* @PATH := '\/Engineering\/control' *)
-(* @OBJECTFLAGS := '0, 8' *)
-(* @SYMFILEFLAGS := '2048' *)
 FUNCTION_BLOCK FT_PT1
 VAR_INPUT
 	in : REAL;
@@ -1517,7 +1379,6 @@ tested by		oscat
 FT_PT1 is an low pass filter with a programmable time T and faktor K.
  
 *)
-(* @END_DECLARATION := '0' *)
 (* read system time *)
 tx := T_PLC_US();
 
@@ -1572,10 +1433,6 @@ hm	18. jan. 2011	rev 1.11
 END_FUNCTION_BLOCK
 
 
-(* @NESTEDCOMMENTS := 'Yes' *)
-(* @PATH := '\/Engineering\/control' *)
-(* @OBJECTFLAGS := '0, 8' *)
-(* @SYMFILEFLAGS := '2048' *)
 FUNCTION_BLOCK FT_PT2
 VAR_INPUT
 	in : REAL;
@@ -1603,7 +1460,6 @@ tested by		oscat
 FT_PT2 is a 2nd grade filter with programmable times T, D and faktor K.
  
 *)
-(* @END_DECLARATION := '0' *)
 (* startup initialisation *)
 IF NOT init OR T = T#0s THEN
 	init := TRUE;
@@ -1640,10 +1496,6 @@ hm	11. mar. 2009	rev 1.5
 END_FUNCTION_BLOCK
 
 
-(* @NESTEDCOMMENTS := 'Yes' *)
-(* @PATH := '\/Engineering\/control' *)
-(* @OBJECTFLAGS := '0, 8' *)
-(* @SYMFILEFLAGS := '2048' *)
 FUNCTION_BLOCK FT_TN16
 VAR_INPUT
 	in : REAL;
@@ -1671,7 +1523,6 @@ FT_TN16 is delay function, it will delay a signal by a specified time : T and wi
 for higher or lower resolution please use FT_TN8 or FT_TN64 instead.
  
 *)
-(* @END_DECLARATION := '0' *)
 (* read system time *)
 tx := DWORD_TO_TIME(T_PLC_MS());
 
@@ -1699,10 +1550,6 @@ hm		16. sep 2007	rev 1.1
 END_FUNCTION_BLOCK
 
 
-(* @NESTEDCOMMENTS := 'Yes' *)
-(* @PATH := '\/Engineering\/control' *)
-(* @OBJECTFLAGS := '0, 8' *)
-(* @SYMFILEFLAGS := '2048' *)
 FUNCTION_BLOCK FT_TN64
 VAR_INPUT
 	in : REAL;
@@ -1730,7 +1577,6 @@ FT_TN7 is delay function, it will delay a signal by a specified time : T and wil
 if lower resolution is needed, pls use FT_TN8 or FT_TN16 instead.
  
 *)
-(* @END_DECLARATION := '0' *)
 (* read system time *)
 tx := DWORD_TO_TIME(T_PLC_MS());
 
@@ -1758,10 +1604,6 @@ hm		16. sep 2007	rev 1.1
 END_FUNCTION_BLOCK
 
 
-(* @NESTEDCOMMENTS := 'Yes' *)
-(* @PATH := '\/Engineering\/control' *)
-(* @OBJECTFLAGS := '0, 8' *)
-(* @SYMFILEFLAGS := '2048' *)
 FUNCTION_BLOCK FT_TN8
 VAR_INPUT
 	in : REAL;
@@ -1789,7 +1631,6 @@ FT_TN8 is delay function, it will delay a signal by a specified time : T and wil
 if higher resolution is needed, pls use FT_TN16 or FT_TN64 instead.
  
 *)
-(* @END_DECLARATION := '0' *)
 tx := DWORD_TO_TIME(T_PLC_MS());
 trig := FALSE;
 IF NOT init THEN
@@ -1815,10 +1656,6 @@ hm		16. sep 2007	rev 1.1
 END_FUNCTION_BLOCK
 
 
-(* @NESTEDCOMMENTS := 'Yes' *)
-(* @PATH := '\/Engineering\/control' *)
-(* @OBJECTFLAGS := '0, 8' *)
-(* @SYMFILEFLAGS := '2048' *)
 FUNCTION_BLOCK HYST
 VAR_INPUT
 	In : REAL;
@@ -1842,7 +1679,6 @@ This Hystereses function has two modes:
 the output win will be high when in is between low and high.
 
 *)
-(* @END_DECLARATION := '0' *)
 IF ON >= OFF THEN
 	IF IN < OFF THEN
 		Q := FALSE;
@@ -1874,10 +1710,6 @@ hm		2.  jun 2008	rev 1.0
 END_FUNCTION_BLOCK
 
 
-(* @NESTEDCOMMENTS := 'Yes' *)
-(* @PATH := '\/Engineering\/control' *)
-(* @OBJECTFLAGS := '0, 8' *)
-(* @SYMFILEFLAGS := '2048' *)
 FUNCTION_BLOCK HYST_1
 VAR_INPUT
 	In : REAL;
@@ -1899,7 +1731,6 @@ this hysteresis function switches the output high if the input signal reaches ob
 a separate output mid is set if the input stays between low and high value.
 
 *)
-(* @END_DECLARATION := '0' *)
 IF in < low THEN
 	Q := FALSE;
 	win := FALSE;
@@ -1923,10 +1754,6 @@ hm		2. jun. 2008	rev 1.1
 END_FUNCTION_BLOCK
 
 
-(* @NESTEDCOMMENTS := 'Yes' *)
-(* @PATH := '\/Engineering\/control' *)
-(* @OBJECTFLAGS := '0, 8' *)
-(* @SYMFILEFLAGS := '2048' *)
 FUNCTION_BLOCK HYST_2
 VAR_INPUT
 	IN : REAL;
@@ -1951,7 +1778,6 @@ this hysteresis function switches the output high if the input signal reaches ob
 a separate output mid is set if the input stays between low and high value.
 
 *)
-(* @END_DECLARATION := '0' *)
 tmp := val - hys * 0.5;
 IF in < tmp THEN
 	Q := FALSE;
@@ -1978,10 +1804,6 @@ hm		2. jun. 2008	rev 1.2
 END_FUNCTION_BLOCK
 
 
-(* @NESTEDCOMMENTS := 'Yes' *)
-(* @PATH := '\/Engineering\/control' *)
-(* @OBJECTFLAGS := '0, 8' *)
-(* @SYMFILEFLAGS := '2048' *)
 FUNCTION_BLOCK HYST_3
 VAR_INPUT
 	in : REAL;
@@ -2006,7 +1828,6 @@ this is a double hysteresis function. Out1 follows a hysteresis function defined
 if the input signal is between the two hysteresis switches (val1 and val2) then non of the outputs is active.
 
 *)
-(* @END_DECLARATION := '0' *)
 X := hyst * 0.5;
 IF in < val1 - X THEN
 	q1 := TRUE;
@@ -2036,10 +1857,6 @@ hm	5. jan 2008	rev 1.2
 END_FUNCTION_BLOCK
 
 
-(* @NESTEDCOMMENTS := 'Yes' *)
-(* @PATH := '\/Engineering\/control' *)
-(* @OBJECTFLAGS := '0, 8' *)
-(* @SYMFILEFLAGS := '2048' *)
 FUNCTION_BLOCK INTEGRATE
 VAR_INPUT
 	E : BOOL := TRUE;
@@ -2066,7 +1883,6 @@ integrate is a plain integrator with I/O for out.
 
  
 *)
-(* @END_DECLARATION := '0' *)
 (*read system time *)
 tx := T_PLC_MS();
 

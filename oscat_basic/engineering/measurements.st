@@ -1,7 +1,3 @@
-(* @NESTEDCOMMENTS := 'Yes' *)
-(* @PATH := '\/Engineering\/measurements' *)
-(* @OBJECTFLAGS := '0, 8' *)
-(* @SYMFILEFLAGS := '2048' *)
 FUNCTION_BLOCK ALARM_2
 VAR_INPUT
 	X : REAL;
@@ -30,7 +26,6 @@ ALARM_2 will check two pairs of limits and signal when the input is above or bel
 with the input HYS a hysteresis can be defined for all limits. 
 
 *)
-(* @END_DECLARATION := '0' *)
 tmp := X - Hys * 0.5;
 IF tmp > LO_1 THEN Q1_LO := FALSE; END_IF;
 IF tmp > LO_2 THEN Q2_LO := FALSE; END_IF;
@@ -55,10 +50,6 @@ hm	11. mar. 2009	rev 1.1
 END_FUNCTION_BLOCK
 
 
-(* @NESTEDCOMMENTS := 'Yes' *)
-(* @PATH := '\/Engineering\/measurements' *)
-(* @OBJECTFLAGS := '0, 8' *)
-(* @SYMFILEFLAGS := '2048' *)
 FUNCTION_BLOCK BAR_GRAPH
 VAR_INPUT
 	X : REAL;
@@ -94,7 +85,6 @@ only one output is active a any given time depending on the value of the input s
 the output can be of linear or logarithmic scale.
 
 *)
-(* @END_DECLARATION := '0' *)
 IF NOT init THEN
 	init := TRUE;
 	IF log_scale THEN
@@ -175,10 +165,6 @@ hm	6. jan 2008		rev 1.2
 END_FUNCTION_BLOCK
 
 
-(* @NESTEDCOMMENTS := 'Yes' *)
-(* @PATH := '\/Engineering\/measurements' *)
-(* @OBJECTFLAGS := '0, 8' *)
-(* @SYMFILEFLAGS := '2048' *)
 FUNCTION_BLOCK CALIBRATE
 VAR_INPUT
 	X : REAL;
@@ -206,7 +192,6 @@ Calibrate allows for offset and scale calibration of an analog input.
 offset is calibrated to a stored reference Y_offset while CO is true.
 after the offset is calibrated, scale can be calibrated to a reference value Y_scale while CS is true.
 *)
-(* @END_DECLARATION := '0' *)
 (* check for calibration *)
 IF CO THEN
 	OFFSET := Y_Offset - X;
@@ -229,10 +214,6 @@ hm	11. mar. 2009	rev 1.3
 END_FUNCTION_BLOCK
 
 
-(* @NESTEDCOMMENTS := 'Yes' *)
-(* @PATH := '\/Engineering\/measurements' *)
-(* @OBJECTFLAGS := '0, 8' *)
-(* @SYMFILEFLAGS := '2048' *)
 FUNCTION_BLOCK CYCLE_TIME
 VAR_INPUT
 	RST : BOOL;
@@ -264,7 +245,6 @@ a rst pulse on the input will reset all data.
 
 
 *)
-(* @END_DECLARATION := '0' *)
 tx := DWORD_TO_TIME(T_PLC_MS()) - last_cycle;
 IF rst THEN
 	ct_min := t#10h;
@@ -302,10 +282,6 @@ hm	16.9.2007		rev 1.2
 END_FUNCTION_BLOCK
 
 
-(* @NESTEDCOMMENTS := 'Yes' *)
-(* @PATH := '\/Engineering\/measurements' *)
-(* @OBJECTFLAGS := '0, 8' *)
-(* @SYMFILEFLAGS := '2048' *)
 FUNCTION_BLOCK DT_SIMU
 VAR_INPUT
 	START : DT;
@@ -333,7 +309,6 @@ the peed of the clock can be increased or decreased to debug timers.
 with the input start a start date-time can be specified.
 
 *)
-(* @END_DECLARATION := '0' *)
 (* read system timer *)
 tx := T_PLC_MS();
 tc := REAL_TO_DWORD(DWORD_TO_REAL(tx - last) * speed);
@@ -366,10 +341,6 @@ hm	8.	mar. 2009	rev 1.2
 END_FUNCTION_BLOCK
 
 
-(* @NESTEDCOMMENTS := 'Yes' *)
-(* @PATH := '\/Engineering\/measurements' *)
-(* @OBJECTFLAGS := '0, 8' *)
-(* @SYMFILEFLAGS := '2048' *)
 FUNCTION_BLOCK FLOW_METER
 VAR_INPUT
 	VX : REAL;
@@ -405,8 +376,6 @@ tested by	oscat
 Flow meter measures flow according to gated time or pulses.
 
 *)
-
-(* @END_DECLARATION := '0' *)
 IF NOT init THEN	(* init on power up *)
 	init := TRUE;
 	tl := tx;
@@ -456,10 +425,6 @@ hm	23. jan. 2011	rev 1.0
 END_FUNCTION_BLOCK
 
 
-(* @NESTEDCOMMENTS := 'Yes' *)
-(* @PATH := '\/Engineering\/measurements' *)
-(* @OBJECTFLAGS := '0, 8' *)
-(* @SYMFILEFLAGS := '2048' *)
 FUNCTION_BLOCK M_D
 VAR_INPUT
 	start : BOOL;
@@ -488,8 +453,7 @@ m_d measures the time between a rising edge on start to a rising edge on stop an
 a second output ET is starting from 0 at the rising edge of start and is counting up until the rising edge of stop occurs.
 the asynchronous input rst can reset the outputs at any time.
 tmax defines a timeout wich is the maximum measurable time between start and stop, if this time is exceeded the outputs will stay at 0.
-*)
-(* @END_DECLARATION := '0' *)
+*) (* @END_DECLARATION := '0' *)
 (* check for rst input *)
 IF rst OR et >= tmax THEN
 	pt := t#0ms;
@@ -533,10 +497,6 @@ hm	27. feb 2009	rev 1.2
 END_FUNCTION_BLOCK
 
 
-(* @NESTEDCOMMENTS := 'Yes' *)
-(* @PATH := '\/Engineering\/measurements' *)
-(* @OBJECTFLAGS := '0, 8' *)
-(* @SYMFILEFLAGS := '2048' *)
 FUNCTION_BLOCK M_T
 VAR_INPUT
 	IN : BOOL;
@@ -564,7 +524,6 @@ the asynchrtonous input rst can reset the outputs at any time.
 tmax defines a maximum measurable time, if this value is exceeded the outputs will be reset to 0.
 
 *)
-(* @END_DECLARATION := '0' *)
 (* read system time *)
 tx := DWORD_TO_TIME(T_PLC_MS());
 
@@ -604,10 +563,6 @@ hm	10. mar. 2009	rev 1.4
 END_FUNCTION_BLOCK
 
 
-(* @NESTEDCOMMENTS := 'Yes' *)
-(* @PATH := '\/Engineering\/measurements' *)
-(* @OBJECTFLAGS := '0, 8' *)
-(* @SYMFILEFLAGS := '2048' *)
 FUNCTION_BLOCK M_TX
 VAR_INPUT
 	in: BOOL;
@@ -646,8 +601,7 @@ the acuracy depends on the cycle time of the sps and is limited to 1ms resolutio
 an asynchronous reset can reset all outputs to 0 at any time.
 the input tmax can configure a timeout for ET where the function block will outomatically reset itself.
 tmx is predefined to 10 days.
-*)
-(* @END_DECLARATION := '0' *)
+*) (* @END_DECLARATION := '0' *)
 (* check FOR rst input *)
 IF rst OR (et >= tmax) THEN
 	rise := FALSE;
@@ -717,10 +671,6 @@ hm	11. mar. 2009	rev 1.4
 END_FUNCTION_BLOCK
 
 
-(* @NESTEDCOMMENTS := 'Yes' *)
-(* @PATH := '\/Engineering\/measurements' *)
-(* @OBJECTFLAGS := '0, 8' *)
-(* @SYMFILEFLAGS := '2048' *)
 FUNCTION_BLOCK METER
 VAR_INPUT
 	M1, M2 : REAL;
@@ -753,7 +703,6 @@ and I1 and I2 is true counts P1 and P2.
 the meter can be used for all kind of consumption meters. P1 and P2 can change on the fly.
 
 *)
-(* @END_DECLARATION := '0' *)
 (* measure the last cycle time and make sure we onle execute once every millisecond *)
 tx := T_PLC_MS();
 IF NOT init THEN
@@ -811,10 +760,6 @@ hm	8. mar. 2009	rev 1.4
 END_FUNCTION_BLOCK
 
 
-(* @NESTEDCOMMENTS := 'Yes' *)
-(* @PATH := '\/Engineering\/measurements' *)
-(* @OBJECTFLAGS := '0, 8' *)
-(* @SYMFILEFLAGS := '2048' *)
 FUNCTION_BLOCK METER_STAT
 VAR_INPUT
 	IN : REAL;
@@ -847,7 +792,6 @@ END_VAR
 METER_STAT runs statistics of a metered value, it calculates the current week, day, month and year consumption and stores the corresponding last day, week, month and year value.
 
 *)
-(* @END_DECLARATION := '0' *)
 IF rst THEN
 	Last_Day := 0.0;
 	Current_Day := 0.0;

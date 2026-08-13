@@ -1,7 +1,3 @@
-(* @NESTEDCOMMENTS := 'Yes' *)
-(* @PATH := '\/Engineering\/sensor' *)
-(* @OBJECTFLAGS := '0, 8' *)
-(* @SYMFILEFLAGS := '2048' *)
 FUNCTION MULTI_IN : REAL
 VAR_INPUT
 	in_1 : REAL;
@@ -42,7 +38,6 @@ multi_in can be configured in different ways:
 	if all inputs are higher then in_max or lower then in_min, a default value (default) is used.
 *)
 
-(* @END_DECLARATION := '0' *)
 F1 :=  in_1 > in_min AND in_1 < in_max;
 F2 :=  in_2 > in_min AND in_2 < in_max;
 F3 :=  in_3 > in_min AND in_3 < in_max;
@@ -112,10 +107,6 @@ hm	18. jul. 2009	rev 1.4
 END_FUNCTION
 
 
-(* @NESTEDCOMMENTS := 'Yes' *)
-(* @PATH := '\/Engineering\/sensor' *)
-(* @OBJECTFLAGS := '0, 8' *)
-(* @SYMFILEFLAGS := '2048' *)
 FUNCTION RES_NI : REAL
 VAR_INPUT
 	T : REAL;
@@ -136,7 +127,6 @@ programmer 	hugo
 tested by		tobias
 
 this function returs the resistance for a nickel sensor for a temperature range from -60..+180 °C *)
-(* @END_DECLARATION := '0' *)
 T2 := T * T;
 RES_NI := R0 + A * T + B * T2 + C * T2 * T2;
 
@@ -173,10 +163,6 @@ hm	2. dec. 2007	rev 1.2
 END_FUNCTION
 
 
-(* @NESTEDCOMMENTS := 'Yes' *)
-(* @PATH := '\/Engineering\/sensor' *)
-(* @OBJECTFLAGS := '0, 8' *)
-(* @SYMFILEFLAGS := '2048' *)
 FUNCTION RES_NTC : REAL
 VAR_INPUT
 	T : REAL;
@@ -194,7 +180,6 @@ this function returs the resistance for a NTC sensor for a given temperature in 
 RN is the resistance at 25 °C and B is a constant for the given sensor.
 
 *)
-(* @END_DECLARATION := '0' *)
 RES_NTC := RN * EXP(B * (1.0 / (T+273.15) - 0.00335401643468053));
 
 
@@ -211,10 +196,6 @@ hm	11. mar. 2009	rev 1.1
 END_FUNCTION
 
 
-(* @NESTEDCOMMENTS := 'Yes' *)
-(* @PATH := '\/Engineering\/sensor' *)
-(* @OBJECTFLAGS := '0, 8' *)
-(* @SYMFILEFLAGS := '2048' *)
 FUNCTION RES_PT : REAL
 VAR_INPUT
 	T : REAL;
@@ -236,7 +217,6 @@ tested by		oscat
 
 
 this function returs the resistance for a platinum sensor for a temperature range from -200..+850 °C *)
-(* @END_DECLARATION := '0' *)
 T2 := T * T;
 
 IF T >= 0.0 THEN
@@ -295,10 +275,6 @@ revision history
 END_FUNCTION
 
 
-(* @NESTEDCOMMENTS := 'Yes' *)
-(* @PATH := '\/Engineering\/sensor' *)
-(* @OBJECTFLAGS := '0, 8' *)
-(* @SYMFILEFLAGS := '2048' *)
 FUNCTION RES_SI : REAL
 VAR_INPUT
 	T : REAL;
@@ -321,7 +297,6 @@ tested by		tobias
 this function returs the resistance for a silicon sensor for a temperature range from -50..+150 °C
 for example KTY10 normaly Rs at 25 °C
 *)
-(* @END_DECLARATION := '0' *)
 TX := T - TS;
 RES_SI := RS * ( 1.0 + A * TX + B * TX * TX);
 
@@ -339,10 +314,6 @@ hm	11. mar. 2009	rev 1.2
 END_FUNCTION
 
 
-(* @NESTEDCOMMENTS := 'Yes' *)
-(* @PATH := '\/Engineering\/sensor' *)
-(* @OBJECTFLAGS := '0, 8' *)
-(* @SYMFILEFLAGS := '2048' *)
 FUNCTION SENSOR_INT : REAL
 VAR_INPUT
 	Voltage : REAL;
@@ -366,7 +337,6 @@ the function allows to consider a parallel and serial resistor at the same time.
 with this function and known parasitic serial and parallel resistors the true resistance of the sensor can be calculated.
 
 *)
-(* @END_DECLARATION := '0' *)
 IF current <> 0.0 THEN
 	RG := voltage / current;
 	SENSOR_INT := RP * ( RG - RS) / ( RP + RS - RG);
@@ -387,10 +357,6 @@ hm	11. mar. 2009	rev 1.3
 END_FUNCTION
 
 
-(* @NESTEDCOMMENTS := 'Yes' *)
-(* @PATH := '\/Engineering\/sensor' *)
-(* @OBJECTFLAGS := '0, 8' *)
-(* @SYMFILEFLAGS := '2048' *)
 FUNCTION TEMP_NI : REAL
 VAR_INPUT
 	Res : REAL;
@@ -404,7 +370,6 @@ programmer 	hugo
 tested by		tobias
 
 this function returns the temperature for a nickel sensor in a range from -60..+180 °C *)
-(* @END_DECLARATION := '0' *)
 TEMP_NI := (SQRT(0.30085225 - 2.66E-3 * (R0 - Res)) - 0.5485) * 751.8796992;
 
 
@@ -431,10 +396,6 @@ hm	10. mar. 2009	rev 1.5
 END_FUNCTION
 
 
-(* @NESTEDCOMMENTS := 'Yes' *)
-(* @PATH := '\/Engineering\/sensor' *)
-(* @OBJECTFLAGS := '0, 8' *)
-(* @SYMFILEFLAGS := '2048' *)
 FUNCTION TEMP_NTC : REAL
 VAR_INPUT
 	RES : REAL;
@@ -452,7 +413,6 @@ this function returs the temperature for a NTC sensor for a range from 0..85 °C
 RN is the resistance at 25 °C and B is a constant for the given sensor.
 
 *)
-(* @END_DECLARATION := '0' *)
 IF res > 0.0 THEN
 	TEMP_NTC := B * 298.15 / (B + LN(RES / RN) * 298.15) -273.15;
 END_IF;
@@ -470,10 +430,6 @@ hm	11. mar. 2009	rev 1.1
 END_FUNCTION
 
 
-(* @NESTEDCOMMENTS := 'Yes' *)
-(* @PATH := '\/Engineering\/sensor' *)
-(* @OBJECTFLAGS := '0, 8' *)
-(* @SYMFILEFLAGS := '2048' *)
 FUNCTION TEMP_PT : REAL
 VAR_INPUT
 	Res : REAL;
@@ -498,7 +454,6 @@ programmer 	hugo
 tested by		oscat
 
 this function returs the temperature for a platinum sensor for a range from -200..+850 °C *)
-(* @END_DECLARATION := '0' *)
 X := A * R0;
 Y := B * R0;
 IF Res >= R0 THEN
@@ -548,10 +503,6 @@ hm	11. mar. 2009	rev 1.7
 END_FUNCTION
 
 
-(* @NESTEDCOMMENTS := 'Yes' *)
-(* @PATH := '\/Engineering\/sensor' *)
-(* @OBJECTFLAGS := '0, 8' *)
-(* @SYMFILEFLAGS := '2048' *)
 FUNCTION TEMP_SI : REAL
 VAR_INPUT
 	Res : REAL;
@@ -568,7 +519,6 @@ tested by		tobias
 this function returs the temperature for a silicon sensor for a range from -60..+180 °C
 for example KTY10 RS at TS normally 25 °C
 *)
-(* @END_DECLARATION := '0' *)
 TEMP_SI := (-7.64E-3 + SQRT(Res / RS * 6.64E-5 - 0.803E-5)) * 30120.48193 + TS;
 
 

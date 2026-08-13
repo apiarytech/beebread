@@ -1,7 +1,3 @@
-(* @NESTEDCOMMENTS := 'Yes' *)
-(* @PATH := '\/List Processing' *)
-(* @OBJECTFLAGS := '0, 8' *)
-(* @SYMFILEFLAGS := '2048' *)
 FUNCTION LIST_ADD : BOOL
 VAR_INPUT
 	SEP : BYTE;
@@ -24,7 +20,6 @@ LIST_ADD hngt ein weiteres element ans ende einer liste.
 die liste liegt als string von elementen vor die mit den zeichen SEP am anfang makiert sind.
 
 *)
-(* @END_DECLARATION := '0' *)
 sx := CHR_TO_STRING(SEP);			(* convert separation character to string *)
 INS := CONCAT(sx, INS);					(* start element with separation character *)
 
@@ -45,10 +40,6 @@ hm	21. mar. 2011	rev 2.0
 END_FUNCTION
 
 
-(* @NESTEDCOMMENTS := 'Yes' *)
-(* @PATH := '\/List Processing' *)
-(* @OBJECTFLAGS := '0, 8' *)
-(* @SYMFILEFLAGS := '2048' *)
 FUNCTION LIST_CLEAN : BOOL
 VAR_INPUT
 	SEP : BYTE;
@@ -74,7 +65,6 @@ LIST_CLEAN bereinigt eine liste von leeren Elementen.
 die liste liegt als string von elementen vor die mit den zeichen SEP am anfang markiert sind.
 
 *)
-(* @END_DECLARATION := '0' *)
 pt := ADR(LIST);
 
 FOR read := 1 TO LIST_LENGTH DO
@@ -108,10 +98,6 @@ hm	21. mar. 2011	rev 2.0
 END_FUNCTION
 
 
-(* @NESTEDCOMMENTS := 'Yes' *)
-(* @PATH := '\/List Processing' *)
-(* @OBJECTFLAGS := '0, 8' *)
-(* @SYMFILEFLAGS := '2048' *)
 FUNCTION LIST_GET : STRING(LIST_LENGTH)
 VAR_INPUT
 	SEP : BYTE;
@@ -139,7 +125,6 @@ LIST_GET liefert das element an der stelle pos einer liste.
 die liste liegt als string von elementen vor die mit den zeichen SEP am anfang makiert sind.
 
 *)
-(* @END_DECLARATION := '0' *)
 pt := ADR(LIST);							(* load pointers *)
 po := ADR(LIST_GET);
 
@@ -174,10 +159,6 @@ hm	21. mar. 2011	rev 2.0
 END_FUNCTION
 
 
-(* @NESTEDCOMMENTS := 'Yes' *)
-(* @PATH := '\/List Processing' *)
-(* @OBJECTFLAGS := '0, 8' *)
-(* @SYMFILEFLAGS := '2048' *)
 FUNCTION LIST_INSERT : BOOL
 VAR_INPUT
 	SEP : BYTE;
@@ -204,7 +185,6 @@ LIST_INSERT setzt ein element an der stelle pos in eine liste ein.
 die liste liegt als string von elementen vor die mit den zeichen SEP am anfang markiert sind.
 
 *)
-(* @END_DECLARATION := '0' *)
 (* load pointers *)
 pt := ADR(LIST);
 

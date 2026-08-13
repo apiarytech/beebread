@@ -1,7 +1,3 @@
-(* @NESTEDCOMMENTS := 'Yes' *)
-(* @PATH := '\/Engineering\/automation' *)
-(* @OBJECTFLAGS := '0, 8' *)
-(* @SYMFILEFLAGS := '2048' *)
 FUNCTION_BLOCK DRIVER_1
 VAR_INPUT CONSTANT
 	Toggle_Mode : BOOL;
@@ -31,7 +27,6 @@ if a timeout is specified the output q will be reset to false automatically afte
 a asynchronous reset and set will force the output high or low respectively.
 
 *)
-(* @END_DECLARATION := '0' *)
 IF off.Q THEN Q := FALSE; END_IF;
 IF rst THEN
 	Q := FALSE;
@@ -52,10 +47,6 @@ hm	2. jan 2008		rev 1.0
 END_FUNCTION_BLOCK
 
 
-(* @NESTEDCOMMENTS := 'Yes' *)
-(* @PATH := '\/Engineering\/automation' *)
-(* @OBJECTFLAGS := '0, 8' *)
-(* @SYMFILEFLAGS := '2048' *)
 FUNCTION_BLOCK DRIVER_4
 VAR_INPUT CONSTANT
 	Toggle_Mode : BOOL;
@@ -85,7 +76,6 @@ a asynchronous reset and set will force the output high or low respectively.
 an asynchronous set will force all outputs high simultaneously
 
 *)
-(* @END_DECLARATION := '0' *)
 D0(Set:=set, in:=in0, rst:=rst, toggle_mode:=toggle_mode, timeout:=timeout);
 D1(Set:=set, in:=in1, rst:=rst, toggle_mode:=toggle_mode, timeout:=timeout);
 D2(Set:=set, in:=in2, rst:=rst, toggle_mode:=toggle_mode, timeout:=timeout);
@@ -104,10 +94,6 @@ hm	2. jan 2008		rev 1.0
 END_FUNCTION_BLOCK
 
 
-(* @NESTEDCOMMENTS := 'Yes' *)
-(* @PATH := '\/Engineering\/automation' *)
-(* @OBJECTFLAGS := '0, 8' *)
-(* @SYMFILEFLAGS := '2048' *)
 FUNCTION_BLOCK DRIVER_4C
 VAR_INPUT
 	IN : BOOL;
@@ -142,7 +128,6 @@ The variables S1..S5 define the states, while the sequence is terminated when a 
 The lower bits 0..3 of the state vars S? are corresponding to the Outputs Q0..Q3
 
 *)
-(* @END_DECLARATION := '0' *)
 IF RST OR off.Q THEN
 	SN := 0;
 ELSIF IN AND NOT edge THEN
@@ -174,10 +159,6 @@ hm	23. mar. 2009	rev 1.0
 END_FUNCTION_BLOCK
 
 
-(* @NESTEDCOMMENTS := 'Yes' *)
-(* @PATH := '\/Engineering\/automation' *)
-(* @OBJECTFLAGS := '0, 8' *)
-(* @SYMFILEFLAGS := '2048' *)
  FUNCTION_BLOCK FLOW_CONTROL
 VAR_INPUT
 	IN : BOOL;
@@ -207,8 +188,6 @@ FLOW_CONTROL switches a valves depending on the input in.
 flow control also limits the maximum ontime of the valve and controls pressure on the output side.
 
 *)
-
-(* @END_DECLARATION := '0' *)
 STATUS := 100;
 IF RST THEN
 	Q := FALSE;
@@ -244,10 +223,6 @@ hm 	28. jun. 2008 	rev 1.0
 END_FUNCTION_BLOCK
 
 
-(* @NESTEDCOMMENTS := 'Yes' *)
-(* @PATH := '\/Engineering\/automation' *)
-(* @OBJECTFLAGS := '0, 8' *)
-(* @SYMFILEFLAGS := '2048' *)
 FUNCTION_BLOCK FT_Profile
 VAR_INPUT
 	K : REAL := 1.0;
@@ -408,10 +383,6 @@ hm	15. sep2007		rev 1.1
 END_FUNCTION_BLOCK
 
 
-(* @NESTEDCOMMENTS := 'Yes' *)
-(* @PATH := '\/Engineering\/automation' *)
-(* @OBJECTFLAGS := '0, 8' *)
-(* @SYMFILEFLAGS := '2048' *)
 FUNCTION_BLOCK INC_DEC
 VAR_INPUT
 	CHa : BOOL;
@@ -466,10 +437,6 @@ IF rst THEN cnt := 0; END_IF;
 END_FUNCTION_BLOCK
 
 
-(* @NESTEDCOMMENTS := 'Yes' *)
-(* @PATH := '\/Engineering\/automation' *)
-(* @OBJECTFLAGS := '0, 8' *)
-(* @SYMFILEFLAGS := '2048' *)
 FUNCTION_BLOCK INTERLOCK
 VAR_INPUT
 	I1, I2 : BOOL;
@@ -493,7 +460,6 @@ The input TL specifies a dead time between two outputs can become active.
 an output can only become active when the other output was not active for the time TL.
 
 *)
-(* @END_DECLARATION := '0' *)
 (* the input signal have a run delay to lockout the other input *)
 T1(IN := I1, PT := TL);
 T2(IN := I2, PT := TL);
@@ -511,10 +477,6 @@ hm	28 sep 2007		rev 1.0
 END_FUNCTION_BLOCK
 
 
-(* @NESTEDCOMMENTS := 'Yes' *)
-(* @PATH := '\/Engineering\/automation' *)
-(* @OBJECTFLAGS := '0, 8' *)
-(* @SYMFILEFLAGS := '2048' *)
 FUNCTION_BLOCK INTERLOCK_4
 VAR_INPUT CONSTANT
 END_VAR
@@ -551,7 +513,6 @@ MODE = 1, the input with the highest number will be acepted
 mode = 2, the input last pressed will disable all others 
 
 *)
-(* @END_DECLARATION := '0' *)
 (* check if enable is active *)
 IF E THEN
 (* reset all vars when there is a mode change on thy fly *)
@@ -622,10 +583,6 @@ hm	14. mar. 2009	rev 1.1
 END_FUNCTION_BLOCK
 
 
-(* @NESTEDCOMMENTS := 'Yes' *)
-(* @PATH := '\/Engineering\/automation' *)
-(* @OBJECTFLAGS := '0, 8' *)
-(* @SYMFILEFLAGS := '2048' *)
 FUNCTION MANUAL : BOOL
 VAR_INPUT
 	IN : BOOL;
@@ -645,7 +602,6 @@ ON = TRUE forces the output high, and OFF = TRUE forces the output low.
 
 
 *)
-(* @END_DECLARATION := '0' *)
 MANUAL := NOT OFF AND (IN OR ON);
 
 
@@ -659,10 +615,6 @@ hm	21. nov 2008	rev 1.0
 END_FUNCTION
 
 
-(* @NESTEDCOMMENTS := 'Yes' *)
-(* @PATH := '\/Engineering\/automation' *)
-(* @OBJECTFLAGS := '0, 8' *)
-(* @SYMFILEFLAGS := '2048' *)
 FUNCTION_BLOCK MANUAL_1
 VAR_INPUT
 	IN : BOOL;
@@ -691,7 +643,6 @@ When MAN = FALSE, the output follows IN and when MAN = TRUE the Output follows M
 
 
 *)
-(* @END_DECLARATION := '0' *)
 IF NOT man THEN
 	Q := IN;
 	STATUS := 100;
@@ -729,10 +680,6 @@ hm	14. mar. 2009	rev 1.2
 END_FUNCTION_BLOCK
 
 
-(* @NESTEDCOMMENTS := 'Yes' *)
-(* @PATH := '\/Engineering\/automation' *)
-(* @OBJECTFLAGS := '0, 8' *)
-(* @SYMFILEFLAGS := '2048' *)
 FUNCTION_BLOCK MANUAL_2
 VAR_INPUT
 	IN : BOOL;
@@ -756,7 +703,6 @@ MANUAL_2 is a manual override for boolean signals.
 it has static force high and low as well as a manual input.
 
 *)
-(* @END_DECLARATION := '0' *)
 IF ena THEN
 	IF NOT ON AND NOT OFF THEN
 		Q := IN;
@@ -786,10 +732,6 @@ hm	22. sep. 2008		rev 1.0
 END_FUNCTION_BLOCK
 
 
-(* @NESTEDCOMMENTS := 'Yes' *)
-(* @PATH := '\/Engineering\/automation' *)
-(* @OBJECTFLAGS := '0, 8' *)
-(* @SYMFILEFLAGS := '2048' *)
 FUNCTION_BLOCK MANUAL_4
 VAR_INPUT
 	I0, I1, I2, I3 : BOOL;
@@ -818,7 +760,6 @@ When MAN = FALSE, the output follows IN and when MAN = TRUE the Output follows M
 
 
 *)
-(* @END_DECLARATION := '0' *)
 IF man THEN
 	IF NOT TOG THEN
 		Q0 := M0;

@@ -1,7 +1,3 @@
-(* @NESTEDCOMMENTS := 'Yes' *)
-(* @PATH := '\/Engineering\/signal generators' *)
-(* @OBJECTFLAGS := '0, 8' *)
-(* @SYMFILEFLAGS := '2048' *)
 FUNCTION_BLOCK _RMP_B
 VAR_INPUT
 	DIR : BOOL;  (* true = up *)
@@ -28,7 +24,6 @@ _RMP_B generates a ramp on an external var of type byte
 tr is the total ramp time, E is an enable and dir the direction of the ramp
 
 *)
-(* @END_DECLARATION := '0' *)
 (* read system timer *)
 tx := DWORD_TO_TIME(T_PLC_MS());
 
@@ -58,10 +53,6 @@ hm	19. nov. 2011	rev 1.2
 END_FUNCTION_BLOCK
 
 
-(* @NESTEDCOMMENTS := 'Yes' *)
-(* @PATH := '\/Engineering\/signal generators' *)
-(* @OBJECTFLAGS := '0, 8' *)
-(* @SYMFILEFLAGS := '2048' *)
 FUNCTION_BLOCK _RMP_NEXT
 VAR_INPUT
 	E : BOOL := TRUE;
@@ -98,7 +89,6 @@ on a rising ramp the output will stop as soon as it has surpassed the input in, 
 a lockout time T_L will be added between up and down direction.
 
 *)
-(* @END_DECLARATION := '0' *)
 dirx(X := in);
 
 t_lock(in := FALSE, pt := TL);
@@ -152,10 +142,6 @@ hm	18. jul. 2009	rev 1.4
 END_FUNCTION_BLOCK
 
 
-(* @NESTEDCOMMENTS := 'Yes' *)
-(* @PATH := '\/Engineering\/signal generators' *)
-(* @OBJECTFLAGS := '0, 8' *)
-(* @SYMFILEFLAGS := '2048' *)
 FUNCTION_BLOCK _RMP_W
 VAR_INPUT
 	DIR : BOOL;
@@ -183,7 +169,6 @@ _RMP_B generates a ramp on an external var of type byte
 tr is the total ramp time, E is an enable and dir the direction of the ramp
 
 *)
-(* @END_DECLARATION := '0' *)
 tx := T_PLC_MS();
 IF E AND init THEN
 	(* we need to set tl = tx when direction changes *)
@@ -222,10 +207,6 @@ hm	20. nov. 2008	rev 1.1
 END_FUNCTION_BLOCK
 
 
-(* @NESTEDCOMMENTS := 'Yes' *)
-(* @PATH := '\/Engineering\/signal generators' *)
-(* @OBJECTFLAGS := '0, 8' *)
-(* @SYMFILEFLAGS := '2048' *)
 FUNCTION_BLOCK GEN_PULSE
 VAR_INPUT
 	ENQ : BOOL := TRUE;
@@ -252,7 +233,6 @@ when time is 0 the high and low times are exactly one cycle.
 ENQ = TRUE will start and ENQ = FALSE will stop the generator.
 
 *)
-(* @END_DECLARATION := '0' *)
 IF enq THEN
 	tx := DWORD_TO_TIME(T_PLC_MS());
 	IF NOT init THEN init := TRUE; tn := tx; END_IF;
@@ -289,10 +269,6 @@ hm	8. apr. 2011	rev 1.5
 END_FUNCTION_BLOCK
 
 
-(* @NESTEDCOMMENTS := 'Yes' *)
-(* @PATH := '\/Engineering\/signal generators' *)
-(* @OBJECTFLAGS := '0, 8' *)
-(* @SYMFILEFLAGS := '2048' *)
 FUNCTION_BLOCK GEN_PW2
 VAR_INPUT
 	ENQ : BOOL;
@@ -326,7 +302,6 @@ the input ts selects between 2 sets of timings for the operation.
 
 
 *)
-(* @END_DECLARATION := '0' *)
 (* read system timer *)
 tx := DWORD_TO_TIME(T_PLC_MS());
 
@@ -387,10 +362,6 @@ hm	14. mar. 2009	rev 1.1
 END_FUNCTION_BLOCK
 
 
-(* @NESTEDCOMMENTS := 'Yes' *)
-(* @PATH := '\/Engineering\/signal generators' *)
-(* @OBJECTFLAGS := '0, 8' *)
-(* @SYMFILEFLAGS := '2048' *)
 FUNCTION_BLOCK GEN_RDM
 VAR_INPUT
 	PT : TIME;
@@ -419,7 +390,6 @@ The period time PT defines how often the output signal will jump to a new randow
 The Output Q will be true for one cycle anytime the output OUT has changed
 
 *)
-(* @END_DECLARATION := '0' *)
 (* read system time and prepare input data *)
 tx := DWORD_TO_TIME(T_PLC_MS()) - last;
 
@@ -455,10 +425,6 @@ hm	16.9.2007		rev 1.1
 END_FUNCTION_BLOCK
 
 
-(* @NESTEDCOMMENTS := 'Yes' *)
-(* @PATH := '\/Engineering\/signal generators' *)
-(* @OBJECTFLAGS := '0, 8' *)
-(* @SYMFILEFLAGS := '2048' *)
 FUNCTION_BLOCK GEN_RDT
 
 VAR_INPUT
@@ -502,7 +468,6 @@ FUNCTION_BLOCK RDMTimer
 ###############################################################################
 Beschreibung:
 *)
-(* @END_DECLARATION := '0' *)
 tonRDMTimer ( IN:= Enable , PT:= tRDMTime );
 tof_xQ ( IN:= tonRDMTimer.Q , PT:= TP_Q );
 XQ := tof_xq.Q;
@@ -523,10 +488,6 @@ hm	16. mar. 2008			rev 1.1
 END_FUNCTION_BLOCK
 
 
-(* @NESTEDCOMMENTS := 'Yes' *)
-(* @PATH := '\/Engineering\/signal generators' *)
-(* @OBJECTFLAGS := '0, 8' *)
-(* @SYMFILEFLAGS := '2048' *)
 FUNCTION_BLOCK GEN_RMP
 VAR_INPUT
 	PT : TIME := t#1s;
@@ -558,7 +519,6 @@ The delay input can delay a signal up to PT, this can be useful to synchronize d
 and generate interleaving signals.
 in addition to the analog output Out there is a second boolean output Q with is true for one cycle when the ramp starts.
 *)
-(* @END_DECLARATION := '0' *)
 (* read system time and prepare input data *)
 tx := DWORD_TO_TIME(T_PLC_MS()) - last;
 DL := MODR(dl,1.0);
