@@ -20,15 +20,6 @@ const (
 
 // Global variables holding constant values from the OSCAT library.
 var (
-	Math     ConstantsMath
-	Phys     ConstantsPhys
-	Language ConstantsLanguage
-	Setup    ConstantsSetup
-	Location ConstantsLocation
-)
-
-// init initializes the global constant structures with their default values from the OSCAT library.
-func init() {
 	// Initialize Math constants
 	Math = ConstantsMath{
 		Pi:     3.141592653589793,
@@ -54,6 +45,13 @@ func init() {
 		Ru: 8.314472,
 		Pn: 101325.0,
 	}
+	Language ConstantsLanguage
+	Setup    ConstantsSetup
+	Location ConstantsLocation
+)
+
+// init initializes the global constant structures with their default values from the OSCAT library.
+func init() {
 
 	// Initialize Language constants
 	Language = ConstantsLanguage{

@@ -35,13 +35,13 @@ package main
 
 import (
 	"fmt"
-	"github.com/apiarytech/beebread/basic"
+	"github.com/apiarytech/beebread/basic/time_date"
 	"time"
 )
 
 func main() {
 	// Calculate the date of Easter for the year 2025
-	easterDate := basic.Easter(2025)
+	easterDate := time_date.Easter(2025)
 	fmt.Printf("Easter Sunday in 2025 is on: %s\n", easterDate.Format("January 2"))
 	// Output: Easter Sunday in 2025 is on: April 20
 }

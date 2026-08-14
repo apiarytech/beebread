@@ -17,21 +17,21 @@ import (
 
 func TestBufferClear(t *testing.T) {
 	buf := []byte{1, 2, 3, 4, 5}
-	BufferClear(buf, 5)
+	BUFFER_CLEAR(buf, 5)
 	expected := []byte{0, 0, 0, 0, 0}
 	if !bytes.Equal(buf, expected) {
 		t.Errorf("BufferClear failed: expected %v, got %v", expected, buf)
 	}
 
 	buf = []byte{1, 2, 3, 4, 5}
-	BufferClear(buf, 3)
+	BUFFER_CLEAR(buf, 3)
 	expected = []byte{0, 0, 0, 4, 5}
 	if !bytes.Equal(buf, expected) {
 		t.Errorf("BufferClear partial failed: expected %v, got %v", expected, buf)
 	}
 
 	buf = []byte{1, 2, 3}
-	BufferClear(buf, 10) // Size > len(buf)
+	BUFFER_CLEAR(buf, 10) // Size > len(buf)
 	expected = []byte{0, 0, 0}
 	if !bytes.Equal(buf, expected) {
 		t.Errorf("BufferClear with oversized SIZE failed: expected %v, got %v", expected, buf)
@@ -40,21 +40,21 @@ func TestBufferClear(t *testing.T) {
 
 func TestBufferInit(t *testing.T) {
 	buf := make([]byte, 5)
-	BufferInit(buf, 5, 7)
+	BUFFER_INIT(buf, 5, 7)
 	expected := []byte{7, 7, 7, 7, 7}
 	if !bytes.Equal(buf, expected) {
 		t.Errorf("BufferInit failed: expected %v, got %v", expected, buf)
 	}
 
 	buf = []byte{1, 2, 3, 4, 5}
-	BufferInit(buf, 3, 8)
+	BUFFER_INIT(buf, 3, 8)
 	expected = []byte{8, 8, 8, 4, 5}
 	if !bytes.Equal(buf, expected) {
 		t.Errorf("BufferInit partial failed: expected %v, got %v", expected, buf)
 	}
 
 	buf = make([]byte, 3)
-	BufferInit(buf, 10, 9) // Size > len(buf)
+	BUFFER_INIT(buf, 10, 9) // Size > len(buf)
 	expected = []byte{9, 9, 9}
 	if !bytes.Equal(buf, expected) {
 		t.Errorf("BufferInit with oversized SIZE failed: expected %v, got %v", expected, buf)
@@ -124,7 +124,7 @@ func TestBufferInsert(t *testing.T) {
 			bufCopy := make([]byte, len(tt.buffer))
 			copy(bufCopy, tt.buffer)
 
-			gotPos := BufferInsert(bufCopy, tt.str, tt.pos, tt.size) // bufCopy is the buffer to be modified
+			gotPos := BUFFER_INSERT(bufCopy, tt.str, tt.pos, tt.size) // bufCopy is the buffer to be modified
 			if gotPos != tt.wantPos {
 				t.Errorf("BufferInsert() returned position %v, want %v", gotPos, tt.wantPos)
 			}
@@ -141,7 +141,7 @@ func TestBufferInsert(t *testing.T) {
 
 func TestBufferUppercase(t *testing.T) {
 	buf := []byte("aBcDeFg-123")
-	BufferUppercase(buf, len(buf))
+	BUFFER_UPPERCASE(buf, len(buf))
 	expected := []byte("ABCDEFG-123")
 	if !bytes.Equal(buf, expected) {
 		t.Errorf("BufferUppercase failed: expected %q, got %q", expected, buf)
@@ -169,7 +169,7 @@ func TestBufferSearch(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := BufferSearch(buffer, len(buffer), tt.str, tt.pos, tt.ignoreCase)
+			got := BUFFER_SEARCH(buffer, len(buffer), tt.str, tt.pos, tt.ignoreCase)
 			if got != tt.want {
 				t.Errorf("BufferSearch() = %v, want %v", got, tt.want)
 			}
@@ -197,7 +197,7 @@ func TestBufferToString(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := BufferToString(buffer, uint(len(buffer)), tt.start, tt.stop)
+			got := BUFFER_TO_STRING(buffer, uint(len(buffer)), tt.start, tt.stop)
 			if got != tt.want {
 				t.Errorf("BufferToString() = %q, want %q", got, tt.want)
 			}
@@ -251,8 +251,8 @@ func TestStringToBuffer(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Initial buffer state for each test
-			buffer := []byte("Hello World....") // Ensure enough space and correct initial content
-			gotPos := StringToBuffer(buffer, tt.str, tt.pos, tt.size)
+			buffer := []byte("Hello World....") // Ensure enough space and correct initial content.
+			gotPos := STRING_TO_BUFFER(buffer, tt.str, tt.pos, tt.size)
 
 			if gotPos != tt.wantPos {
 				t.Errorf("StringToBuffer() returned pos %v, want %v", gotPos, tt.wantPos)
@@ -331,7 +331,7 @@ func TestBufferComp(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := BufferComp(buffer1, len(buffer1), tt.buffer2, len(tt.buffer2), tt.start)
+			got := BUFFER_COMP(buffer1, len(buffer1), tt.buffer2, len(tt.buffer2), tt.start)
 			if got != tt.want {
 				t.Errorf("BufferComp() = %v, want %v", got, tt.want)
 			}

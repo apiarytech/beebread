@@ -16,34 +16,28 @@ import (
 	"strings"
 )
 
-// BufferClear initializes a given slice of bytes with 0.
+// BUFFER_CLEAR initializes a given slice of bytes with 0.
 // It is the Go equivalent of the _BUFFER_CLEAR function from the OSCAT library.
-// The function modifies the original slice in-place and returns true when finished.
-func BufferClear(buffer []byte, size uint) bool {
-	// In Go, this is the most idiomatic and often the most performant
-	// way to zero out a slice.
-
+// The function modifies the original slice in-place.
+func BUFFER_CLEAR(buffer []byte, size uint) {
 	// Determine the number of bytes to clear, ensuring we don't go
 	// beyond the actual length of the slice to prevent a panic.
 	clearLen := int(size)
 	if clearLen > len(buffer) {
 		clearLen = len(buffer)
 	}
-
-	// Using a loop is fine, but this is slightly more direct.
-	copy(buffer[:clearLen], make([]byte, clearLen))
-	return true
+	// A simple loop is the most idiomatic and efficient way to zero a slice.
+	for i := range buffer[:clearLen] {
+		buffer[i] = 0
+	}
 }
 
-// BufferInit initializes a given slice of bytes with a specific value.
+// BUFFER_INIT initializes a given slice of bytes with a specific value.
 // It is the Go equivalent of the _BUFFER_INIT function from the OSCAT library.
 // The function modifies the original slice in-place and returns true when finished.
-func BufferInit(buffer []byte, size uint, init byte) bool {
+func BUFFER_INIT(buffer []byte, size uint, init byte) bool {
 	// The most idiomatic and performant way to fill a slice in Go is a simple
-	// for loop.
-
-	// Determine the number of bytes to initialize, ensuring we don't go
-	// beyond the actual length of the slice to prevent a panic.
+	// for loop or bytes.Repeat.
 	initLen := int(size)
 	if initLen > len(buffer) {
 		initLen = len(buffer)
@@ -55,11 +49,11 @@ func BufferInit(buffer []byte, size uint, init byte) bool {
 	return true
 }
 
-// BufferInsert inserts a string into a byte buffer at a given position.
+// BUFFER_INSERT inserts a string into a byte buffer at a given position.
 // It is the Go equivalent of the _BUFFER_INSERT function from the OSCAT library.
 // The function shifts existing data to make room and then copies the new string.
 // It returns the position immediately after the inserted string.
-func BufferInsert(buffer []byte, str string, pos int, size uint) int {
+func BUFFER_INSERT(buffer []byte, str string, pos int, size uint) int {
 	strLen := len(str)
 	insertPos := pos
 
@@ -94,23 +88,27 @@ func BufferInsert(buffer []byte, str string, pos int, size uint) int {
 	return pos + strLen
 }
 
-// BufferUppercase converts all characters in a byte buffer to uppercase.
+// BUFFER_UPPERCASE converts all characters in a byte buffer to uppercase.
 // It is the Go equivalent of the _BUFFER_UPPERCASE function from the OSCAT library.
-func BufferUppercase(buffer []byte, size int) bool {
+func BUFFER_UPPERCASE(buffer []byte, size int) {
 	// Determine the number of bytes to process, capped by the slice length.
 	procSize := size
 	if procSize > len(buffer) {
 		procSize = len(buffer)
 	}
 
-	copy(buffer[:procSize], bytes.ToUpper(buffer[:procSize]))
-	return true
+	// bytes.ToUpper creates a new slice. To modify in-place, iterate.
+	for i, b := range buffer[:procSize] {
+		if b >= 'a' && b <= 'z' {
+			buffer[i] = b - ('a' - 'A')
+		}
+	}
 }
 
-// BufferSearch searches for a string within a byte buffer.
+// BUFFER_SEARCH searches for a string within a byte buffer.
 // It is the Go equivalent of the BUFFER_SEARCH function from the OSCAT library.
 // The function returns the starting position of the found string, or -1 if not found.
-func BufferSearch(buffer []byte, size int, str string, pos int, ignoreCase bool) int {
+func BUFFER_SEARCH(buffer []byte, size int, str string, pos int, ignoreCase bool) int {
 	strLen := len(str)
 	startPos := pos
 
@@ -145,9 +143,9 @@ func BufferSearch(buffer []byte, size int, str string, pos int, ignoreCase bool)
 	}
 }
 
-// BufferToString retrieves a string from a byte buffer between a start and stop position.
+// BUFFER_TO_STRING retrieves a string from a byte buffer between a start and stop position.
 // It is the Go equivalent of the BUFFER_TO_STRING function from the OSCAT library.
-func BufferToString(buffer []byte, size uint, start uint, stop uint) string {
+func BUFFER_TO_STRING(buffer []byte, size uint, start uint, stop uint) string {
 	bufferLen := int(size)
 	if bufferLen > len(buffer) {
 		bufferLen = len(buffer)
@@ -179,10 +177,10 @@ func BufferToString(buffer []byte, size uint, start uint, stop uint) string {
 	return string(buffer[startPos : stopPos+1])
 }
 
-// StringToBuffer copies a string into a byte buffer starting at a specific position.
+// STRING_TO_BUFFER copies a string into a byte buffer starting at a specific position.
 // It is the Go equivalent of the _STRING_TO_BUFFER function from the OSCAT library.
 // The function returns the position in the buffer immediately after the inserted string.
-func StringToBuffer(buffer []byte, str string, pos int, size uint) int {
+func STRING_TO_BUFFER(buffer []byte, str string, pos int, size uint) int {
 	strLen := len(str)
 	startPos := pos
 
@@ -212,10 +210,10 @@ func StringToBuffer(buffer []byte, str string, pos int, size uint) int {
 	return pos + bytesToCopy
 }
 
-// BufferComp compares two buffers to find the first occurrence of the second buffer within the first.
+// BUFFER_COMP compares two buffers to find the first occurrence of the second buffer within the first.
 // It is the Go equivalent of the BUFFER_COMP function from the OSCAT library.
 // The function returns the starting position of the found sequence, or -1 if not found.
-func BufferComp(buffer1 []byte, size1 int, buffer2 []byte, size2 int, start int) int {
+func BUFFER_COMP(buffer1 []byte, size1 int, buffer2 []byte, size2 int, start int) int {
 	len1 := int(size1)
 	len2 := int(size2)
 	startIndex := start

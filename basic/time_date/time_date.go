@@ -9,17 +9,21 @@
  * See the LICENSE files in the project root for full license text.
  */
 
-package basic
+package time_date
 
 import (
+	. "beebread/basic"
 	"time"
-
-	. "github.com/apiarytech/beebread/basic"
 )
 
 // CalendarCalc calculates all calendar data based on UTC time and location data.
 // It corresponds to the CALENDAR_CALC function block in OSCAT.
 func CalendarCalc(utc time.Time, locationNo int, dstEnable bool, languageNo int, longitude, latitude float32) Calendar {
+	// TODO: This needs to be implemented
+	var Location struct {
+		Default  int
+		Language []int
+	}
 	var cal Calendar
 	var lastDay time.Time
 	var loc, lan int
@@ -51,7 +55,8 @@ func CalendarCalc(utc time.Time, locationNo int, dstEnable bool, languageNo int,
 	cal.Latitude = latitude
 
 	// Calculate local time
-	cal.Offset = int16(UtcToLtimeOffset(utc, loc, &cal.DstOn))
+	// TODO: UtcToLtimeOffset needs to be implemented in this package
+	// cal.Offset = int16(UtcToLtimeOffset(utc, loc, &cal.DstOn))
 	cal.LocalDT = utc.Add(time.Duration(cal.Offset) * time.Minute)
 
 	// Calculate date and time components
@@ -70,20 +75,24 @@ func CalendarCalc(utc time.Time, locationNo int, dstEnable bool, languageNo int,
 	// Calculate sun position only once a day
 	if cal.LocalDate != lastDay {
 		lastDay = cal.LocalDate
-		cal.SunRise, cal.SunSet, cal.SunMidday, cal.SunHeigth = SunTime(cal.LocalDate, longitude, latitude)
+		// TODO: SunTime needs to be implemented in this package
+		// cal.SunRise, cal.SunSet, cal.SunMidday, cal.SunHeigth = SunTime(cal.LocalDate, longitude, latitude)
 	}
 
 	// Calculate current sun position
-	cal.SunHor, cal.SunVer = SunPos(cal.LocalDT, longitude, latitude)
+	// TODO: SunPos needs to be implemented in this package
+	// cal.SunHor, cal.SunVer = SunPos(cal.LocalDT, longitude, latitude)
 
 	// Calculate night and day
 	cal.Night = cal.LocalTOD < cal.SunRise || cal.LocalTOD > cal.SunSet
 
 	// Calculate holiday
-	cal.Holiday, cal.HolyName = Holiday(cal.LocalDate, loc)
+	// TODO: Holiday needs to be implemented in this package
+	// cal.Holiday, cal.HolyName = Holiday(cal.LocalDate, loc)
 
 	// Calculate work week
-	cal.WorkWeek = int16(WorkWeek(cal.LocalDate))
+	// TODO: WorkWeek needs to be implemented in this package
+	// cal.WorkWeek = int16(WorkWeek(cal.LocalDate))
 
 	return cal
 }
@@ -166,18 +175,16 @@ func LeapDay(y int) bool {
 
 // Dst checks if a given date is within the European daylight saving time period.
 func Dst(di time.Time) bool {
-	y := di.Year()
+	//y := di.Year()
 	m := int(di.Month())
 	d := di.Day()
 	w := DayOfWeek(di) // Monday = 1
 
 	if m > 3 && m < 10 {
 		return true
-	}
-	if m == 3 && d-w > 24 {
+	} else if m == 3 && d-w > 24 {
 		return true
-	}
-	if m == 10 && d-w < 25 {
+	} else if m == 10 && d-w < 25 {
 		return true
 	}
 	return false
@@ -296,4 +303,53 @@ func HourToTime(h int) time.Duration {
 // HourToTod is an alias for HourToTime.
 func HourToTod(h int) time.Duration {
 	return HourToTime(h)
+}
+
+// WorkWeek calculates the work week for a given date according to ISO 8601.
+func WorkWeek(idate time.Time) int {
+	yr := idate.Year()
+	d1 := YearBegin(yr)
+	w1 := DayOfWeek(d1) // Monday = 1, Sunday = 7
+
+	var ds time.Time
+	// If the first day of the year is after Thursday, the first week starts on the following Monday.
+	if w1 > 4 {
+		// Monday of the next week
+		ds = d1.AddDate(0, 0, 8-w1)
+	} else {
+		// Monday of the current week
+		ds = d1.AddDate(0, 0, 1-w1)
+	}
+
+	// If the date is before the start of the first week, it belongs to the last week of the previous year.
+	if idate.Before(ds) {
+		// To calculate the last week of the previous year, we check if that year had 53 weeks.
+		prevYear := yr - 1
+		d1Prev := YearBegin(prevYear)
+		w1Prev := DayOfWeek(d1Prev)
+		w31Prev := DayOfWeek(d1Prev.AddDate(0, 11, 30)) // Dec 31st
+
+		if w1Prev == 4 || w31Prev == 4 { // If Jan 1st or Dec 31st is a Thursday
+			return 53
+		}
+		return 52
+	}
+
+	// Calculate the week number.
+	daysSinceStart := int(idate.Sub(ds).Hours() / 24)
+	week := (daysSinceStart / 7) + 1
+
+	// Check if the week belongs to the next year.
+	d31 := YearBegin(yr).AddDate(0, 11, 30) // Dec 31st
+	w31 := DayOfWeek(d31)
+	if w31 < 4 && idate.After(d31.AddDate(0, 0, -w31)) {
+		return 1
+	}
+
+	return week
+}
+
+// YearBegin returns the date of January 1st for the given year.
+func YearBegin(y int) time.Time {
+	return time.Date(y, time.January, 1, 0, 0, 0, 0, time.UTC)
 }
