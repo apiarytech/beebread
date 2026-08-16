@@ -57,7 +57,10 @@ func (d *DRIVER_1) Update(set, in, rst bool) bool {
 		}
 	}
 	d.edge = in
-
+	// Re-trigger the timer on a new rising edge in normal mode.
+	if d.Timeout > 0 {
+		d.offTimer.Update(d.q, d.Timeout)
+	}
 	return d.q
 }
 
@@ -227,7 +230,9 @@ func (p *FT_PROFILE) Update(k, o, m float32, e bool) {
 
 		interpolate := func() {
 			if p.tb > 0 {
-				p.temp = (p.vb-p.va)*float32(tx.Sub(p.ta))/float32(p.tb) + p.va
+				elapsed := float32(tx.Sub(p.ta))
+				duration := float32(p.tb)
+				p.temp = (p.vb-p.va)*elapsed/duration + p.va
 			}
 		}
 
@@ -241,12 +246,14 @@ func (p *FT_PROFILE) Update(k, o, m float32, e bool) {
 		case 2:
 			if tx.Sub(p.ta) >= p.tb {
 				updateState(3, p.Time3, p.Time2, p.Value3, p.Value2)
+				interpolate()
 			} else {
 				interpolate()
 			}
 		case 3:
 			if tx.Sub(p.ta) >= p.tb {
 				updateState(4, p.Time10, p.Time3, p.Value10, p.Value3)
+				interpolate()
 			} else {
 				interpolate()
 			}
@@ -254,6 +261,7 @@ func (p *FT_PROFILE) Update(k, o, m float32, e bool) {
 			if tx.Sub(p.ta) >= p.tb {
 				updateState(5, p.Time11, p.Time10, p.Value11, p.Value10)
 				if !e {
+					interpolate()
 					p.state = 6
 				}
 			} else {
@@ -268,18 +276,21 @@ func (p *FT_PROFILE) Update(k, o, m float32, e bool) {
 		case 6:
 			if tx.Sub(p.ta) >= p.tb {
 				updateState(7, p.Time12, p.Time11, p.Value12, p.Value11)
+				interpolate()
 			} else {
 				interpolate()
 			}
 		case 7:
 			if tx.Sub(p.ta) >= p.tb {
 				updateState(8, p.Time13, p.Time12, p.Value13, p.Value12)
+				interpolate()
 			} else {
 				interpolate()
 			}
 		case 8:
 			if tx.Sub(p.ta) >= p.tb {
 				p.temp = p.Value13
+				p.Y = p.temp*k + o
 				p.Run = false
 			} else {
 				interpolate()
@@ -335,10 +346,12 @@ type INTERLOCK struct {
 
 // Update executes the interlock logic.
 func (il *INTERLOCK) Update(i1, i2 bool, tl time.Duration) (bool, bool) {
-	// First, update the state of both timers based on the current inputs.
+	// The state of each timer is determined by its own corresponding input.
+	// This creates the off-delay required for the dead time.
 	il.t1.Update(i1, tl)
 	il.t2.Update(i2, tl)
-	// Then, calculate the outputs based on the new timer states.
+
+	// An output can only be active if its input is active AND the opposing timer's output is false (i.e., not in its dead-time).
 	q1 := i1 && !il.t2.Q
 	q2 := i2 && !il.t1.Q
 	return q1, q2
@@ -451,6 +464,8 @@ func (m *MANUAL_1) Update(in, man, mI, set, rst bool) {
 	} else if !m.edge {
 		m.Q = mI
 		m.Status = 103
+	} else if m.edge && !set && !rst {
+		m.edge = false
 	}
 	m.sEdge = set
 	m.rEdge = rst

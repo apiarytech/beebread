@@ -26,6 +26,18 @@ Key packages include:
     *   And many more...
 *   **`building`**: Functions specific to building automation tasks.
 
+## Community Contributions
+
+Contributions from the community are highly encouraged and welcome! This project is a significant undertaking, and your help is invaluable in making it a complete and robust port of the OSCAT libraries.
+
+You can contribute in several ways:
+*   **Writing Tests**: The most critical need is to achieve 100% test coverage to ensure the ported logic is bug-free and behaves identically to the original.
+*   **Fixing Bugs**: If you find a discrepancy between the Go implementation and the original ST code, please open an issue or submit a pull request with a fix.
+*   **Porting New Functions**: There are still many functions in the OSCAT libraries waiting to be ported. Feel free to pick one and submit it.
+*   **Improving Documentation**: Enhancing the documentation helps everyone.
+
+When contributing, please strive to write clean, idiomatic Go code.
+
 ## Example Usage
 
 ## Original OSCAT Library

@@ -113,6 +113,43 @@ func TestDRIVER_1(t *testing.T) {
 			t.Errorf("SET should force Q to true, overriding timeout; got %v", got)
 		}
 	})
+
+	t.Run("Timeout Retrigger", func(t *testing.T) {
+		d := DRIVER_1{Timeout: 100 * time.Millisecond}
+		// 1. First rising edge on IN starts the timer
+		d.Update(false, true, false)
+		d.Update(false, false, false) // IN goes low
+		if got := d.Update(false, false, false); got != true {
+			t.Fatalf("Q should be true after first pulse, got %v", got)
+		}
+
+		// 2. Wait for 60ms, Q should still be true
+		time.Sleep(60 * time.Millisecond)
+		if got := d.Update(false, false, false); got != true {
+			t.Errorf("Q should be true before timeout is halfway, got %v", got)
+		}
+
+		// 3. Second rising edge should re-trigger the timeout
+		d.Update(false, true, false)
+		d.Update(false, false, false) // IN goes low
+
+		// 4. Wait for another 60ms. Total time is 120ms, but since the timer was
+		// re-triggered, Q should still be true.
+		time.Sleep(10 * time.Millisecond)
+		if got := d.Update(false, false, false); got != true {
+			t.Errorf("Q should be true after re-trigger, got %v", got)
+		}
+	})
+
+	t.Run("Timeout in Toggle Mode", func(t *testing.T) {
+		d := DRIVER_1{ToggleMode: true, Timeout: 50 * time.Millisecond}
+		// Toggle ON
+		d.Update(false, true, false)
+		time.Sleep(60 * time.Millisecond)
+		if got := d.Update(false, false, false); got != false {
+			t.Errorf("Q should be false after timeout in toggle mode, got %v", got)
+		}
+	})
 }
 
 func TestINC_DEC(t *testing.T) {
