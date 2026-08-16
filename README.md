@@ -16,7 +16,7 @@ Whether you are building a home automation system, a factory monitoring dashboar
 
 ## Features
 
-This library is an ongoing conversion of the OSCAT `v3.3.5` libraries. The port focuses on creating idiomatic Go code that is both performant and easy to use, while maintaining the logical integrity of the original functions.
+This library is an ongoing conversion of the OSCAT libraries. The port focuses on creating idiomatic Go code that is both performant and easy to use, while maintaining the logical integrity of the original functions.
 
 Key packages include:
 *   **`basic`**: A wide array of fundamental utilities for:
@@ -27,6 +27,12 @@ Key packages include:
 *   **`building`**: Functions specific to building automation tasks.
 
 ## Example Usage
+
+## Original OSCAT Library
+
+The original OSCAT Basic and Building library source files in IEC 61131-3 Structured Text can be found at the official OSCAT libs archive on GitHub:
+
+https://github.com/eclipse-oscat/oscat-libs-archive
 
 Here is a simple example of how to use a function from the `time_date` package to calculate the date of Easter for a given year:
 

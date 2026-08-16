@@ -17,10 +17,10 @@ import (
 	. "beebread/basic"
 )
 
-// ListAdd appends an element to the end of a list string.
+// LIST_ADD appends an element to the end of a list string.
 // The list is a string of elements, each prefixed by the separator character.
 // It modifies the list pointer and returns false if the new element doesn't fit.
-func ListAdd(list *string, sep byte, ins string) bool {
+func LIST_ADD(list *string, sep byte, ins string) bool {
 	sepStr := string(sep)
 	// Ensure the element to be inserted starts with the separator.
 	if !strings.HasPrefix(ins, sepStr) {
@@ -35,9 +35,9 @@ func ListAdd(list *string, sep byte, ins string) bool {
 	return true
 }
 
-// ListClean removes empty elements from a list string.
+// LIST_CLEAN removes empty elements from a list string.
 // It modifies the list pointer and returns true.
-func ListClean(list *string, sep byte) bool {
+func LIST_CLEAN(list *string, sep byte) bool {
 	sepStr := string(sep)
 	// Split, filter empty strings, and join back.
 	parts := strings.Split(*list, sepStr)
@@ -58,8 +58,8 @@ func ListClean(list *string, sep byte) bool {
 	return true
 }
 
-// ListGet retrieves the element at a specific position (1-based) from a list string.
-func ListGet(list string, sep byte, pos int) string {
+// LIST_GET retrieves the element at a specific position (1-based) from a list string.
+func LIST_GET(list string, sep byte, pos int) string {
 	sepStr := string(sep)
 	parts := strings.Split(list, sepStr)
 
@@ -78,9 +78,9 @@ func ListGet(list string, sep byte, pos int) string {
 	return ""
 }
 
-// ListInsert inserts an element at a specific position (1-based) in a list string.
+// LIST_INSERT inserts an element at a specific position (1-based) in a list string.
 // It modifies the list pointer and returns false if the new element causes an overflow.
-func ListInsert(list *string, sep byte, pos int, ins string) bool {
+func LIST_INSERT(list *string, sep byte, pos int, ins string) bool {
 	sepStr := string(sep)
 	parts := strings.Split(*list, sepStr)
 
@@ -113,8 +113,8 @@ func ListInsert(list *string, sep byte, pos int, ins string) bool {
 	return true
 }
 
-// ListLen returns the number of elements in a list string.
-func ListLen(list string, sep byte) int {
+// LIST_LEN returns the number of elements in a list string.
+func LIST_LEN(list string, sep byte) int {
 	if list == "" {
 		return 0
 	}
@@ -123,15 +123,15 @@ func ListLen(list string, sep byte) int {
 	return strings.Count(list, string(sep))
 }
 
-// ListNext is a stateful block to iterate through elements of a list.
-type ListNext struct {
+// LIST_NEXT is a stateful block to iterate through elements of a list.
+type LIST_NEXT struct {
 	pos int
 }
 
 // Next retrieves the next element from the list string.
 // It returns the element, and a boolean `nul` which is true when the end of the list is reached.
 // If rst is true, the iterator is reset to the beginning of the list.
-func (ln *ListNext) Next(list string, sep byte, rst bool) (lel string, nul bool) {
+func (ln *LIST_NEXT) Next(list string, sep byte, rst bool) (lel string, nul bool) {
 	if rst {
 		ln.pos = 0
 	}
@@ -163,9 +163,9 @@ func (ln *ListNext) Next(list string, sep byte, rst bool) (lel string, nul bool)
 	return lel, false
 }
 
-// ListRetrieve retrieves an element at a specific position (1-based) and removes it from the list.
+// LIST_RETRIEVE retrieves an element at a specific position (1-based) and removes it from the list.
 // It modifies the list pointer.
-func ListRetrieve(list *string, sep byte, pos int) string {
+func LIST_RETRIEVE(list *string, sep byte, pos int) string {
 	sepStr := string(sep)
 	parts := strings.Split(*list, sepStr)
 
@@ -188,9 +188,9 @@ func ListRetrieve(list *string, sep byte, pos int) string {
 	return retrieved
 }
 
-// ListRetrieveLast retrieves the last element from a list and removes it.
+// LIST_RETRIEVE_LAST retrieves the last element from a list and removes it.
 // It modifies the list pointer.
-func ListRetrieveLast(list *string, sep byte) string {
+func LIST_RETRIEVE_LAST(list *string, sep byte) string {
 	sepStr := string(sep)
 	lastSep := strings.LastIndex(*list, sepStr)
 	if lastSep == -1 || lastSep == len(*list)-1 { // No separator or it's the last char

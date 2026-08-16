@@ -2,7 +2,7 @@
  * Copyright (C) 2026 Franklin D. Amador
  *
  * This software is dual-licensed under:
- * - GPL v2.0
+ * - EPL v2.0
  * - Commercial
  *
  * You may choose to use this software under the terms of either license.
@@ -12,6 +12,7 @@
 package buffer
 
 import (
+	str "beebread/basic/string"
 	"bytes"
 	"strings"
 )
@@ -20,14 +21,13 @@ import (
 // It is the Go equivalent of the _BUFFER_CLEAR function from the OSCAT library.
 // The function modifies the original slice in-place.
 func BUFFER_CLEAR(buffer []byte, size uint) {
-	// Determine the number of bytes to clear, ensuring we don't go
-	// beyond the actual length of the slice to prevent a panic.
 	clearLen := int(size)
 	if clearLen > len(buffer) {
 		clearLen = len(buffer)
 	}
-	// A simple loop is the most idiomatic and efficient way to zero a slice.
-	for i := range buffer[:clearLen] {
+
+	// Efficiently zero out the specified portion of the slice.
+	for i := 0; i < clearLen; i++ {
 		buffer[i] = 0
 	}
 }
@@ -54,37 +54,23 @@ func BUFFER_INIT(buffer []byte, size uint, init byte) bool {
 // The function shifts existing data to make room and then copies the new string.
 // It returns the position immediately after the inserted string.
 func BUFFER_INSERT(buffer []byte, str string, pos int, size uint) int {
-	strLen := len(str)
-	insertPos := pos
-
-	// Determine the effective buffer length from SIZE, capped by the actual slice length.
 	bufferLen := int(size)
 	if bufferLen > len(buffer) {
 		bufferLen = len(buffer)
 	}
 
-	// --- Boundary Checks ---
-	// Ensure the insertion position is valid.
-	if insertPos < 0 || insertPos > bufferLen-strLen {
-		// If pos is invalid, do nothing and return the original position.
+	strLen := len(str)
+	if pos < 0 || strLen == 0 || pos+strLen > bufferLen {
 		return pos
 	}
 
-	// Ensure the buffer has enough space for the insertion.
-	if insertPos+strLen > bufferLen {
-		// Not enough space within the specified SIZE, do nothing.
-		return pos
-	}
+	// Shift existing data to make space for the new string.
+	copy(buffer[pos+strLen:], buffer[pos:bufferLen-strLen])
 
-	// --- Shift existing data ---
-	// Make space for the new string by shifting the elements from the insertion
-	// point to the right. Go's `copy` handles overlapping slices correctly.
-	copy(buffer[insertPos+strLen:], buffer[insertPos:])
+	// Copy the new string into the created space.
+	copy(buffer[pos:], str)
 
-	// --- Copy the new string ---
-	// Copy the string content into the newly created space.
-	copy(buffer[insertPos:], []byte(str))
-
+	// Return the position after the inserted string.
 	return pos + strLen
 }
 
@@ -157,14 +143,16 @@ func BUFFER_TO_STRING(buffer []byte, size uint, start uint, stop uint) string {
 	}
 
 	// Ensure start and stop are within the buffer's bounds.
+	// OSCAT is 1-based, Go is 0-based. The original ST code is complex,
+	// but the intent is to use start and stop as inclusive indices.
 	startPos := int(start)
-	if startPos >= bufferLen {
+	if startPos < 0 || startPos >= bufferLen {
 		return ""
 	}
 
-	stopPos := int(stop)
-	if stopPos >= bufferLen {
-		stopPos = bufferLen - 1
+	stopPos := int(stop)     // In Go, the end of a slice is exclusive.
+	if stopPos > bufferLen { // So, if stop is 22 (last char), stopPos should be 22.
+		stopPos = bufferLen
 	}
 
 	// If start is after stop, there's nothing to extract.
@@ -174,40 +162,42 @@ func BUFFER_TO_STRING(buffer []byte, size uint, start uint, stop uint) string {
 
 	// Extract the relevant portion of the buffer and convert it to a string.
 	// Go slices make this operation simple and safe.
-	return string(buffer[startPos : stopPos+1])
+	return string(buffer[startPos:stopPos])
+}
+
+// BUFFER_TO_INT retrieves a string from a byte buffer and converts it to an integer.
+// It is a logical implementation of what _BUFFER_INT from OSCAT would do.
+func BUFFER_TO_INT(buffer []byte, size, start, stop uint) int {
+	// Extract the string representation of the number from the buffer.
+	s := BUFFER_TO_STRING(buffer, size, start, stop)
+	// Use the existing string-to-integer conversion.
+	return str.DEC_TO_INT(s)
 }
 
 // STRING_TO_BUFFER copies a string into a byte buffer starting at a specific position.
 // It is the Go equivalent of the _STRING_TO_BUFFER function from the OSCAT library.
 // The function returns the position in the buffer immediately after the inserted string.
 func STRING_TO_BUFFER(buffer []byte, str string, pos int, size uint) int {
-	strLen := len(str)
-	startPos := pos
-
-	// Determine the effective buffer length from SIZE, capped by the actual slice length.
 	bufferLen := int(size)
 	if bufferLen > len(buffer) {
 		bufferLen = len(buffer)
 	}
 
-	// --- Boundary Checks ---
-	if strLen == 0 || startPos < 0 || startPos >= bufferLen {
-		// If there's nothing to copy or the start position is invalid,
-		// return the original position.
+	if pos < 0 {
 		return pos
 	}
 
-	// Determine how many bytes can be copied without overflowing the buffer.
-	bytesToCopy := strLen
-	if startPos+bytesToCopy > bufferLen {
-		bytesToCopy = bufferLen - startPos
+	end := pos + len(str)
+	if end > bufferLen {
+		end = bufferLen
 	}
 
-	// Use Go's built-in `copy` function, which is highly optimized for this task.
-	copy(buffer[startPos:], []byte(str[:bytesToCopy]))
+	i := pos
+	for ; i < end; i++ {
+		buffer[i] = str[i-pos]
+	}
 
-	// Return the position after the copied string.
-	return pos + bytesToCopy
+	return i
 }
 
 // BUFFER_COMP compares two buffers to find the first occurrence of the second buffer within the first.

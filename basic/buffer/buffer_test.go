@@ -2,7 +2,7 @@
  * Copyright (C) 2026 Franklin D. Amador
  *
  * This software is dual-licensed under:
- * - GPL v2.0
+ * - EPL v2.0
  * - Commercial
  *
  * You may choose to use this software under the terms of either license.
@@ -186,20 +186,64 @@ func TestBufferToString(t *testing.T) {
 		stop  uint
 		want  string
 	}{
-		{"Extract middle", 5, 11, "is a te"},
-		{"Extract beginning", 0, 3, "This"},
-		{"Extract end", 15, 20, "string"},
-		{"Single character", 5, 5, "i"},
-		{"Invalid start", 100, 101, ""},
+		{"Extract middle", 5, 12, "is a te"},
+		{"Extract beginning", 0, 4, "This"},
+		{"Extract end", 15, 23, "string."},
+		{"Single character", 6, 7, "s"},
+		{"Invalid start", 100, 10, ""},
 		{"Invalid stop", 0, 100, "This is a test string."},
-		{"Start after stop", 10, 5, ""},
+		{"Start after stop", 11, 6, ""},
 	}
-
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got := BUFFER_TO_STRING(buffer, uint(len(buffer)), tt.start, tt.stop)
 			if got != tt.want {
 				t.Errorf("BufferToString() = %q, want %q", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestBufferToInt(t *testing.T) {
+	buffer := []byte("...-123...456...")
+
+	tests := []struct {
+		name  string
+		start uint
+		stop  uint
+		want  int
+	}{
+		{
+			name:  "Positive integer",
+			start: 10, // 1-based index for '4'
+			stop:  13, // 1-based index for '6'
+			want:  456,
+		},
+		{
+			name:  "Negative integer",
+			start: 3, // 1-based index for '-'
+			stop:  7, // 1-based index for '3'
+			want:  -123,
+		},
+		{
+			name:  "Invalid range",
+			start: 11,
+			stop:  6,
+			want:  0,
+		},
+		{
+			name:  "Non-numeric characters",
+			start: 1,
+			stop:  3,
+			want:  0, // DEC_TO_INT returns 0 on parsing error
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := BUFFER_TO_INT(buffer, uint(len(buffer)), tt.start, tt.stop)
+			if got != tt.want {
+				t.Errorf("BUFFER_TO_INT() = %v, want %v", got, tt.want)
 			}
 		})
 	}

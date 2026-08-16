@@ -11,12 +11,8 @@
 
 package logic
 
-import (
-	. "beebread/basic/math"
-)
-
-// Fifo16 is a 16-element DWORD FIFO memory.
-type Fifo16 struct {
+// FIFO_16 is a 16-element DWORD FIFO memory.
+type FIFO_16 struct {
 	Dout  uint32
 	Empty bool
 	Full  bool
@@ -28,7 +24,7 @@ type Fifo16 struct {
 }
 
 // Update executes the FIFO logic for one cycle.
-func (f *Fifo16) Update(din uint32, e, rd, wd, rst bool) {
+func (f *FIFO_16) Update(din uint32, e, rd, wd, rst bool) {
 	if rst {
 		f.pw = f.pr
 		f.Full = false
@@ -44,21 +40,21 @@ func (f *Fifo16) Update(din uint32, e, rd, wd, rst bool) {
 	// A read and a write can happen in the same cycle.
 	if !f.Empty && rd {
 		f.Dout = f.fifo[f.pr]
-		f.pr = Inc1(f.pr, 16)
+		f.pr = inc1(f.pr, 16)
 		f.Empty = (f.pr == f.pw)
 		f.Full = false
 	}
 
 	if !f.Full && wd {
 		f.fifo[f.pw] = din
-		f.pw = Inc1(f.pw, 16)
+		f.pw = inc1(f.pw, 16)
 		f.Full = (f.pw == f.pr)
 		f.Empty = false
 	}
 }
 
-// Fifo32 is a 32-element DWORD FIFO memory.
-type Fifo32 struct {
+// FIFO_32 is a 32-element DWORD FIFO memory.
+type FIFO_32 struct {
 	Dout  uint32
 	Empty bool
 	Full  bool
@@ -70,7 +66,7 @@ type Fifo32 struct {
 }
 
 // Update executes the FIFO logic for one cycle.
-func (f *Fifo32) Update(din uint32, e, rd, wd, rst bool) {
+func (f *FIFO_32) Update(din uint32, e, rd, wd, rst bool) {
 	if rst {
 		f.pw = f.pr
 		f.Full = false
@@ -85,21 +81,21 @@ func (f *Fifo32) Update(din uint32, e, rd, wd, rst bool) {
 
 	if !f.Empty && rd {
 		f.Dout = f.fifo[f.pr]
-		f.pr = Inc1(f.pr, 32)
+		f.pr = inc1(f.pr, 32)
 		f.Empty = (f.pr == f.pw)
 		f.Full = false
 	}
 
 	if !f.Full && wd {
 		f.fifo[f.pw] = din
-		f.pw = Inc1(f.pw, 32)
+		f.pw = inc1(f.pw, 32)
 		f.Full = (f.pw == f.pr)
 		f.Empty = false
 	}
 }
 
-// Stack16 is a 16-element DWORD LIFO (Last-In, First-Out) stack memory.
-type Stack16 struct {
+// STACK_16 is a 16-element DWORD LIFO (Last-In, First-Out) stack memory.
+type STACK_16 struct {
 	Dout  uint32
 	Empty bool
 	Full  bool
@@ -110,7 +106,7 @@ type Stack16 struct {
 }
 
 // Update executes the stack logic for one cycle.
-func (s *Stack16) Update(din uint32, e, rd, wd, rst bool) {
+func (s *STACK_16) Update(din uint32, e, rd, wd, rst bool) {
 	if rst {
 		s.pt = 0
 		s.Empty = true
@@ -139,8 +135,8 @@ func (s *Stack16) Update(din uint32, e, rd, wd, rst bool) {
 	}
 }
 
-// Stack32 is a 32-element DWORD LIFO (Last-In, First-Out) stack memory.
-type Stack32 struct {
+// STACK_32 is a 32-element DWORD LIFO (Last-In, First-Out) stack memory.
+type STACK_32 struct {
 	Dout  uint32
 	Empty bool
 	Full  bool
@@ -151,7 +147,7 @@ type Stack32 struct {
 }
 
 // Update executes the stack logic for one cycle.
-func (s *Stack32) Update(din uint32, e, rd, wd, rst bool) {
+func (s *STACK_32) Update(din uint32, e, rd, wd, rst bool) {
 	if rst {
 		s.pt = 0
 		s.Empty = true

@@ -99,7 +99,7 @@ func MULTI_IN(in1, in2, in3, def, inMin, inMax float64, mode byte) float64 {
 
 	case 7: // Middle or average of 2
 		if f1 && f2 && f3 {
-			return beeMath.Mid3(in1, in2, in3)
+			return beeMath.MID3(in1, in2, in3)
 		} else if f1 && f2 {
 			return math.Min(in1, in2)
 		} else if f1 && f3 {

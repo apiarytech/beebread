@@ -13,15 +13,15 @@ package logic
 
 import "time"
 
-// TPlcUs returns the system time as a high-resolution duration from a fixed point, in microseconds.
+// T_PLC_US returns the system time as a high-resolution duration from a fixed point, in microseconds.
 // This is a Go-native way to get a monotonic clock reading.
-func TPlcUs() int64 {
+func T_PLC_US() int64 {
 	// time.Now().UnixNano() provides a monotonic clock reading suitable for measuring intervals.
 	return time.Now().UnixNano() / 1000
 }
 
-// TCS delivers the time since it was last called on the output TC in seconds.
-type TCS struct {
+// TC_S delivers the time since it was last called on the output TC in seconds.
+type TC_S struct {
 	TC float64
 
 	// internal state
@@ -30,8 +30,8 @@ type TCS struct {
 }
 
 // Update executes the cycle time measurement logic.
-func (t *TCS) Update() {
-	tx := TPlcUs()
+func (t *TC_S) Update() {
+	tx := T_PLC_US()
 
 	if !t.init {
 		t.init = true

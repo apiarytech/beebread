@@ -16,15 +16,15 @@ import (
 	"time"
 )
 
-// CalendarCalc calculates all calendar data based on UTC time and location data.
+// CALENDAR_CALC calculates all calendar data based on UTC time and location data.
 // It corresponds to the CALENDAR_CALC function block in OSCAT.
-func CalendarCalc(utc time.Time, locationNo int, dstEnable bool, languageNo int, longitude, latitude float32) Calendar {
+func CALENDAR_CALC(utc time.Time, locationNo int, dstEnable bool, languageNo int, longitude, latitude float32) CALENDAR {
 	// TODO: This needs to be implemented
 	var Location struct {
 		Default  int
 		Language []int
 	}
-	var cal Calendar
+	var cal CALENDAR
 	var lastDay time.Time
 	var loc, lan int
 
@@ -87,38 +87,38 @@ func CalendarCalc(utc time.Time, locationNo int, dstEnable bool, languageNo int,
 	cal.Night = cal.LocalTOD < cal.SunRise || cal.LocalTOD > cal.SunSet
 
 	// Calculate holiday
-	// TODO: Holiday needs to be implemented in this package
-	// cal.Holiday, cal.HolyName = Holiday(cal.LocalDate, loc)
+	// TODO: HOLIDAY needs to be implemented in this package
+	// cal.Holiday, cal.HolyName = HOLIDAY(cal.LocalDate, loc)
 
 	// Calculate work week
-	// TODO: WorkWeek needs to be implemented in this package
-	// cal.WorkWeek = int16(WorkWeek(cal.LocalDate))
+	// TODO: WORK_WEEK needs to be implemented in this package
+	// cal.WorkWeek = int16(WORK_WEEK(cal.LocalDate))
 
 	return cal
 }
 
-// DateAdd adds a time duration to a date.
-func DateAdd(da time.Time, t time.Duration) time.Time {
+// DATE_ADD adds a time duration to a date.
+func DATE_ADD(da time.Time, t time.Duration) time.Time {
 	return da.Add(t)
 }
 
-// DayOfDate returns the day of a date (1-31).
+// DAY_OF_DATE returns the day of a date (1-31).
 // Note: The original ST code `DATE_TO_DINT(DI) MOD 31 + 1` is incorrect for getting the day of the month.
 // A correct implementation is used here.
-func DayOfDate(di time.Time) int {
+func DAY_OF_DATE(di time.Time) int {
 	return di.Day()
 }
 
-// DayOfMonth returns the day of a month (1-31).
-// This is an alias for DayOfDate, as the ST original is identical and incorrect.
-func DayOfMonth(di time.Time) int {
+// DAY_OF_MONTH returns the day of a month (1-31).
+// This is an alias for DAY_OF_DATE, as the ST original is identical and incorrect.
+func DAY_OF_MONTH(di time.Time) int {
 	return di.Day()
 }
 
-// DayOfWeek returns the day of the week (Monday=1, ..., Sunday=7).
+// DAY_OF_WEEK returns the day of the week (Monday=1, ..., Sunday=7).
 // Note: The original ST code `(DATE_TO_DINT(DI) / 31) MOD 7 + 1` is incorrect.
 // A correct implementation is used here.
-func DayOfWeek(di time.Time) int {
+func DAY_OF_WEEK(di time.Time) int {
 	wd := di.Weekday()
 	if wd == time.Sunday {
 		return 7
@@ -126,59 +126,55 @@ func DayOfWeek(di time.Time) int {
 	return int(wd)
 }
 
-// DayOfYear returns the day of the year (1-366).
-func DayOfYear(di time.Time) int {
+// DAY_OF_YEAR returns the day of the year (1-366).
+func DAY_OF_YEAR(di time.Time) int {
 	return di.YearDay()
 }
 
-// DayToTime converts a number of days to a time.Duration.
-func DayToTime(d int) time.Duration {
+// DAY_TO_TIME converts a number of days to a time.Duration.
+func DAY_TO_TIME(d int) time.Duration {
 	return time.Duration(d) * 24 * time.Hour
 }
 
-// DaysDelta calculates the number of days between two dates.
-func DaysDelta(d1, d2 time.Time) int {
+// DAYS_DELTA calculates the number of days between two dates.
+func DAYS_DELTA(d1, d2 time.Time) int {
 	// Truncate to the beginning of the day to get whole days
 	d1 = d1.Truncate(24 * time.Hour)
 	d2 = d2.Truncate(24 * time.Hour)
 	return int(d2.Sub(d1).Hours() / 24)
 }
 
-// DaysInMonth returns the number of days in a given month of a given year.
-func DaysInMonth(m int, y int) int {
+// DAYS_IN_MONTH returns the number of days in a given month of a given year.
+func DAYS_IN_MONTH(m int, y int) int {
 	if m == 2 {
-		if LeapDay(y) {
+		if LEAP_YEAR(y) {
 			return 29
 		}
 		return 28
 	}
 	// The original ST logic `30 + (M + (M/8)) MOD 2` is a clever bit-twiddle for the 30/31 day pattern.
-	// A more readable approach is used here.
-	if m == 4 || m == 6 || m == 9 || m == 11 {
-		return 30
-	}
-	return 31
+	return 30 + (m+(m/8))%2
 }
 
-// DaysInYear returns the number of days in a year.
-func DaysInYear(y int) int {
-	if LeapDay(y) {
+// DAYS_IN_YEAR returns the number of days in a year.
+func DAYS_IN_YEAR(y int) int {
+	if LEAP_YEAR(y) {
 		return 366
 	}
 	return 365
 }
 
-// LeapDay checks if a year is a leap year.
-func LeapDay(y int) bool {
+// LEAP_YEAR checks if a year is a leap year.
+func LEAP_YEAR(y int) bool {
 	return y%4 == 0 && (y%100 != 0 || y%400 == 0)
 }
 
-// Dst checks if a given date is within the European daylight saving time period.
-func Dst(di time.Time) bool {
+// DST checks if a given date is within the European daylight saving time period.
+func DST(di time.Time) bool {
 	//y := di.Year()
 	m := int(di.Month())
 	d := di.Day()
-	w := DayOfWeek(di) // Monday = 1
+	w := DAY_OF_WEEK(di) // Monday = 1
 
 	if m > 3 && m < 10 {
 		return true
@@ -190,26 +186,26 @@ func Dst(di time.Time) bool {
 	return false
 }
 
-// Dt2ToSdt converts a time.Time (DT) into a structured data type Sdt.
-func Dt2ToSdt(dtIn time.Time) Sdt {
-	var temp Sdt
+// DT2_TO_SDT converts a time.Time (DT) into a structured data type SDT.
+func DT2_TO_SDT(dtIn time.Time) SDT {
+	var temp SDT
 	temp.Year = int16(dtIn.Year())
 	temp.Month = int16(dtIn.Month())
 	temp.Day = int16(dtIn.Day())
-	temp.Weekday = int16(DayOfWeek(dtIn))
+	temp.Weekday = int16(DAY_OF_WEEK(dtIn))
 	temp.Hour = int16(dtIn.Hour())
 	temp.Minute = int16(dtIn.Minute())
 	temp.Second = int16(dtIn.Second())
 	return temp
 }
 
-// DtToSdt is an alias for Dt2ToSdt as their ST implementations are identical.
-func DtToSdt(dtIn time.Time) Sdt {
-	return Dt2ToSdt(dtIn)
+// DT_TO_SDT is an alias for DT2_TO_SDT as their ST implementations are identical.
+func DT_TO_SDT(dtIn time.Time) SDT {
+	return DT2_TO_SDT(dtIn)
 }
 
-// Easter calculates the date of Easter Sunday for a given year using the Meeus/Jones/Butcher algorithm.
-func Easter(y int) time.Time {
+// EASTER calculates the date of Easter Sunday for a given year using the Meeus/Jones/Butcher algorithm.
+func EASTER(y int) time.Time {
 	a := y % 19
 	b := y / 100
 	c := y % 100
@@ -227,15 +223,15 @@ func Easter(y int) time.Time {
 	return time.Date(y, time.Month(month), day, 0, 0, 0, 0, time.UTC)
 }
 
-// Events is a 16 channel timer switch.
+// EVENTS is a 16 channel timer switch.
 // In Go, this is better managed with channels and goroutines rather than a polling function block.
 // This is a direct translation for completeness.
-func Events(e bool, dtIn time.Time, events []TimerEvent) [16]bool {
+func EVENTS(e bool, dtIn time.Time, events []TIMER_EVENT) [16]bool {
 	var q [16]bool
 	if e {
 		td := time.Duration(dtIn.Hour())*time.Hour + time.Duration(dtIn.Minute())*time.Minute + time.Duration(dtIn.Second())*time.Second
 		di := dtIn.Truncate(24 * time.Hour)
-		dow := DayOfWeek(di)
+		dow := DAY_OF_WEEK(di)
 
 		for i := 0; i < 16 && i < len(events); i++ {
 			on := false
@@ -258,7 +254,7 @@ func Events(e bool, dtIn time.Time, events []TimerEvent) [16]bool {
 			case 4: // yearly event
 				q[i] = on && di.Day() == int(events[i].Day) && int(di.Month()) == int(events[i].Lor)
 			case 5: // holiday event
-				isHoliday, _ := Holiday(di, int(events[i].Land))
+				isHoliday, _ := HOLIDAY(di, int(events[i].Land))
 				q[i] = on && isHoliday
 			case 6: // single event
 				if on && events[i].Last != di {
@@ -273,43 +269,43 @@ func Events(e bool, dtIn time.Time, events []TimerEvent) [16]bool {
 	return q
 }
 
-// Holiday checks if a given date is a holiday for a specific location.
+// HOLIDAY checks if a given date is a holiday for a specific location.
 // This is a simplified placeholder. A full implementation would require the holiday data arrays.
-func Holiday(di time.Time, l int) (bool, string) {
+func HOLIDAY(di time.Time, l int) (bool, string) {
 	// Placeholder for complex holiday logic.
 	// A full implementation would need the h_de, h_at, etc. arrays and logic from the ST code.
-	wd := DayOfWeek(di)
+	wd := DAY_OF_WEEK(di)
 	if wd == 6 || wd == 7 {
 		return true, "Weekend"
 	}
 	return false, ""
 }
 
-// Hour returns the hour part of a time.Duration representing time of day.
-func Hour(t time.Duration) int {
+// HOUR returns the hour part of a time.Duration representing time of day.
+func HOUR(t time.Duration) int {
 	return int(t.Hours())
 }
 
-// HourOfDt returns the hour of a date_and_time.
-func HourOfDt(di time.Time) int {
+// HOUR_OF_DT returns the hour of a date_and_time.
+func HOUR_OF_DT(di time.Time) int {
 	return di.Hour()
 }
 
-// HourToTime converts an integer number of hours to a time.Duration.
-func HourToTime(h int) time.Duration {
+// HOUR_TO_TIME converts an integer number of hours to a time.Duration.
+func HOUR_TO_TIME(h int) time.Duration {
 	return time.Duration(h) * time.Hour
 }
 
-// HourToTod is an alias for HourToTime.
-func HourToTod(h int) time.Duration {
-	return HourToTime(h)
+// HOUR_TO_TOD is an alias for HOUR_TO_TIME.
+func HOUR_TO_TOD(h int) time.Duration {
+	return HOUR_TO_TIME(h)
 }
 
-// WorkWeek calculates the work week for a given date according to ISO 8601.
-func WorkWeek(idate time.Time) int {
+// WORK_WEEK calculates the work week for a given date according to ISO 8601.
+func WORK_WEEK(idate time.Time) int {
 	yr := idate.Year()
-	d1 := YearBegin(yr)
-	w1 := DayOfWeek(d1) // Monday = 1, Sunday = 7
+	d1 := YEAR_BEGIN(yr)
+	w1 := DAY_OF_WEEK(d1) // Monday = 1, Sunday = 7
 
 	var ds time.Time
 	// If the first day of the year is after Thursday, the first week starts on the following Monday.
@@ -325,9 +321,9 @@ func WorkWeek(idate time.Time) int {
 	if idate.Before(ds) {
 		// To calculate the last week of the previous year, we check if that year had 53 weeks.
 		prevYear := yr - 1
-		d1Prev := YearBegin(prevYear)
-		w1Prev := DayOfWeek(d1Prev)
-		w31Prev := DayOfWeek(d1Prev.AddDate(0, 11, 30)) // Dec 31st
+		d1Prev := YEAR_BEGIN(prevYear)
+		w1Prev := DAY_OF_WEEK(d1Prev)
+		w31Prev := DAY_OF_WEEK(d1Prev.AddDate(0, 11, 30)) // Dec 31st
 
 		if w1Prev == 4 || w31Prev == 4 { // If Jan 1st or Dec 31st is a Thursday
 			return 53
@@ -340,8 +336,8 @@ func WorkWeek(idate time.Time) int {
 	week := (daysSinceStart / 7) + 1
 
 	// Check if the week belongs to the next year.
-	d31 := YearBegin(yr).AddDate(0, 11, 30) // Dec 31st
-	w31 := DayOfWeek(d31)
+	d31 := YEAR_BEGIN(yr).AddDate(0, 11, 30) // Dec 31st
+	w31 := DAY_OF_WEEK(d31)
 	if w31 < 4 && idate.After(d31.AddDate(0, 0, -w31)) {
 		return 1
 	}
@@ -349,7 +345,7 @@ func WorkWeek(idate time.Time) int {
 	return week
 }
 
-// YearBegin returns the date of January 1st for the given year.
-func YearBegin(y int) time.Time {
+// YEAR_BEGIN returns the date of January 1st for the given year.
+func YEAR_BEGIN(y int) time.Time {
 	return time.Date(y, time.January, 1, 0, 0, 0, 0, time.UTC)
 }

@@ -179,7 +179,7 @@ type CYCLE_TIME struct {
 
 // Update executes the cycle time measurement.
 func (c *CYCLE_TIME) Update(rst bool) {
-	tx := time.Duration(logic.TPlcUs()) * time.Microsecond
+	tx := time.Duration(logic.T_PLC_US()) * time.Microsecond
 	elapsed := tx - c.lastCycle
 
 	if rst {
@@ -219,8 +219,7 @@ type DT_SIMU struct {
 
 // Update executes the simulation logic.
 func (d *DT_SIMU) Update(start time.Time, speed float64) {
-	tx := logic.TPlcUs()
-
+	tx := logic.T_PLC_US()
 	if !d.init {
 		d.init = true
 		d.Dts = start
@@ -296,7 +295,7 @@ func (m *METER_STAT) Update(in float64, di time.Time, rst bool) {
 		}
 
 		_, w_di := di.ISOWeek()
-		w_last := time_date.WorkWeek(m.lastRun)
+		w_last := time_date.WORK_WEEK(m.lastRun)
 		if w_di != w_last {
 			m.LastWeek = m.CurrentWeek
 			m.weekStart = in
@@ -320,7 +319,7 @@ type ONTIME struct {
 
 // Update executes the on-time measurement logic.
 func (o *ONTIME) Update(in, rst bool) {
-	tx := logic.TPlcUs()
+	tx := logic.T_PLC_US()
 
 	if !o.init {
 		o.init = true
@@ -540,15 +539,14 @@ type METER struct {
 	Mx float64 // VAR_IN_OUT
 
 	// internal state
-	mr   basic.Real2
+	mr   basic.REAL2
 	last int64
 	init bool
 }
 
 // Update executes the meter logic.
 func (m *METER) Update(m1, m2, d float64, i1, i2, rst bool) {
-	tx := logic.TPlcUs()
-
+	tx := logic.T_PLC_US()
 	if !m.init {
 		m.init = true
 		m.last = tx
@@ -564,7 +562,7 @@ func (m *METER) Update(m1, m2, d float64, i1, i2, rst bool) {
 	m.last = tx
 
 	if rst {
-		m.mr = basic.Real2{}
+		m.mr = basic.REAL2{}
 	} else {
 		var mx1, mx2 float64
 		if i1 {
@@ -574,7 +572,7 @@ func (m *METER) Update(m1, m2, d float64, i1, i2, rst bool) {
 			mx2 = m2
 		}
 		if d != 0.0 {
-			m.mr = beeMath.R2Add(m.mr, float32(((mx1+mx2)/d)*tc))
+			m.mr = beeMath.R2_ADD(m.mr, float32(((mx1+mx2)/d)*tc))
 		}
 	}
 	m.Mx = float64(m.mr.Rx)
@@ -590,7 +588,7 @@ type TC_MS struct {
 
 // Update executes the logic.
 func (t *TC_MS) Update() {
-	tx := logic.TPlcUs() / 1000 // to milliseconds
+	tx := logic.T_PLC_US() / 1000 // to milliseconds
 	if !t.init {
 		t.init = true
 		t.TC = 0
@@ -610,7 +608,7 @@ type TC_US struct {
 
 // Update executes the logic.
 func (t *TC_US) Update() {
-	tx := logic.TPlcUs()
+	tx := logic.T_PLC_US()
 	if !t.init {
 		t.init = true
 		t.TC = 0

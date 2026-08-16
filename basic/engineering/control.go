@@ -169,7 +169,7 @@ func (c *CTRL_OUT) Update(ci, offset, manIn, limL, limH float64, manual bool) {
 	if c.Y > limL && c.Y < limH {
 		c.Lim = false
 	} else {
-		c.Y = beeMath.Limit(limL, c.Y, limH)
+		c.Y = beeMath.LIMIT(limL, c.Y, limH)
 		c.Lim = true
 	}
 }
@@ -306,7 +306,7 @@ type FT_DERIV struct {
 
 // Update executes the derivative calculation.
 func (f *FT_DERIV) Update(in, k float64, run bool) {
-	tx := logic.TPlcUs()
+	tx := logic.T_PLC_US()
 	tc := float64(tx - f.last)
 	f.last = tx
 
@@ -370,26 +370,26 @@ type FT_INT2 struct {
 	// internal state
 	integ Integrate
 	ix    float64
-	val   basic.Real2
+	val   basic.REAL2
 }
 
 // Update executes the integration logic.
 func (f *FT_INT2) Update(in, k, outMin, outMax float64, run, rst bool) {
 	if rst {
-		f.val = beeMath.R2Set(0.0)
-		f.Out = 0.0
+		f.val = beeMath.R2_SET(0.0)
+		f.Out = 0.0 // ST: out := 0.0;
 	} else {
 		f.ix = 0.0 // Reset temporary integrator value
 		f.integ.Update(in, k, run, &f.ix)
-		f.val = beeMath.R2Add(f.val, float32(f.ix))
+		f.val = beeMath.R2_ADD(f.val, float32(f.ix))
 		f.Out = float64(f.val.Rx)
 	}
 
 	if f.Out > outMin && f.Out < outMax {
 		f.Lim = false
 	} else {
-		f.Out = beeMath.Limit(outMin, f.Out, outMax)
-		f.val = beeMath.R2Set(float32(f.Out))
+		f.Out = beeMath.LIMIT(outMin, f.Out, outMax) // ST: OUT := LIMIT(OUT_MIN, OUT, OUT_MAX);
+		f.val = beeMath.R2_SET(float32(f.Out))
 		f.Lim = true
 	}
 }
@@ -478,7 +478,7 @@ func (f *FT_PIDW) Update(in, kp, tn, tv, limL, limH float64, rst bool) {
 	// Set Lim before adding derivative part
 	f.Lim = f.Y <= limL || f.Y >= limH
 
-	f.Y = beeMath.Limit(limL, f.Y+kp*f.diff.Out, limH)
+	f.Y = beeMath.LIMIT(limL, f.Y+kp*f.diff.Out, limH)
 }
 
 // FT_PIDWL is a PID controller with anti-windup and output limiting.
@@ -558,14 +558,14 @@ func (f *FT_PIWL) Update(in, kp, ki, limL, limH float64, rst bool) {
 	if !f.init || rst {
 		f.init = true
 		f.inLast = in
-		f.tLast = logic.TPlcUs()
+		f.tLast = logic.T_PLC_US()
 		f.i = 0.0
 		f.Y = 0.0
 		f.Lim = false
 		return
 	}
 
-	tx := logic.TPlcUs()
+	tx := logic.T_PLC_US()
 	tc := float64(tx - f.tLast)
 	f.tLast = tx
 
@@ -607,7 +607,7 @@ type FT_PT1 struct {
 
 // Update executes the filter logic.
 func (f *FT_PT1) Update(in float64, t time.Duration, k float64) {
-	tx := logic.TPlcUs()
+	tx := logic.T_PLC_US()
 
 	if !f.init || t == 0 {
 		f.init = true
@@ -661,7 +661,7 @@ type Integrate struct {
 
 // Update executes the integration logic. Y is a pointer to the integrated value.
 func (i *Integrate) Update(x, k float64, e bool, y *float64) {
-	tx := logic.TPlcUs()
+	tx := logic.T_PLC_US()
 
 	if !i.init {
 		i.init = true
@@ -671,4 +671,106 @@ func (i *Integrate) Update(x, k float64, e bool, y *float64) {
 		i.xLast = x
 	}
 	i.last = tx
+}
+
+// FT_TN8 is an 8-sample signal delay line.
+// It samples the input IN at intervals of T/8.
+type FT_TN8 struct {
+	Out  float64
+	Trig bool
+
+	// internal state
+	x    [8]float64
+	cnt  int
+	last time.Time
+	init bool
+}
+
+// Update executes the delay logic.
+func (d *FT_TN8) Update(in float64, t time.Duration) {
+	tx := time.Now()
+	d.Trig = false
+
+	if !d.init {
+		d.init = true
+		d.x[d.cnt] = in
+		d.last = tx
+		return
+	}
+
+	if t > 0 && tx.Sub(d.last) >= t/8 {
+		d.cnt = (d.cnt + 1) % 8
+		d.Out = d.x[d.cnt]
+		d.x[d.cnt] = in
+		d.last = tx
+		d.Trig = true
+	}
+}
+
+// FT_TN16 is a 16-sample signal delay line.
+// It samples the input IN at intervals of T/16.
+type FT_TN16 struct {
+	Out  float64
+	Trig bool
+
+	// internal state
+	x    [16]float64
+	cnt  int
+	last time.Time
+	init bool
+}
+
+// Update executes the delay logic.
+func (d *FT_TN16) Update(in float64, t time.Duration) {
+	tx := time.Now()
+	d.Trig = false
+
+	if !d.init {
+		d.init = true
+		d.x[d.cnt] = in
+		d.last = tx
+		return
+	}
+
+	if t > 0 && tx.Sub(d.last) >= t/16 {
+		d.cnt = (d.cnt + 1) % 16
+		d.Out = d.x[d.cnt]
+		d.x[d.cnt] = in
+		d.last = tx
+		d.Trig = true
+	}
+}
+
+// FT_TN64 is a 64-sample signal delay line.
+// It samples the input IN at intervals of T/64.
+type FT_TN64 struct {
+	Out  float64
+	Trig bool
+
+	// internal state
+	x    [64]float64
+	cnt  int
+	last time.Time
+	init bool
+}
+
+// Update executes the delay logic.
+func (d *FT_TN64) Update(in float64, t time.Duration) {
+	tx := time.Now()
+	d.Trig = false
+
+	if !d.init {
+		d.init = true
+		d.x[d.cnt] = in
+		d.last = tx
+		return
+	}
+
+	if t > 0 && tx.Sub(d.last) >= t/64 {
+		d.cnt = (d.cnt + 1) % 64
+		d.Out = d.x[d.cnt]
+		d.x[d.cnt] = in
+		d.last = tx
+		d.Trig = true
+	}
 }

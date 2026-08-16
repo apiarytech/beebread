@@ -21,7 +21,7 @@ const (
 // Global variables holding constant values from the OSCAT library.
 var (
 	// Initialize Math constants
-	Math = ConstantsMath{
+	Math = CONSTANTS_MATH{
 		Pi:     3.141592653589793,
 		Pi2:    6.283185307179586,
 		Pi4:    12.566370614359172,
@@ -37,7 +37,7 @@ var (
 	}
 
 	// Initialize Physics constants
-	Phys = ConstantsPhys{
+	Phys = CONSTANTS_PHYS{
 		C:  299792458.0,
 		E:  1.60217653e-19,
 		G:  9.80665,
@@ -45,16 +45,16 @@ var (
 		Ru: 8.314472,
 		Pn: 101325.0,
 	}
-	Language ConstantsLanguage
-	Setup    ConstantsSetup
-	Location ConstantsLocation
+	Language CONSTANTS_LANGUAGE
+	Setup    CONSTANTS_SETUP
+	Location CONSTANTS_LOCATION
 )
 
 // init initializes the global constant structures with their default values from the OSCAT library.
 func init() {
 
 	// Initialize Language constants
-	Language = ConstantsLanguage{
+	Language = CONSTANTS_LANGUAGE{
 		Default: 1,
 		Lmax:    3,
 		Weekdays: [3][7]string{
@@ -85,14 +85,14 @@ func init() {
 	}
 
 	// Initialize Location constants
-	Location = ConstantsLocation{
+	Location = CONSTANTS_LOCATION{
 		Default:  1,
 		Lmax:     5,
 		Language: [5]int16{2, 2, 3, 2, 2},
 	}
 
 	// Initialize Setup constants
-	Setup = ConstantsSetup{
+	Setup = CONSTANTS_SETUP{
 		ExtendedASCII: true,
 		Charnames: [4]string{
 			`"&quot;&&amp;<&lt;>&gt;&euro;&nbsp;&iexcl;&cent;&pound;&curren;&yen;&brvbar;&sect;&uml;&copy;&ordf;&laquo;&not;&shy;&reg;&macr;&deg;&plusmn;&sup2;&sup3;&acute;&micro;&para;&middot;&cedil;&sup1;&ordm;&raquo;&frac14;&Ucirc;`,
@@ -105,4 +105,14 @@ func init() {
 			1.0, 10.0, 100.0, 1000.0, 10000.0, 100000.0, 1000000.0, 10000000.0, 100000000.0,
 		},
 	}
+}
+
+// OSCAT_VERSION returns the library version number or release date.
+func OSCAT_VERSION(in bool) uint32 {
+	if in {
+		// Corresponds to DATE_TO_DWORD(D#2024-07-16)
+		// This is a placeholder. A real implementation would calculate this.
+		return 19736 // Days since 1970-01-01 for 2024-07-16
+	}
+	return 335
 }

@@ -11,16 +11,16 @@
 
 package logic
 
-// Ltch is a transparent latch with an asynchronous reset.
+// LTCH is a transparent latch with an asynchronous reset.
 // As long as L (Latch) is true, the output Q follows the input D.
 // When L goes false, Q holds its last value.
 // RST asynchronously forces Q to false.
-type Ltch struct {
+type LTCH struct {
 	Q bool
 }
 
 // Update executes the latch logic for one cycle.
-func (l *Ltch) Update(d, latch, rst bool) {
+func (l *LTCH) Update(d, latch, rst bool) {
 	if rst {
 		l.Q = false
 	} else if latch {
@@ -29,8 +29,8 @@ func (l *Ltch) Update(d, latch, rst bool) {
 	// If neither rst nor latch is true, Q retains its state.
 }
 
-// Ltch4 is a quad transparent latch with a common asynchronous reset and latch input.
-type Ltch4 struct {
+// LTCH_4 is a quad transparent latch with a common asynchronous reset and latch input.
+type LTCH_4 struct {
 	Q0 bool
 	Q1 bool
 	Q2 bool
@@ -38,7 +38,7 @@ type Ltch4 struct {
 }
 
 // Update executes the latch logic for one cycle.
-func (l *Ltch4) Update(d0, d1, d2, d3, latch, rst bool) {
+func (l *LTCH_4) Update(d0, d1, d2, d3, latch, rst bool) {
 	if rst {
 		l.Q0 = false
 		l.Q1 = false
@@ -53,11 +53,11 @@ func (l *Ltch4) Update(d0, d1, d2, d3, latch, rst bool) {
 	// If neither rst nor latch is true, outputs retain their state.
 }
 
-// Store8 stores up to 8 boolean inputs until a reset clears the outputs.
+// STORE_8 stores up to 8 boolean inputs until a reset clears the outputs.
 // The respective output is set with a true value at the respective input and stays true until a reset.
 // A Set input sets all outputs true simultaneously.
 // A rising edge on Clr resets the lowest priority output (Q0 first, then Q1, etc.).
-type Store8 struct {
+type STORE_8 struct {
 	Q [8]bool
 
 	// internal state
@@ -65,7 +65,7 @@ type Store8 struct {
 }
 
 // Update executes the storage logic for one cycle.
-func (s *Store8) Update(set bool, d [8]bool, clr, rst bool) {
+func (s *STORE_8) Update(set bool, d [8]bool, clr, rst bool) {
 	if rst {
 		s.Q = [8]bool{} // Zeros all elements
 	} else if set {

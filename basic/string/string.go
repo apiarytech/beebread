@@ -13,17 +13,19 @@ package str
 
 import (
 	"fmt"
+	"math"
 	"strconv"
 	"strings"
 	"time"
 
 	. "beebread/basic"
-	. "beebread/basic/logic"
+	"beebread/basic/logic"
+	beeMath "beebread/basic/math"
 	. "beebread/basic/time_date"
 )
 
-// BinToByte converts a binary string into a byte.
-func BinToByte(str string) byte {
+// BIN_TO_BYTE converts a binary string into a byte.
+func BIN_TO_BYTE(str string) byte {
 	val, err := strconv.ParseUint(str, 2, 8)
 	if err != nil {
 		return 0
@@ -31,8 +33,8 @@ func BinToByte(str string) byte {
 	return byte(val)
 }
 
-// BinToDword converts a binary string into a dword.
-func BinToDword(str string) uint32 {
+// BIN_TO_DWORD converts a binary string into a dword.
+func BIN_TO_DWORD(str string) uint32 {
 	val, err := strconv.ParseUint(str, 2, 32)
 	if err != nil {
 		return 0
@@ -40,24 +42,24 @@ func BinToDword(str string) uint32 {
 	return uint32(val)
 }
 
-// ByteToStrB converts a byte into a binary string.
-func ByteToStrB(in byte) string {
+// BYTE_TO_STRB converts a byte into a binary string.
+func BYTE_TO_STRB(in byte) string {
 	return fmt.Sprintf("%08b", in)
 }
 
-// ByteToStrH converts a byte into a hex string.
-func ByteToStrH(in byte) string {
+// BYTE_TO_STRH converts a byte into a hex string.
+func BYTE_TO_STRH(in byte) string {
 	return fmt.Sprintf("%02X", in)
 }
 
-// Capitalize capitalizes the first letter of each word in a string.
-func Capitalize(str string) string {
+// CAPITALIZE capitalizes the first letter of each word in a string.
+func CAPITALIZE(str string) string {
 	return strings.Title(strings.ToLower(str))
 }
 
-// CharCode returns the HTML character name for a given byte code.
+// CHARCODE returns the HTML character name for a given byte code.
 // This is a simplified placeholder. A full implementation would require the charname data.
-func CharCode(c byte) string {
+func CHARCODE(c byte) string {
 	if c > 159 {
 		// Placeholder for a complex lookup in beebread.Setup.Charnames
 		return ""
@@ -65,20 +67,20 @@ func CharCode(c byte) string {
 	return ""
 }
 
-// CharName returns the byte code for a given HTML character name.
+// CHARNAME returns the byte code for a given HTML character name.
 // This is a simplified placeholder. A full implementation would require the charname data.
-func CharName(str string) byte {
+func CHARNAME(str string) byte {
 	// Placeholder for a complex lookup in beebread.Setup.Charnames
 	return 0
 }
 
-// ChrToString converts a byte into a string of length 1.
-func ChrToString(c byte) string {
+// CHR_TO_STRING converts a byte into a string of length 1.
+func CHR_TO_STRING(c byte) string {
 	return string(c)
 }
 
-// Clean deletes all characters from a string except the ones specified in cx.
-func Clean(in, cx string) string {
+// CLEAN deletes all characters from a string except the ones specified in cx.
+func CLEAN(in, cx string) string {
 	var result strings.Builder
 	result.Grow(len(in))
 	for _, r := range in {
@@ -89,8 +91,8 @@ func Clean(in, cx string) string {
 	return result.String()
 }
 
-// DelChars deletes all characters specified in cx from a string str.
-func DelChars(str, cx string) string {
+// DEL_CHARS deletes all characters specified in cx from a string str.
+func DEL_CHARS(str, cx string) string {
 	// This is a more idiomatic way to implement the original DEL_CHARS
 	return strings.Map(func(r rune) rune {
 		if strings.ContainsRune(cx, r) {
@@ -100,26 +102,26 @@ func DelChars(str, cx string) string {
 	}, str)
 }
 
-// Code returns the ASCII code of a character in a string at a given position (1-based).
-func Code(str string, pos int) byte {
+// CODE returns the ASCII code of a character in a string at a given position (1-based).
+func CODE(str string, pos int) byte {
 	if pos > 0 && pos <= len(str) {
 		return str[pos-1]
 	}
 	return 0
 }
 
-// CountChar counts the number of characters c in a string str.
-func CountChar(str string, c byte) int {
+// COUNT_CHAR counts the number of characters c in a string str.
+func COUNT_CHAR(str string, c byte) int {
 	return strings.Count(str, string(c))
 }
 
-// CountSubstring counts the number of substrings sub in a string str.
-func CountSubstring(str, sub string) int {
+// COUNT_SUBSTRING counts the number of substrings sub in a string str.
+func COUNT_SUBSTRING(str, sub string) int {
 	return strings.Count(str, sub)
 }
 
-// DecToByte converts a decimal string into a byte.
-func DecToByte(str string) byte {
+// DEC_TO_BYTE converts a decimal string into a byte.
+func DEC_TO_BYTE(str string) byte {
 	val, err := strconv.ParseInt(str, 10, 8)
 	if err != nil {
 		return 0
@@ -127,8 +129,8 @@ func DecToByte(str string) byte {
 	return byte(val)
 }
 
-// DecToDword converts a decimal string into a dword.
-func DecToDword(str string) uint32 {
+// DEC_TO_DWORD converts a decimal string into a dword.
+func DEC_TO_DWORD(str string) uint32 {
 	val, err := strconv.ParseUint(str, 10, 32)
 	if err != nil {
 		return 0
@@ -136,8 +138,8 @@ func DecToDword(str string) uint32 {
 	return uint32(val)
 }
 
-// DecToInt converts a decimal string into an integer.
-func DecToInt(str string) int {
+// DEC_TO_INT converts a decimal string into an integer.
+func DEC_TO_INT(str string) int {
 	val, err := strconv.Atoi(str)
 	if err != nil {
 		return 0
@@ -145,8 +147,8 @@ func DecToInt(str string) int {
 	return val
 }
 
-// DtToStrF converts a DT into a string with a given format.
-func DtToStrF(dtIn time.Time, format string) string {
+// DT_TO_STRF converts a DT into a string with a given format.
+func DT_TO_STRF(dtIn time.Time, format string) string {
 	// This is a complex format string parser. A full implementation would be extensive.
 	// Here's a simplified version using Go's standard time formatting as a base.
 	// The OSCAT format codes don't map directly to Go's layout string.
@@ -158,8 +160,8 @@ func DtToStrF(dtIn time.Time, format string) string {
 		"%m", fmt.Sprintf("%02d", dtIn.Month()),
 		"%M", fmt.Sprintf("%02d", dtIn.Minute()),
 		"%S", fmt.Sprintf("%02d", dtIn.Second()),
-		"%w", strconv.Itoa(DayOfWeek(dtIn)-1), // OSCAT is 1-7, Go is 0-6 for some uses
-		"%W", fmt.Sprintf("%02d", WorkWeek(dtIn)),
+		"%w", strconv.Itoa(DAY_OF_WEEK(dtIn)-1), // OSCAT is 1-7, Go is 0-6 for some uses
+		"%W", fmt.Sprintf("%02d", WORK_WEEK(dtIn)),
 		"%y", dtIn.Format("06"),
 		"%Y", dtIn.Format("2006"),
 		"%%", "%",
@@ -167,39 +169,39 @@ func DtToStrF(dtIn time.Time, format string) string {
 	return replacer.Replace(format)
 }
 
-// DwordToStrB converts a dword into a binary string.
-func DwordToStrB(in uint32) string {
+// DWORD_TO_STRB converts a dword into a binary string.
+func DWORD_TO_STRB(in uint32) string {
 	return fmt.Sprintf("%032b", in)
 }
 
-// DwordToStrF converts a DWORD into a string with a given format.
-func DwordToStrF(in uint32, format string) string {
+// DWORD_TO_STRF converts a DWORD into a string with a given format.
+func DWORD_TO_STRF(in uint32, format string) string {
 	// This is a complex format string parser. A full implementation would be extensive.
 	// Simplified version:
 	replacer := strings.NewReplacer(
-		"%b", DwordToStrB(in),
+		"%b", DWORD_TO_STRB(in),
 		"%d", strconv.FormatUint(uint64(in), 10),
-		"%h", DwordToStrH(in),
+		"%h", DWORD_TO_STRH(in),
 		"%%", "%",
 	)
 	return replacer.Replace(format)
 }
 
-// DwordToStrH converts a dword into a hex string.
-func DwordToStrH(in uint32) string {
+// DWORD_TO_STRH converts a dword into a hex string.
+func DWORD_TO_STRH(in uint32) string {
 	return fmt.Sprintf("%08X", in)
 }
 
-// Exec executes a simple mathematical term.
+// EXEC executes a simple mathematical term.
 // This is a placeholder for a very complex and unsafe function.
 // A proper implementation would require a full expression parser.
-func Exec(str string) string {
+func EXEC(str string) string {
 	// Placeholder - a real implementation is a major task.
 	return "ERROR"
 }
 
-// Fill creates a string of length L with character C.
-func Fill(c byte, l int) string {
+// FILL creates a string of length L with character C.
+func FILL(c byte, l int) string {
 	if l <= 0 {
 		return ""
 	}
@@ -209,34 +211,34 @@ func Fill(c byte, l int) string {
 	return strings.Repeat(string(c), l)
 }
 
-// FindChar finds the first character that is not a control character.
-func FindChar(str string, pos int) int {
+// FIND_CHAR finds the first character that is not a control character.
+func FIND_CHAR(str string, pos int) int {
 	if pos < 1 {
 		pos = 1
 	}
 	for i := pos - 1; i < len(str); i++ {
-		if !IscCtrl(str[i]) {
+		if !ISC_CTRL(str[i]) {
 			return i + 1
 		}
 	}
 	return 0
 }
 
-// FindCtrl finds the first control character in a string.
-func FindCtrl(str string, pos int) int {
+// FIND_CTRL finds the first control character in a string.
+func FIND_CTRL(str string, pos int) int {
 	if pos < 1 {
 		pos = 1
 	}
 	for i := pos - 1; i < len(str); i++ {
-		if IscCtrl(str[i]) {
+		if ISC_CTRL(str[i]) {
 			return i + 1
 		}
 	}
 	return 0
 }
 
-// FindNonum finds the first character that is not a number or a dot.
-func FindNonum(str string, pos int) int {
+// FIND_NONUM finds the first character that is not a number or a dot.
+func FIND_NONUM(str string, pos int) int {
 	if pos < 1 {
 		pos = 1
 	}
@@ -248,8 +250,8 @@ func FindNonum(str string, pos int) int {
 	return 0
 }
 
-// FindNum finds the first character that is a number or a dot.
-func FindNum(str string, pos int) int {
+// FIND_NUM finds the first character that is a number or a dot.
+func FIND_NUM(str string, pos int) int {
 	if pos < 1 {
 		pos = 1
 	}
@@ -261,8 +263,8 @@ func FindNum(str string, pos int) int {
 	return 0
 }
 
-// FindB finds the last occurrence of str2 in str1.
-func FindB(str1, str2 string) int {
+// FINDB finds the last occurrence of str2 in str1.
+func FINDB(str1, str2 string) int {
 	pos := strings.LastIndex(str1, str2)
 	if pos == -1 {
 		return 0
@@ -270,8 +272,8 @@ func FindB(str1, str2 string) int {
 	return pos + 1 // 1-based index
 }
 
-// FindbNonum finds the last character that is not a number or a dot.
-func FindbNonum(str string) int {
+// FINDB_NONUM finds the last character that is not a number or a dot.
+func FINDB_NONUM(str string) int {
 	for i := len(str) - 1; i >= 0; i-- {
 		if !((str[i] >= '0' && str[i] <= '9') || str[i] == '.') {
 			return i + 1
@@ -280,8 +282,8 @@ func FindbNonum(str string) int {
 	return 0
 }
 
-// FindbNum finds the last character that is a number or a dot.
-func FindbNum(str string) int {
+// FINDB_NUM finds the last character that is a number or a dot.
+func FINDB_NUM(str string) int {
 	for i := len(str) - 1; i >= 0; i-- {
 		if (str[i] >= '0' && str[i] <= '9') || str[i] == '.' {
 			return i + 1
@@ -290,8 +292,8 @@ func FindbNum(str string) int {
 	return 0
 }
 
-// FindP finds the first occurrence of src in str, starting from pos (1-based).
-func FindP(str, src string, pos int) int {
+// FINDP finds the first occurrence of src in str, starting from pos (1-based).
+func FINDP(str, src string, pos int) int {
 	if pos < 1 {
 		pos = 1
 	}
@@ -305,8 +307,8 @@ func FindP(str, src string, pos int) int {
 	return foundPos + pos
 }
 
-// Fix adjusts a string to a fixed length L, padding or truncating as needed.
-func Fix(str string, l int, c byte, m int) string {
+// FIX adjusts a string to a fixed length L, padding or truncating as needed.
+func FIX(str string, l int, c byte, m int) string {
 	currentLen := len(str)
 	if l <= currentLen {
 		if m == 1 { // Right align (take from right)
@@ -329,8 +331,8 @@ func Fix(str string, l int, c byte, m int) string {
 	}
 }
 
-// FloatToReal converts a string to a float64.
-func FloatToReal(flt string) float64 {
+// FLOAT_TO_REAL converts a string to a float64.
+func FLOAT_TO_REAL(flt string) float64 {
 	// A simplified version. The original is very complex and tries to parse manually.
 	// Go's strconv is more robust.
 	f, err := strconv.ParseFloat(strings.TrimSpace(flt), 64)
@@ -340,28 +342,28 @@ func FloatToReal(flt string) float64 {
 	return f
 }
 
-// FstringToByte converts a formatted string (e.g., "16#FF", "2#1010") to a byte.
-func FstringToByte(in string) byte {
+// FSTRING_TO_BYTE converts a formatted string (e.g., "16#FF", "2#1010") to a byte.
+func FSTRING_TO_BYTE(in string) byte {
 	if strings.HasPrefix(in, "16#") {
-		return HexToByte(in[3:])
+		return HEX_TO_BYTE(in[3:])
 	} else if strings.HasPrefix(in, "8#") {
-		return OctToByte(in[2:])
+		return OCT_TO_BYTE(in[2:])
 	} else if strings.HasPrefix(in, "2#") {
-		return BinToByte(in[2:])
+		return BIN_TO_BYTE(in[2:])
 	}
-	return DecToByte(in)
+	return DEC_TO_BYTE(in)
 }
 
-// FstringToDword converts a formatted string to a dword.
-func FstringToDword(in string) uint32 {
+// FSTRING_TO_DWORD converts a formatted string to a dword.
+func FSTRING_TO_DWORD(in string) uint32 {
 	if strings.HasPrefix(in, "16#") {
-		return HexToDword(in[3:])
+		return HEX_TO_DWORD(in[3:])
 	} else if strings.HasPrefix(in, "8#") {
-		return OctToDword(in[2:])
+		return OCT_TO_DWORD(in[2:])
 	} else if strings.HasPrefix(in, "2#") {
-		return BinToDword(in[2:])
+		return BIN_TO_DWORD(in[2:])
 	}
-	return DecToDword(in)
+	return DEC_TO_DWORD(in)
 }
 
 // FstringToDt converts a formatted string into a DT (time.Time) value.
@@ -419,7 +421,7 @@ func FstringToDt(sdt, fmtStr string) time.Time {
 			case 'M':
 				dm, _ = strconv.Atoi(val)
 			case 'N':
-				dm = FstringToMonth(val, 0)
+				dm = FSTRING_TO_MONTH(val, 0)
 			case 'D':
 				dd, _ = strconv.Atoi(val)
 			case 'h':
@@ -443,8 +445,8 @@ func FstringToDt(sdt, fmtStr string) time.Time {
 	return time.Date(dy, time.Month(dm), dd, th, tm, ts, 0, time.UTC)
 }
 
-// FstringToMonth converts a month string (name or number) to an integer (1-12).
-func FstringToMonth(mth string, lang int) int {
+// FSTRING_TO_MONTH converts a month string (name or number) to an integer (1-12).
+func FSTRING_TO_MONTH(mth string, lang int) int {
 	// Placeholder for a complex lookup.
 	if i, err := strconv.Atoi(mth); err == nil {
 		return i
@@ -452,14 +454,14 @@ func FstringToMonth(mth string, lang int) int {
 	return 0
 }
 
-// FstringToWeek converts a comma-separated list of weekdays to a bitmask byte.
-func FstringToWeek(week string, lang int) byte {
+// FSTRING_TO_WEEK converts a comma-separated list of weekdays to a bitmask byte.
+func FSTRING_TO_WEEK(week string, lang int) byte {
 	// Placeholder for a complex lookup.
 	return 0
 }
 
-// FstringToWeekday converts a weekday string to an integer (1-7).
-func FstringToWeekday(wday string, lang int) int {
+// FSTRING_TO_WEEKDAY converts a weekday string to an integer (1-7).
+func FSTRING_TO_WEEKDAY(wday string, lang int) int {
 	// Placeholder for a complex lookup.
 	if i, err := strconv.Atoi(wday); err == nil {
 		return i
@@ -467,8 +469,8 @@ func FstringToWeekday(wday string, lang int) int {
 	return 0
 }
 
-// HexToByte converts a hexadecimal string to a byte.
-func HexToByte(hex string) byte {
+// HEX_TO_BYTE converts a hexadecimal string to a byte.
+func HEX_TO_BYTE(hex string) byte {
 	val, err := strconv.ParseUint(hex, 16, 8)
 	if err != nil {
 		return 0
@@ -476,8 +478,8 @@ func HexToByte(hex string) byte {
 	return byte(val)
 }
 
-// HexToDword converts a hexadecimal string to a dword.
-func HexToDword(hex string) uint32 {
+// HEX_TO_DWORD converts a hexadecimal string to a dword.
+func HEX_TO_DWORD(hex string) uint32 {
 	val, err := strconv.ParseUint(hex, 16, 32)
 	if err != nil {
 		return 0
@@ -485,13 +487,13 @@ func HexToDword(hex string) uint32 {
 	return uint32(val)
 }
 
-// IsAlnum checks if a string contains only alphanumeric characters.
-func IsAlnum(str string) bool {
+// IS_ALNUM checks if a string contains only alphanumeric characters.
+func IS_ALNUM(str string) bool {
 	if len(str) == 0 {
 		return false
 	}
 	for _, r := range str {
-		if !IscAlpha(byte(r)) && !IscNum(byte(r)) {
+		if !ISC_ALPHA(byte(r)) && !ISC_NUM(byte(r)) {
 			return false
 		}
 	}
@@ -499,12 +501,12 @@ func IsAlnum(str string) bool {
 }
 
 // IsAlpha checks if a string contains only alphabetic characters.
-func IsAlpha(str string) bool {
+func IS_ALPHA(str string) bool {
 	if len(str) == 0 {
 		return false
 	}
 	for _, r := range str {
-		if !IscAlpha(byte(r)) {
+		if !ISC_ALPHA(byte(r)) {
 			return false
 		}
 	}
@@ -512,7 +514,7 @@ func IsAlpha(str string) bool {
 }
 
 // IsCc checks if a string contains only characters from the cmp string.
-func IsCc(str, cmp string) bool {
+func IS_CC(str, cmp string) bool {
 	if len(str) == 0 {
 		return false
 	}
@@ -524,13 +526,12 @@ func IsCc(str, cmp string) bool {
 	return true
 }
 
-// IsCtrl checks if a string contains only control characters.
-func IsCtrl(str string) bool {
+func IS_CTRL(str string) bool {
 	if len(str) == 0 {
 		return false
 	}
 	for _, r := range str {
-		if !IscCtrl(byte(r)) {
+		if !ISC_CTRL(byte(r)) {
 			return false
 		}
 	}
@@ -538,12 +539,12 @@ func IsCtrl(str string) bool {
 }
 
 // IsHex checks if a string contains only hexadecimal characters.
-func IsHex(str string) bool {
+func IS_HEX(str string) bool {
 	if len(str) == 0 {
 		return false
 	}
 	for _, r := range str {
-		if !IscHex(byte(r)) {
+		if !ISC_HEX(byte(r)) {
 			return false
 		}
 	}
@@ -551,12 +552,12 @@ func IsHex(str string) bool {
 }
 
 // IsLower checks if a string contains only lowercase characters.
-func IsLower(str string) bool {
+func IS_LOWER(str string) bool {
 	if len(str) == 0 {
 		return false
 	}
 	for _, r := range str {
-		if !IscLower(byte(r)) {
+		if !ISC_LOWER(byte(r)) {
 			return false
 		}
 	}
@@ -564,17 +565,17 @@ func IsLower(str string) bool {
 }
 
 // IsNcc checks if a string contains no characters from the cmp string.
-func IsNcc(str, cmp string) bool {
+func IS_NCC(str, cmp string) bool {
 	return !strings.ContainsAny(str, cmp)
 }
 
 // IsNum checks if a string contains only numeric characters.
-func IsNum(str string) bool {
+func IS_NUM(str string) bool {
 	if len(str) == 0 {
 		return false
 	}
 	for _, r := range str {
-		if !IscNum(byte(r)) {
+		if !ISC_NUM(byte(r)) {
 			return false
 		}
 	}
@@ -582,12 +583,12 @@ func IsNum(str string) bool {
 }
 
 // IsUpper checks if a string contains only uppercase characters.
-func IsUpper(str string) bool {
+func IS_UPPER(str string) bool {
 	if len(str) == 0 {
 		return false
 	}
 	for _, r := range str {
-		if !IscUpper(byte(r)) {
+		if !ISC_UPPER(byte(r)) {
 			return false
 		}
 	}
@@ -595,53 +596,53 @@ func IsUpper(str string) bool {
 }
 
 // IscAlpha checks if a character is a..z or A..Z.
-func IscAlpha(in byte) bool {
+func ISC_ALPHA(in byte) bool {
 	return (in >= 'a' && in <= 'z') || (in >= 'A' && in <= 'Z')
 }
 
 // IscCtrl checks if a character is a control character.
-func IscCtrl(in byte) bool {
+func ISC_CTRL(in byte) bool {
 	return in < 32 || in == 127
 }
 
 // IscHex checks if a character is 0..9, A..F, or a..f.
-func IscHex(in byte) bool {
+func ISC_HEX(in byte) bool {
 	return (in >= '0' && in <= '9') || (in >= 'A' && in <= 'F') || (in >= 'a' && in <= 'f')
 }
 
 // IscLower checks if a character is lowercase.
-func IscLower(in byte) bool {
+func ISC_LOWER(in byte) bool {
 	return in >= 'a' && in <= 'z'
 }
 
 // IscNum checks if a character is 0..9.
-func IscNum(in byte) bool {
+func ISC_NUM(in byte) bool {
 	return in >= '0' && in <= '9'
 }
 
 // IscUpper checks if a character is uppercase.
-func IscUpper(in byte) bool {
+func ISC_UPPER(in byte) bool {
 	return in >= 'A' && in <= 'Z'
 }
 
 // Lowercase converts a string to lowercase.
-func Lowercase(str string) string {
+func LOWERCASE(str string) string {
 	return strings.ToLower(str)
 }
 
 // Message4R is a rotating message display.
-type Message4R struct {
+type MESSAGE_4R struct {
 	Mx string
 	Mn int
 	Tr bool
 
 	// internal state
-	timer TON
+	timer logic.TON
 	edge  bool
 }
 
 // Update executes the message rotation logic.
-func (m *Message4R) Update(m0, m1, m2, m3 string, mm int, enq, clk bool, t1 time.Duration) {
+func (m *MESSAGE_4R) Update(m0, m1, m2, m3 string, mm int, enq, clk bool, t1 time.Duration) {
 	m.Tr = false
 	if enq {
 		m.timer.Update(clk, t1)
@@ -669,8 +670,8 @@ func (m *Message4R) Update(m0, m1, m2, m3 string, mm int, enq, clk bool, t1 time
 	}
 }
 
-// Message8 selects one of 8 messages based on prioritized inputs.
-func Message8(in [8]bool, s [8]string) string {
+// MESSAGE_8 selects one of 8 messages based on prioritized inputs.
+func MESSAGE_8(in [8]bool, s [8]string) string {
 	for i := 0; i < 8; i++ {
 		if in[i] {
 			return s[i]
@@ -679,8 +680,8 @@ func Message8(in [8]bool, s [8]string) string {
 	return ""
 }
 
-// Mirror reverses an input string.
-func Mirror(str string) string {
+// MIRROR reverses an input string.
+func MIRROR(str string) string {
 	runes := []rune(str)
 	for i, j := 0, len(runes)-1; i < j; i, j = i+1, j-1 {
 		runes[i], runes[j] = runes[j], runes[i]
@@ -688,8 +689,8 @@ func Mirror(str string) string {
 	return string(runes)
 }
 
-// MonthToString converts an integer (1-12) to a month name.
-func MonthToString(mth, lang, lx int) string {
+// MONTH_TO_STRING converts an integer (1-12) to a month name.
+func MONTH_TO_STRING(mth, lang, lx int) string {
 	// Placeholder for a complex lookup.
 	if mth >= 1 && mth <= 12 {
 		return time.Month(mth).String()
@@ -697,8 +698,8 @@ func MonthToString(mth, lang, lx int) string {
 	return ""
 }
 
-// OctToByte converts an octal string to a byte.
-func OctToByte(oct string) byte {
+// OCT_TO_BYTE converts an octal string to a byte.
+func OCT_TO_BYTE(oct string) byte {
 	val, err := strconv.ParseUint(oct, 8, 8)
 	if err != nil {
 		return 0
@@ -706,8 +707,8 @@ func OctToByte(oct string) byte {
 	return byte(val)
 }
 
-// OctToDword converts an octal string to a dword.
-func OctToDword(oct string) uint32 {
+// OCT_TO_DWORD converts an octal string to a dword.
+func OCT_TO_DWORD(oct string) uint32 {
 	val, err := strconv.ParseUint(oct, 8, 32)
 	if err != nil {
 		return 0
@@ -715,18 +716,40 @@ func OctToDword(oct string) uint32 {
 	return uint32(val)
 }
 
-// RealToStrF converts a float to a string with N decimal places.
-func RealToStrF(in float64, n int, d string) string {
-	return strconv.FormatFloat(in, 'f', n, 64)
+// REAL_TO_STRF converts a float to a string with N decimal places.
+func REAL_TO_STRF(in float64, n int, d string) string {
+	n = int(beeMath.LIMIT(0, float64(n), 7))
+
+	// Scale and round
+	multiplier := beeMath.EXP10(float64(n)) // ST: O := ABS(in) * EXP10(N);
+	val := beeMath.D_TRUNC(math.Abs(in)*multiplier + 0.5)
+
+	res := strconv.FormatInt(val, 10)
+
+	// Pad with leading zeros if necessary
+	for len(res) <= n {
+		res = "0" + res
+	}
+
+	// Insert decimal separator
+	if n > 0 {
+		res = res[:len(res)-n] + d + res[len(res)-n:]
+	}
+
+	// Add sign for negative numbers
+	if in < 0.0 {
+		res = "-" + res
+	}
+	return res
 }
 
-// ReplaceAll replaces all occurrences of src in str with rep.
-func ReplaceAll(str, src, rep string) string {
+// REPLACE_ALL replaces all occurrences of src in str with rep.
+func REPLACE_ALL(str, src, rep string) string {
 	return strings.ReplaceAll(str, src, rep)
 }
 
-// ReplaceChars replaces characters in str based on a mapping from src to rep.
-func ReplaceChars(str, src, rep string) string {
+// REPLACE_CHARS replaces characters in str based on a mapping from src to rep.
+func REPLACE_CHARS(str, src, rep string) string {
 	if len(src) == 0 || len(rep) == 0 {
 		return str
 	}
@@ -742,8 +765,8 @@ func ReplaceChars(str, src, rep string) string {
 	return str
 }
 
-// ReplaceUml replaces German umlauts with their two-letter equivalents.
-func ReplaceUml(str string) string {
+// REPLACE_UML replaces German umlauts with their two-letter equivalents.
+func REPLACE_UML(str string) string {
 	r := strings.NewReplacer(
 		"Ä", "Ae", "Ö", "Oe", "Ü", "Ue", "ß", "ss",
 		"ä", "ae", "ö", "oe", "ü", "ue",
@@ -752,15 +775,15 @@ func ReplaceUml(str string) string {
 }
 
 // Ticker creates a scrolling text effect.
-type Ticker struct {
+type TICKER struct {
 	Display string
 	// internal state
-	delay TP
+	delay logic.TP
 	step  int
 }
 
 // Update executes the ticker logic.
-func (t *Ticker) Update(text string, n int, pt time.Duration) {
+func (t *TICKER) Update(text string, n int, pt time.Duration) {
 	if n <= 0 || n >= len(text) {
 		t.Display = text
 		return
@@ -785,8 +808,8 @@ func (t *Ticker) Update(text string, n int, pt time.Duration) {
 	}
 }
 
-// ToLower converts a character from uppercase to lowercase.
-func ToLower(in byte) byte {
+// TO_LOWER converts a character from uppercase to lowercase.
+func TO_LOWER(in byte) byte {
 	if in >= 'A' && in <= 'Z' {
 		return in + ('a' - 'A')
 	}
@@ -794,8 +817,8 @@ func ToLower(in byte) byte {
 	return in
 }
 
-// ToUml converts a character to its two-letter Umlaut representation.
-func ToUml(in byte) string {
+// TO_UML converts a character to its two-letter Umlaut representation.
+func TO_UML(in byte) string {
 	switch in {
 	case 196:
 		return "Ae" // Ä
@@ -816,8 +839,8 @@ func ToUml(in byte) string {
 	}
 }
 
-// ToUpper converts a character from lowercase to uppercase.
-func ToUpper(in byte) byte {
+// TO_UPPER converts a character from lowercase to uppercase.
+func TO_UPPER(in byte) byte {
 	if in >= 'a' && in <= 'z' {
 		return in - ('a' - 'A')
 	}
@@ -825,34 +848,40 @@ func ToUpper(in byte) byte {
 	return in
 }
 
-// Trim removes all space characters from a string.
-func Trim(str string) string {
+// TRIM removes all space characters from a string.
+func TRIM(str string) string {
 	return strings.ReplaceAll(str, " ", "")
 }
 
-// Trim1 replaces multiple spaces with a single space and trims leading/trailing spaces.
-func Trim1(str string) string {
+// TRIM1 replaces multiple spaces with a single space and trims leading/trailing spaces.
+func TRIM1(str string) string {
 	// Use Fields to split by whitespace and Join to put it back with single spaces.
 	return strings.Join(strings.Fields(str), " ")
 }
 
-// Trime removes leading and trailing space characters from a string.
-func Trime(str string) string {
+// TRIME removes leading and trailing space characters from a string.
+func TRIME(str string) string {
 	return strings.TrimSpace(str)
 }
 
-// Uppercase converts a string to uppercase.
-func Uppercase(str string) string {
+// UPPERCASE converts a string to uppercase.
+func UPPERCASE(str string) string {
 	return strings.ToUpper(str)
 }
 
-// WeekdayToString converts an integer (1-7) to a weekday name.
-func WeekdayToString(wday, lang, lx int) string {
+// WEEKDAY_TO_STRING converts an integer (1-7) to a weekday name.
+func WEEKDAY_TO_STRING(wday, lang, lx int) string {
 	// Placeholder for a complex lookup.
-	if wday >= 1 && wday <= 7 {
-		// Go's Sunday is 0, OSCAT's is 7. Adjusting for Go's standard.
-		goWday := time.Weekday((wday % 7))
-		return goWday.String()
+	if wday < 1 || wday > 7 {
+		return ""
 	}
-	return ""
+	if lang <= 0 {
+		lang = int(Language.Default)
+	}
+	return Language.Weekdays[lang-1][wday-1]
+}
+
+// INT_TO_STRF converts an integer to a string of a fixed length N.
+func INT_TO_STRF(in, n int) string {
+	return FIX(strconv.Itoa(in), n, '0', 1)
 }

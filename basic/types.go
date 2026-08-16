@@ -13,9 +13,9 @@ package basic
 
 import "time"
 
-// Calendar corresponds to the CALENDAR struct in OSCAT, holding date, time,
+// CALENDAR corresponds to the CALENDAR struct in OSCAT, holding date, time,
 // and astronomical data.
-type Calendar struct {
+type CALENDAR struct {
 	UTC       time.Time     // world time UTC
 	LocalDT   time.Time     // local time
 	LocalDate time.Time     // local date
@@ -43,14 +43,14 @@ type Calendar struct {
 	WorkWeek  int16         // current work week
 }
 
-// Complex corresponds to the COMPLEX struct in OSCAT for representing complex numbers.
-type Complex struct {
+// COMPLEX corresponds to the COMPLEX struct in OSCAT for representing complex numbers.
+type COMPLEX struct {
 	Re float32
 	Im float32
 }
 
-// ConstantsLanguage corresponds to the CONSTANTS_LANGUAGE struct in OSCAT.
-type ConstantsLanguage struct {
+// CONSTANTS_LANGUAGE corresponds to the CONSTANTS_LANGUAGE struct in OSCAT.
+type CONSTANTS_LANGUAGE struct {
 	// Language Setup
 	Default   int16 // 1=english, 2=german 3=french
 	Lmax      int16
@@ -61,8 +61,8 @@ type ConstantsLanguage struct {
 	Dirs      [3][16]string // Corresponds to ARRAY[1..3, 0..15] OF STRING(3)
 }
 
-// ConstantsLocation corresponds to the CONSTANTS_LOCATION struct in OSCAT.
-type ConstantsLocation struct {
+// CONSTANTS_LOCATION corresponds to the CONSTANTS_LOCATION struct in OSCAT.
+type CONSTANTS_LOCATION struct {
 	// location setup
 	Default int16 // 1=germany, 2=austria 3=france 4=belgium-german 5= italien-Sdtirol
 	Lmax    int16
@@ -71,8 +71,8 @@ type ConstantsLocation struct {
 	Language [5]int16 // Corresponds to ARRAY[1..5] OF INT
 }
 
-// ConstantsMath corresponds to the CONSTANTS_MATH struct in OSCAT.
-type ConstantsMath struct {
+// CONSTANTS_MATH corresponds to the CONSTANTS_MATH struct in OSCAT.
+type CONSTANTS_MATH struct {
 	Pi     float64   // Kreiszahl PI
 	Pi2    float64   // PI * 2
 	Pi4    float64   // PI * 4
@@ -85,8 +85,8 @@ type ConstantsMath struct {
 	Facts  [13]int32 // Corresponds to ARRAY[0..12] OF DINT
 }
 
-// ConstantsPhys corresponds to the CONSTANTS_PHYS struct in OSCAT.
-type ConstantsPhys struct {
+// CONSTANTS_PHYS corresponds to the CONSTANTS_PHYS struct in OSCAT.
+type CONSTANTS_PHYS struct {
 	C  float64 // Lichtgeschwindigkeit in m/s
 	E  float64 // elementarladung in Colomb = A * s
 	G  float64 // Erdbeschleunigung in m / s
@@ -95,8 +95,8 @@ type ConstantsPhys struct {
 	Pn float32 // NormalDruck in Pa
 }
 
-// ConstantsSetup corresponds to the CONSTANTS_SETUP struct in OSCAT.
-type ConstantsSetup struct {
+// CONSTANTS_SETUP corresponds to the CONSTANTS_SETUP struct in OSCAT.
+type CONSTANTS_SETUP struct {
 	// setup Parameters
 	ExtendedASCII bool
 	Charnames     [4]string  // Corresponds to ARRAY[1..4] OF STRING(253)
@@ -104,8 +104,8 @@ type ConstantsSetup struct {
 	Decades       [9]float32 // Corresponds to ARRAY[0..8] OF REAL
 }
 
-// EsrData corresponds to the ESR_DATA struct in OSCAT.
-type EsrData struct {
+// ESR_DATA corresponds to the ESR_DATA struct in OSCAT.
+type ESR_DATA struct {
 	Typ    byte
 	Adress string // Originally STRING(10)
 	Ds     time.Time
@@ -113,28 +113,28 @@ type EsrData struct {
 	Data   [8]byte // Corresponds to ARRAY[0..7] OF BYTE
 }
 
-// Fraction corresponds to the FRACTION struct in OSCAT.
-type Fraction struct {
+// FRACTION corresponds to the FRACTION struct in OSCAT.
+type FRACTION struct {
 	Numerator   int16
 	Denominator int16
 }
 
-// HolidayData corresponds to the HOLIDAY_DATA struct in OSCAT.
-type HolidayData struct {
+// HOLIDAY_DATA corresponds to the HOLIDAY_DATA struct in OSCAT.
+type HOLIDAY_DATA struct {
 	Name  string // Originally STRING(30)
 	Day   int8
 	Month int8
 	Use   int8
 }
 
-// Real2 corresponds to the REAL2 struct in OSCAT for double-precision emulation.
-type Real2 struct {
+// REAL2 corresponds to the REAL2 struct in OSCAT for double-precision emulation.
+type REAL2 struct {
 	R1 float32 // small value
 	Rx float32 // big value
 }
 
 // Sdt corresponds to the SDT (Structured Date Time) struct in OSCAT.
-type Sdt struct {
+type SDT struct {
 	Year    int16
 	Month   int16
 	Day     int16
@@ -145,8 +145,8 @@ type Sdt struct {
 	Ms      int16
 }
 
-// TimerEvent corresponds to the TIMER_EVENT struct in OSCAT.
-type TimerEvent struct {
+// TIMER_EVENT corresponds to the TIMER_EVENT struct in OSCAT.
+type TIMER_EVENT struct {
 	Typ      byte
 	Channel  byte
 	Day      byte
@@ -157,8 +157,8 @@ type TimerEvent struct {
 	Last     time.Time
 }
 
-// Vector3 corresponds to the VECTOR_3 struct in OSCAT.
-type Vector3 struct {
+// VECTOR_3 corresponds to the VECTOR_3 struct in OSCAT.
+type VECTOR_3 struct {
 	X float32
 	Y float32
 	Z float32

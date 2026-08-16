@@ -17,8 +17,7 @@ import (
 	"time"
 
 	"beebread/basic/logic"
-	. "beebread/basic/logic"
-	mathematical "beebread/basic/math"
+	beeMath "beebread/basic/math"
 )
 
 // AIN converts signals from A/D converters to a real value.
@@ -54,7 +53,7 @@ type AIN1 struct {
 
 // Update executes the conversion logic.
 func (a *AIN1) Update(in, errorCode, overflowCode, codeMin, codeMax uint32, signBit, errorBit, overflowBit, bit0, bitN int, errCodeEn, ovfCodeEn bool, outMin, outMax, errorOut, overflowOut float64) {
-	a.Error = (logic.BitOfDword(in, uint(errorBit))) || (errCodeEn && errorCode == in)
+	a.Error = (logic.BIT_OF_DWORD(in, uint(errorBit))) || (errCodeEn && errorCode == in)
 	if a.Error {
 		a.Out = errorOut
 		return
@@ -63,13 +62,13 @@ func (a *AIN1) Update(in, errorCode, overflowCode, codeMin, codeMax uint32, sign
 	// Strip off the data input
 	tb := (in << (31 - uint(bitN))) >> (31 - uint(bitN) + uint(bit0))
 
-	a.Overflow = (logic.BitOfDword(in, uint(overflowBit))) || (ovfCodeEn && overflowCode == in) || (tb < codeMin || tb > codeMax)
+	a.Overflow = (logic.BIT_OF_DWORD(in, uint(overflowBit))) || (ovfCodeEn && overflowCode == in) || (tb < codeMin || tb > codeMax)
 	if a.Overflow {
 		a.Out = overflowOut
 		return
 	}
 
-	a.Sign = logic.BitOfDword(in, uint(signBit))
+	a.Sign = logic.BIT_OF_DWORD(in, uint(signBit))
 
 	// Convert in to out
 	if codeMax-codeMin > 0 {
@@ -93,7 +92,7 @@ func AOUT(in, low, high float64, bits, sign byte) uint32 {
 		in2 = math.Abs(in)
 	}
 
-	in2 = mathematical.Limit(low, in2, high)
+	in2 = beeMath.LIMIT(low, in2, high)
 
 	var result uint32
 	if high-low != 0.0 {
@@ -117,7 +116,7 @@ func AOUT1(in, low, high float64, bit0, bitN, sign int) uint32 {
 		in2 = math.Abs(in)
 	}
 
-	in2 = mathematical.Limit(low, in2, high)
+	in2 = beeMath.LIMIT(low, in2, high)
 
 	var result uint32
 	if high-low != 0.0 {
@@ -148,7 +147,7 @@ type DELAY struct {
 
 // Update executes the delay logic.
 func (d *DELAY) Update(in float64, n int, rst bool) {
-	n = int(mathematical.Limit(0, float64(n), 32))
+	n = int(beeMath.LIMIT(0, float64(n), 32))
 
 	if rst || !d.init || len(d.buf) != n {
 		d.init = true
@@ -161,7 +160,7 @@ func (d *DELAY) Update(in float64, n int, rst bool) {
 	} else if n > 0 {
 		d.Out = d.buf[d.i]
 		d.buf[d.i] = in
-		d.i = mathematical.Inc1(d.i, n)
+		d.i = beeMath.INC1(d.i, n)
 	} else {
 		d.Out = in
 	}
@@ -192,7 +191,7 @@ type FILTER_DW struct {
 
 // Update executes the filter logic.
 func (f *FILTER_DW) Update(x uint32, t time.Duration) {
-	tx := logic.TPlcUs() / 1000 // T_PLC_MS
+	tx := logic.T_PLC_US() / 1000 // T_PLC_MS
 
 	if !f.init || t == 0 {
 		f.init = true
@@ -214,7 +213,7 @@ type FILTER_I struct {
 
 // Update executes the filter logic.
 func (f *FILTER_I) Update(x int, t time.Duration) {
-	tx := logic.TPlcUs() / 1000 // T_PLC_MS
+	tx := logic.T_PLC_US() / 1000 // T_PLC_MS
 
 	if !f.init || t == 0 {
 		f.init = true
@@ -236,7 +235,7 @@ type FILTER_MAV_DW struct {
 
 // Update executes the filter logic.
 func (f *FILTER_MAV_DW) Update(x uint32, n int, rst bool) {
-	n = int(mathematical.Limit(0, float64(n), 32))
+	n = int(beeMath.LIMIT(0, float64(n), 32))
 
 	if !f.init || rst || n == 0 {
 		f.init = true
@@ -246,7 +245,7 @@ func (f *FILTER_MAV_DW) Update(x uint32, n int, rst bool) {
 		f.Y = x
 		f.i = 0
 	} else {
-		f.i = mathematical.Inc1(f.i, n)
+		f.i = beeMath.INC1(f.i, n)
 		f.Y = f.Y + (x-f.buffer[f.i])/uint32(n)
 		f.buffer[f.i] = x
 	}
@@ -263,7 +262,7 @@ type FILTER_MAV_W struct {
 
 // Update executes the filter logic.
 func (f *FILTER_MAV_W) Update(x uint16, n int, rst bool) {
-	n = int(mathematical.Limit(0, float64(n), 32))
+	n = int(beeMath.LIMIT(0, float64(n), 32))
 
 	if !f.init || rst || n == 0 {
 		f.init = true
@@ -274,7 +273,7 @@ func (f *FILTER_MAV_W) Update(x uint16, n int, rst bool) {
 		f.sum = uint32(x) * uint32(n)
 		f.i = 0
 	} else {
-		f.i = mathematical.Inc1(f.i, n)
+		f.i = beeMath.INC1(f.i, n)
 		f.sum = f.sum + uint32(x) - uint32(f.buffer[f.i])
 		f.Y = uint16(f.sum / uint32(n))
 		f.buffer[f.i] = x
@@ -290,7 +289,7 @@ type FILTER_W struct {
 
 // Update executes the filter logic.
 func (f *FILTER_W) Update(x uint16, t time.Duration) {
-	tx := logic.TPlcUs() / 1000 // T_PLC_MS
+	tx := logic.T_PLC_US() / 1000 // T_PLC_MS
 
 	if !f.init || t == 0 {
 		f.init = true
@@ -325,7 +324,7 @@ func (f *FILTER_WAV) Update(x float64, w [16]float64, rst bool) {
 		f.i = 15
 		f.Y = x
 	} else {
-		f.i = mathematical.Inc1(f.i, 16)
+		f.i = beeMath.INC1(f.i, 16)
 		f.buffer[f.i] = x
 	}
 
@@ -333,7 +332,7 @@ func (f *FILTER_WAV) Update(x float64, w [16]float64, rst bool) {
 	idx := f.i
 	for n := 0; n < 16; n++ {
 		f.Y += f.buffer[idx] * w[n]
-		idx = (idx - 1 + 16) % 16 // dec1
+		idx = (idx - 1 + 16) % 16 // DEC1
 	}
 }
 
@@ -419,25 +418,25 @@ func OVERRIDE(x1, x2, x3 float64, e1, e2, e3 bool) float64 {
 
 // RANGE_TO_BYTE converts a real value between low and high into a byte.
 func RANGE_TO_BYTE(x, low, high float64) byte {
-	if high-low == 0.0 {
+	if high == low {
 		return 0
 	}
-	val := (mathematical.Limit(low, x, high) - low) * 255.0 / (high - low)
+	val := (beeMath.LIMIT(low, x, high) - low) * 255.0 / (high - low)
 	return byte(math.Trunc(val))
 }
 
 // RANGE_TO_WORD converts a real value between low and high into a word.
 func RANGE_TO_WORD(x, low, high float64) uint16 {
-	if high-low == 0.0 {
+	if high == low {
 		return 0
 	}
-	val := (mathematical.Limit(low, x, high) - low) * 65535.0 / (high - low)
+	val := (beeMath.LIMIT(low, x, high) - low) * 65535.0 / (high - low)
 	return uint16(math.Trunc(val))
 }
 
 // SCALE scales and limits an input signal. Y = (X*K + O) limited by MN and MX.
 func SCALE(x, k, o, mx, mn float64) float64 {
-	return mathematical.Limit(mn, x*k+o, mx)
+	return beeMath.LIMIT(mn, x*k+o, mx)
 }
 
 // SCALE_B scales a byte input to a real output range.
@@ -445,7 +444,7 @@ func SCALE_B(x, iLo, iHi byte, oLo, oHi float64) float64 {
 	if iHi == iLo {
 		return oLo
 	}
-	val := mathematical.LimitB(iLo, x, iHi)
+	val := beeMath.LIMIT_B(iLo, x, iHi)
 	return (oHi-oLo)/float64(iHi-iLo)*float64(val) + oLo
 }
 
@@ -478,7 +477,7 @@ func SCALE_D(x, iLo, iHi uint32, oLo, oHi float64) float64 {
 	if iHi == iLo {
 		return oLo
 	}
-	val := mathematical.LimitDW(iLo, x, iHi)
+	val := beeMath.LIMIT_DW(iLo, x, iHi)
 	return (oHi-oLo)/float64(iHi-iLo)*float64(val-iLo) + oLo
 }
 
@@ -487,7 +486,7 @@ func SCALE_R(x, iLo, iHi, oLo, oHi float64) float64 {
 	if iHi == iLo {
 		return oLo
 	}
-	val := mathematical.Limit(iLo, x, iHi)
+	val := beeMath.LIMIT(iLo, x, iHi)
 	return (oHi-oLo)/(iHi-iLo)*(val-iLo) + oLo
 }
 
@@ -549,7 +548,7 @@ func (s *SEL2_OF_3) Update(in1, in2, in3, d float64) {
 	d31 := math.Abs(in3-in1) <= d
 
 	if (d12 && d23) || (d12 && d31) || (d23 && d31) {
-		s.Y = (in1 + in2 + in3) / 3.0
+		s.Y = beeMath.MID3(in1, in2, in3)
 		s.E = false
 		s.W = 0
 	} else if d12 {
@@ -642,7 +641,7 @@ func (s *SH_2) Update(in float64, pt time.Duration, n, disc int) {
 	if tx.Sub(s.last) >= pt {
 		s.last = tx
 		s.Trig = true
-		s.m = int(mathematical.Limit(1, float64(n), 16))
+		s.m = int(beeMath.LIMIT(1, float64(n), 16))
 
 		// Shift buffer
 		copy(s.buf[1:], s.buf[:s.m-1])

@@ -11,10 +11,6 @@
 
 package logic
 
-import (
-	"github.com/apiarytech/beebread/basic/math"
-)
-
 // COUNT_BR is a byte counter with independent up and down inputs.
 // The counter counts from 0 to MX and wraps around.
 // A step input sets the counter's stepping width.
@@ -30,11 +26,11 @@ func (c *COUNT_BR) Update(set bool, in byte, up, dn bool, step, mx byte, rst boo
 	if rst {
 		c.Cnt = 0
 	} else if set {
-		c.Cnt = math.LimitB(0, in, mx)
+		c.Cnt = limit_B(0, in, mx)
 	} else if up && !c.lastUp {
-		c.Cnt = byte(math.Inc(int(c.Cnt), int(step), int(mx)))
+		c.Cnt = byte(inc(int(c.Cnt), int(step), int(mx)))
 	} else if dn && !c.lastDn {
-		c.Cnt = byte(math.Inc(int(c.Cnt), -int(step), int(mx)))
+		c.Cnt = byte(inc(int(c.Cnt), -int(step), int(mx)))
 	}
 	c.lastUp = up
 	c.lastDn = dn
@@ -55,7 +51,7 @@ func (c *COUNT_DR) Update(set bool, in uint32, up, dn bool, step, mx uint32, rst
 	if rst {
 		c.Cnt = 0
 	} else if set {
-		c.Cnt = math.LimitDW(0, in, mx)
+		c.Cnt = limit_DW(0, in, mx)
 	} else if up && !c.lastUp {
 		if step > mx-c.Cnt {
 			c.Cnt = c.Cnt - mx + step - 1

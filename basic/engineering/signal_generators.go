@@ -12,6 +12,9 @@
 package engineering
 
 import (
+	"beebread/basic"
+	"beebread/basic/other"
+	"math"
 	"time"
 
 	"beebread/basic/logic"
@@ -38,7 +41,7 @@ func (r *RMP_B) Update(rmp *byte, e, dir bool, tr time.Duration) {
 	}
 
 	if e && r.init && (dir == r.lastDir) && (*rmp != sel) && tr == r.tn {
-		*rmp = FRMP_B(r.startVal, dir, tx.Sub(r.tl), tr)
+		*rmp = beeMath.FRMP_B(r.startVal, dir, tx.Sub(r.tl), tr)
 	} else {
 		r.init = true
 		r.tl = tx
@@ -140,7 +143,7 @@ type _RmpW struct {
 
 // Update executes the ramp logic. Rmp is a pointer to the value being ramped.
 func (r *_RmpW) Update(rmp *uint16, e, dir bool, tr time.Duration) {
-	tx := logic.TPlcUs() / 1000 // T_PLC_MS
+	tx := logic.T_PLC_US() / 1000 // T_PLC_MS
 
 	if e && r.init {
 		if dir != r.lastDir {
@@ -160,7 +163,7 @@ func (r *_RmpW) Update(rmp *uint16, e, dir bool, tr time.Duration) {
 			if !dir {
 				step = -step
 			}
-			newVal := beeMath.LimitInt64(0, int64(*rmp)+step, 65535)
+			newVal := beeMath.LIMIT_I64(0, int64(*rmp)+step, 65535)
 			*rmp = uint16(newVal)
 		}
 	} else {
@@ -291,7 +294,7 @@ func (g *GEN_RDM) Update(pt time.Duration, am, os float64) {
 
 	if tx.Sub(g.last) >= pt {
 		g.last = g.last.Add(pt)
-		g.Out = am*(beeMath.Rdm(0)-0.5) + os
+		g.Out = am*(other.RDM(0)-0.5) + os
 		g.Q = true
 	} else {
 		g.Q = false
@@ -317,7 +320,7 @@ func (g *GEN_RDT) Update(enable bool, minTime, maxTime, pulseTime time.Duration)
 
 	if g.tonRDMTimer.Q {
 		g.XQ = true
-		g.rRDMTime = beeMath.Rdm(g.rRDMTime)
+		g.rRDMTime = other.RDM(g.rRDMTime)
 		randomRange := float64(maxTime - minTime)
 		g.tRDMTime = time.Duration(g.rRDMTime*randomRange) + minTime
 		g.tonRDMTimer.Update(false, g.tRDMTime) // Reset the timer
@@ -340,7 +343,7 @@ type GEN_RMP struct {
 func (g *GEN_RMP) Update(pt time.Duration, am, os, dl float64) {
 	tx := time.Now()
 
-	dl = beeMath.ModR(dl, 1.0)
+	dl = beeMath.MODR(dl, 1.0)
 	if dl < 0.0 {
 		dl += 1.0
 	}
@@ -359,7 +362,7 @@ func (g *GEN_RMP) Update(pt time.Duration, am, os, dl float64) {
 	g.ltemp = g.temp
 	if pt > 0 {
 		totalElapsed := float64(elapsed) + float64(pt)*dl
-		g.temp = beeMath.Fract(totalElapsed / float64(pt))
+		g.temp = beeMath.FRACT(totalElapsed / float64(pt))
 	}
 	g.Out = am*g.temp + os
 	g.Q = g.temp < g.ltemp
@@ -404,13 +407,232 @@ func (t *TREND_DW) Update(x uint32) {
 func FRMP_B(start byte, dir bool, td, tr time.Duration) byte {
 	if td < tr && tr > 0 {
 		val := byte((uint64(td) * 256) / uint64(tr))
-		if dir { // Ramp up
-			return byte(beeMath.Limit(0, float64(start)+float64(val), 255))
+		if dir { // Ramp up_
+			return byte(beeMath.LIMIT(0, float64(start)+float64(val), 255))
 		}
 		// Ramp down
-		return byte(beeMath.Limit(0, float64(start)-float64(val), 255))
+		return byte(beeMath.LIMIT(0, float64(start)-float64(val), 255))
 	} else if dir {
 		return 255
 	}
 	return 0
+}
+
+// GEN_SIN generates a sine wave output.
+type GEN_SIN struct {
+	Q   bool
+	Out float64
+
+	// internal state
+	init bool
+	last time.Time
+	temp float64
+}
+
+// Update executes the sine wave generation logic.
+func (g *GEN_SIN) Update(pt time.Duration, am, os, dl float64) {
+	tx := time.Now()
+	if !g.init {
+		g.init = true
+		g.last = tx
+	}
+
+	dl = beeMath.MODR(dl, 1.0)
+	if dl < 0.0 {
+		dl += 1.0
+	}
+
+	elapsed := tx.Sub(g.last)
+	if pt > 0 && elapsed >= pt {
+		g.last = g.last.Add(pt)
+		elapsed -= pt
+	}
+
+	if pt > 0 {
+		totalElapsed := float64(elapsed) + float64(pt)*dl
+		g.temp = math.Sin(basic.Math.Pi2 * totalElapsed / float64(pt))
+	}
+
+	g.Out = am*0.5*g.temp + os
+	g.Q = g.temp >= 0.0
+}
+
+// GEN_SQR generates a square wave output.
+type GEN_SQR struct {
+	Q   bool
+	Out float64
+
+	// internal state
+	init bool
+	last time.Time
+}
+
+// Update executes the square wave generation logic.
+func (g *GEN_SQR) Update(pt time.Duration, am, os, dc, dl float64) {
+	if dc <= 0.0 {
+		g.Out = -am*0.5 + os
+		g.Q = false
+		return
+	}
+	if dc >= 1.0 {
+		g.Out = am*0.5 + os
+		g.Q = true
+		return
+	}
+
+	tx := time.Now()
+	if !g.init {
+		g.init = true
+		g.last = tx
+	}
+
+	dl = beeMath.MODR(dl, 1.0)
+	if dl < 0.0 {
+		dl += 1.0
+	}
+
+	elapsed := tx.Sub(g.last)
+	if pt > 0 && elapsed >= pt {
+		g.last = g.last.Add(pt)
+		elapsed -= pt
+	}
+
+	var temp float64
+	if pt > 0 {
+		temp = beeMath.FRACT(float64(elapsed)/float64(pt) + dl)
+	}
+
+	if temp < dc {
+		g.Q = true
+		g.Out = am*0.5 + os
+	} else {
+		g.Q = false
+		g.Out = -am*0.5 + os
+	}
+}
+
+// RMP_SOFT generates a soft on/off ramp for a byte value.
+type RMP_SOFT struct {
+	Out byte
+
+	// internal state
+	rmp RMP_B
+}
+
+// Update executes the soft ramp logic.
+func (r *RMP_SOFT) Update(in bool, val byte, ptOn, ptOff time.Duration) {
+	var target byte
+	if in {
+		target = val
+	}
+
+	if target > r.Out {
+		r.rmp.Update(&r.Out, true, true, ptOn)
+		if r.Out > target {
+			r.Out = target
+		}
+	} else if target < r.Out {
+		r.rmp.Update(&r.Out, true, false, ptOff)
+		if r.Out < target {
+			r.Out = target
+		}
+	} else {
+		r.rmp.Update(&r.Out, false, false, 0)
+	}
+}
+
+// PWM_DC generates a square wave signal specified by frequency and duty cycle.
+type PWM_DC struct {
+	Q bool
+
+	// internal state
+	clk   CLK_PRG
+	pulse TP_X
+}
+
+// Update executes the PWM logic.
+func (p *PWM_DC) Update(f, dc float64) {
+	if f > 0.0 {
+		tmp := 1000.0 / f
+		p.clk.Update(time.Duration(tmp) * time.Millisecond)
+		p.pulse.Update(p.clk.Q, time.Duration(tmp*dc*float64(time.Millisecond)))
+		p.Q = p.pulse.Q
+	} else {
+		p.Q = false
+	}
+}
+
+// CLK_PRG uses the system time to generate a clock with a programmable period time.
+// A pulse is generated for one cycle only.
+type CLK_PRG struct {
+	Q bool
+
+	// internal state
+	init bool
+	last time.Time
+}
+
+// Update executes the clock logic.
+func (c *CLK_PRG) Update(pt time.Duration) {
+	tx := time.Now()
+
+	if !c.init {
+		c.init = true
+		c.last = tx.Add(-pt) // Ensure first pulse is generated
+	}
+
+	if tx.Sub(c.last) >= pt {
+		c.Q = true
+		c.last = tx
+	} else {
+		c.Q = false
+	}
+}
+
+// TP_X is a retriggerable, edge-triggered pulse timer.
+type TP_X struct {
+	Q  bool
+	ET time.Duration
+
+	// internal state
+	edge      bool
+	startTime time.Time
+}
+
+// Update executes the pulse timer logic.
+func (t *TP_X) Update(in bool, pt time.Duration) {
+	tx := time.Now()
+
+	// Rising edge trigger
+	if in && !t.edge {
+		t.startTime = tx
+		t.Q = pt > 0
+	} else if t.Q {
+		t.ET = tx.Sub(t.startTime)
+		if t.ET >= pt {
+			t.Q = false
+			t.ET = 0
+		}
+	}
+	t.edge = in
+}
+
+// PWM_PW generates a square wave signal specified by frequency and pulse width.
+type PWM_PW struct {
+	Q bool
+
+	// internal state
+	clk   CLK_PRG
+	pulse TP_X
+}
+
+// Update executes the PWM logic.
+func (p *PWM_PW) Update(f float64, pw time.Duration) {
+	if f > 0.0 {
+		p.clk.Update(time.Duration(1000.0/f) * time.Millisecond)
+		p.pulse.Update(p.clk.Q, pw)
+		p.Q = p.pulse.Q
+	} else {
+		p.Q = false
+	}
 }

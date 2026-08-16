@@ -36,6 +36,11 @@ type DRIVER_1 struct {
 
 // Update executes the driver logic for one cycle.
 func (d *DRIVER_1) Update(set, in, rst bool) bool {
+	// Update the timer first to ensure its state is current for this cycle.
+	if d.Timeout > 0 {
+		d.offTimer.Update(d.q, d.Timeout)
+	}
+
 	if d.offTimer.Q {
 		d.q = false
 	}
@@ -52,10 +57,6 @@ func (d *DRIVER_1) Update(set, in, rst bool) bool {
 		}
 	}
 	d.edge = in
-
-	if d.Timeout > 0 {
-		d.offTimer.Update(d.q, d.Timeout)
-	}
 
 	return d.q
 }
@@ -334,8 +335,12 @@ type INTERLOCK struct {
 
 // Update executes the interlock logic.
 func (il *INTERLOCK) Update(i1, i2 bool, tl time.Duration) (bool, bool) {
-	q1 := i1 && !il.t2.Update(i2, tl)
-	q2 := i2 && !il.t1.Update(i1, tl)
+	// First, update the state of both timers based on the current inputs.
+	il.t1.Update(i1, tl)
+	il.t2.Update(i2, tl)
+	// Then, calculate the outputs based on the new timer states.
+	q1 := i1 && !il.t2.Q
+	q2 := i2 && !il.t1.Q
 	return q1, q2
 }
 
@@ -497,7 +502,6 @@ func (m *MANUAL_4) Update(i [4]bool, man, stp bool, mIn [4]bool) {
 		m.tog = false
 		m.pos = 0
 	}
-	m.edge = stp
 }
 
 // PARSET selects one of 4 parameter sets addressed by A0 and A1.
@@ -548,35 +552,46 @@ func (p *PARSET) Update(a0, a1 bool, tc time.Duration, params [4][4]float64) {
 			p.start = true
 			p.last = tx
 			tcSec := tc.Seconds()
-			p.s[0] = (p.x[p.set][0] - p.P1) / tcSec
-			p.s[1] = (p.x[p.set][1] - p.P2) / tcSec
-			p.s[2] = (p.x[p.set][2] - p.P3) / tcSec
-			p.s[3] = (p.x[p.set][3] - p.P4) / tcSec
+			if tcSec > 0 {
+				p.s[0] = (p.x[p.set][0] - p.P1) / tcSec
+				p.s[1] = (p.x[p.set][1] - p.P2) / tcSec
+				p.s[2] = (p.x[p.set][2] - p.P3) / tcSec
+				p.s[3] = (p.x[p.set][3] - p.P4) / tcSec
+			}
 		}
-	} else if p.start && time.Since(p.last) < tc {
-		elapsed := time.Since(p.last).Seconds()
-		p.P1 += p.s[0] * elapsed
-		p.P2 += p.s[1] * elapsed
-		p.P3 += p.s[2] * elapsed
-		p.P4 += p.s[3] * elapsed
+	}
+
+	if p.start && time.Since(p.last) < tc {
+		// Ramp the outputs to the new value
+		remaining := tc - time.Since(p.last)
+		p.P1 = p.x[p.set][0] - p.s[0]*remaining.Seconds()
+		p.P2 = p.x[p.set][1] - p.s[1]*remaining.Seconds()
+		p.P3 = p.x[p.set][2] - p.s[2]*remaining.Seconds()
+		p.P4 = p.x[p.set][3] - p.s[3]*remaining.Seconds()
 	} else {
+		// Make sure outputs match the correct set values
 		p.start = false
 		p.P1 = p.x[p.set][0]
 		p.P2 = p.x[p.set][1]
 		p.P3 = p.x[p.set][2]
 		p.P4 = p.x[p.set][3]
 	}
-	p.last = tx
 }
 
 // PARSET2 selects one of 4 parameter sets depending on the value of X.
 type PARSET2 struct {
 	P1, P2, P3, P4 float64
 	pset           PARSET
+	init           bool
 }
 
 // Update executes the logic.
 func (p *PARSET2) Update(x, l1, l2, l3 float64, tc time.Duration, params [4][4]float64) {
+	if !p.init {
+		p.init = true
+		p.pset.x = params // Initialize the internal PARSET
+	}
+
 	var a0, a1 bool
 	absX := math.Abs(x)
 	if absX < l1 {
@@ -588,6 +603,7 @@ func (p *PARSET2) Update(x, l1, l2, l3 float64, tc time.Duration, params [4][4]f
 	} else {
 		a0, a1 = true, true
 	}
+
 	p.pset.Update(a0, a1, tc, params)
 	p.P1 = p.pset.P1
 	p.P2 = p.pset.P2
@@ -654,7 +670,7 @@ type SRAMP struct {
 	V float64
 
 	// internal state
-	cycleTime logic.TCS
+	cycleTime logic.TC_S
 	init      bool
 }
 
@@ -677,11 +693,11 @@ func (s *SRAMP) Update(x, aUp, aDn, vuMax, vdMax, limitHigh, limitLow float64, r
 	} else if x > s.Y { // Ramp up
 		s.V = math.Min(s.V+aUp*tc, vuMax)
 		s.V = math.Min(math.Sqrt((s.Y-x)*2.0*aDn), s.V)
-		s.Y = beeMath.Limit(limitLow, s.Y+math.Min(s.V*tc, x-s.Y), limitHigh)
+		s.Y = beeMath.LIMIT(limitLow, s.Y+math.Min(s.V*tc, x-s.Y), limitHigh)
 	} else { // Ramp down
 		s.V = math.Max(s.V+aDn*tc, vdMax)
 		s.V = math.Max(-math.Sqrt((s.Y-x)*2.0*aUp), s.V)
-		s.Y = beeMath.Limit(limitLow, s.Y+math.Max(s.V*tc, x-s.Y), limitHigh)
+		s.Y = beeMath.LIMIT(limitLow, s.Y+math.Max(s.V*tc, x-s.Y), limitHigh)
 	}
 }
 
@@ -737,101 +753,5 @@ func (t *TUNE) Update(set, su, sd, rst bool, ss, limitL, limitH, rstVal, setVal,
 		t.yStart = t.Y
 	}
 
-	t.Y = beeMath.Limit(limitL, t.Y, limitH)
-}
-
-// PWM_DC generates a square wave signal specified by frequency and duty cycle.
-type PWM_DC struct {
-	Q bool
-
-	// internal state
-	clk   CLK_PRG
-	pulse TP_X
-}
-
-// Update executes the PWM logic.
-func (p *PWM_DC) Update(f, dc float64) {
-	if f > 0.0 {
-		tmp := 1000.0 / f
-		p.clk.Update(time.Duration(tmp) * time.Millisecond)
-		p.pulse.Update(p.clk.Q, time.Duration(tmp*dc*float64(time.Millisecond)))
-		p.Q = p.pulse.Q
-	} else {
-		p.Q = false
-	}
-}
-
-// CLK_PRG uses the system time to generate a clock with a programmable period time.
-// A pulse is generated for one cycle only.
-type CLK_PRG struct {
-	Q bool
-
-	// internal state
-	init bool
-	last time.Time
-}
-
-// Update executes the clock logic.
-func (c *CLK_PRG) Update(pt time.Duration) {
-	tx := time.Now()
-
-	if !c.init {
-		c.init = true
-		c.last = tx.Add(-pt) // Ensure first pulse is generated
-	}
-
-	if tx.Sub(c.last) >= pt {
-		c.Q = true
-		c.last = tx
-	} else {
-		c.Q = false
-	}
-}
-
-// TP_X is a retriggerable, edge-triggered pulse timer.
-type TP_X struct {
-	Q  bool
-	ET time.Duration
-
-	// internal state
-	edge      bool
-	startTime time.Time
-}
-
-// Update executes the pulse timer logic.
-func (t *TP_X) Update(in bool, pt time.Duration) {
-	tx := time.Now()
-
-	// Rising edge trigger
-	if in && !t.edge {
-		t.startTime = tx
-		t.Q = pt > 0
-	} else if t.Q {
-		t.ET = tx.Sub(t.startTime)
-		if t.ET >= pt {
-			t.Q = false
-			t.ET = 0
-		}
-	}
-	t.edge = in
-}
-
-// PWM_PW generates a square wave signal specified by frequency and pulse width.
-type PWM_PW struct {
-	Q bool
-
-	// internal state
-	clk   CLK_PRG
-	pulse TP_X
-}
-
-// Update executes the PWM logic.
-func (p *PWM_PW) Update(f float64, pw time.Duration) {
-	if f > 0.0 {
-		p.clk.Update(time.Duration(1000.0/f) * time.Millisecond)
-		p.pulse.Update(p.clk.Q, pw)
-		p.Q = p.pulse.Q
-	} else {
-		p.Q = false
-	}
+	t.Y = beeMath.LIMIT(limitL, t.Y, limitH)
 }

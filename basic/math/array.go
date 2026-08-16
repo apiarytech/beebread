@@ -17,33 +17,33 @@ import (
 	"sort"
 )
 
-// ArrayAbs calculates the absolute value of every element in an array of float64.
+// ARRAY_ABS calculates the absolute value of every element in an array of float64.
 // The operation is done in-place.
-func ArrayAbs(arr []float64) {
+func ARRAY_ABS(arr []float64) {
 	for i := range arr {
 		arr[i] = math.Abs(arr[i])
 	}
 }
 
-// ArrayAdd adds a value to every element in an array of float64.
+// ARRAY_ADD adds a value to every element in an array of float64.
 // The operation is done in-place.
-func ArrayAdd(arr []float64, val float64) {
+func ARRAY_ADD(arr []float64, val float64) {
 	for i := range arr {
 		arr[i] += val
 	}
 }
 
-// ArrayInit initializes every element in an array of float64 with a given value.
+// ARRAY_INIT initializes every element in an array of float64 with a given value.
 // The operation is done in-place.
-func ArrayInit(arr []float64, val float64) {
+func ARRAY_INIT(arr []float64, val float64) {
 	for i := range arr {
 		arr[i] = val
 	}
 }
 
-// ArrayMedian calculates the median of an array of float64.
+// ARRAY_MEDIAN calculates the median of an array of float64.
 // Note: This function sorts the array in-place before calculating the median.
-func ArrayMedian(arr []float64) float64 {
+func ARRAY_MEDIAN(arr []float64) float64 {
 	size := len(arr)
 	if size == 0 {
 		return 0.0
@@ -62,26 +62,26 @@ func ArrayMedian(arr []float64) float64 {
 	return (arr[mid-1] + arr[mid]) / 2.0
 }
 
-// ArrayMul multiplies every element in an array of float64 with a value.
+// ARRAY_MUL multiplies every element in an array of float64 with a value.
 // The operation is done in-place.
-func ArrayMul(arr []float64, val float64) {
+func ARRAY_MUL(arr []float64, val float64) {
 	for i := range arr {
 		arr[i] *= val
 	}
 }
 
-// ArrayShuffle shuffles every element in an array of float64 randomly.
+// ARRAY_SHUFFLE shuffles every element in an array of float64 randomly.
 // The operation is done in-place.
-func ArrayShuffle(arr []float64) {
+func ARRAY_SHUFFLE(arr []float64) {
 	// Using Go's standard library rand.Shuffle is the idiomatic way.
 	rand.Shuffle(len(arr), func(i, j int) {
 		arr[i], arr[j] = arr[j], arr[i]
 	})
 }
 
-// ArraySort sorts an array of float64 either ascending or descending.
+// ARRAY_SORT sorts an array of float64 either ascending or descending.
 // The operation is done in-place.
-func ArraySort(arr []float64, desc bool) {
+func ARRAY_SORT(arr []float64, desc bool) {
 	if desc {
 		sort.Sort(sort.Reverse(sort.Float64Slice(arr)))
 	} else {
@@ -89,8 +89,8 @@ func ArraySort(arr []float64, desc bool) {
 	}
 }
 
-// ArrayAvg calculates the average of a given array of float64.
-func ArrayAvg(arr []float64) float64 {
+// ARRAY_AVG calculates the average of a given array of float64.
+func ARRAY_AVG(arr []float64) float64 {
 	if len(arr) == 0 {
 		return 0.0
 	}
@@ -101,8 +101,8 @@ func ArrayAvg(arr []float64) float64 {
 	return sum / float64(len(arr))
 }
 
-// ArrayMax finds the maximum value in an array of float64.
-func ArrayMax(arr []float64) float64 {
+// ARRAY_MAX finds the maximum value in an array of float64.
+func ARRAY_MAX(arr []float64) float64 {
 	if len(arr) == 0 {
 		return 0.0
 	}
@@ -115,8 +115,8 @@ func ArrayMax(arr []float64) float64 {
 	return max
 }
 
-// ArrayMin finds the minimum value in an array of float64.
-func ArrayMin(arr []float64) float64 {
+// ARRAY_MIN finds the minimum value in an array of float64.
+func ARRAY_MIN(arr []float64) float64 {
 	if len(arr) == 0 {
 		return 0.0
 	}
@@ -129,8 +129,8 @@ func ArrayMin(arr []float64) float64 {
 	return min
 }
 
-// ArraySum calculates the sum of all elements in an array of float64.
-func ArraySum(arr []float64) float64 {
+// ARRAY_SUM calculates the sum of all elements in an array of float64.
+func ARRAY_SUM(arr []float64) float64 {
 	sum := 0.0
 	for _, v := range arr {
 		sum += v
@@ -138,14 +138,14 @@ func ArraySum(arr []float64) float64 {
 	return sum
 }
 
-// ArrayVar calculates the sample variance of a given array of float64.
-func ArrayVar(arr []float64) float64 {
+// ARRAY_VAR calculates the sample variance of a given array of float64.
+func ARRAY_VAR(arr []float64) float64 {
 	n := len(arr)
 	if n < 2 { // Variance requires at least 2 data points.
 		return 0.0
 	}
 
-	avg := ArrayAvg(arr)
+	avg := ARRAY_AVG(arr)
 	variance := 0.0
 	for _, v := range arr {
 		variance += (v - avg) * (v - avg)
@@ -153,22 +153,22 @@ func ArrayVar(arr []float64) float64 {
 	return variance / float64(n-1)
 }
 
-// ArraySdv calculates the standard deviation of a given array of float64.
-func ArraySdv(arr []float64) float64 {
-	return math.Sqrt(ArrayVar(arr))
+// ARRAY_SDV calculates the standard deviation of a given array of float64.
+func ARRAY_SDV(arr []float64) float64 {
+	return math.Sqrt(ARRAY_VAR(arr))
 }
 
-// ArraySpr calculates the spread (range) of a given array of float64.
-func ArraySpr(arr []float64) float64 {
+// ARRAY_SPR calculates the spread (range) of a given array of float64.
+func ARRAY_SPR(arr []float64) float64 {
 	if len(arr) == 0 {
 		return 0.0
 	}
-	return ArrayMax(arr) - ArrayMin(arr)
+	return ARRAY_MAX(arr) - ARRAY_MIN(arr)
 }
 
-// ArrayTrend calculates the trend of a given array.
+// ARRAY_TREND calculates the trend of a given array.
 // It's the average of the second half minus the average of the first half.
-func ArrayTrend(arr []float64) float64 {
+func ARRAY_TREND(arr []float64) float64 {
 	n := len(arr)
 	if n < 2 {
 		return 0.0
@@ -180,11 +180,11 @@ func ArrayTrend(arr []float64) float64 {
 
 	// The original ST code has a slight difference for even/odd lengths,
 	// but this approach is cleaner and captures the intent.
-	return ArrayAvg(secondHalf) - ArrayAvg(firstHalf)
+	return ARRAY_AVG(secondHalf) - ARRAY_AVG(firstHalf)
 }
 
-// ArrayGav calculates the geometric average of a given array of float64.
-func ArrayGav(arr []float64) float64 {
+// ARRAY_GAV calculates the geometric average of a given array of float64.
+func ARRAY_GAV(arr []float64) float64 {
 	n := len(arr)
 	if n == 0 {
 		return 0.0
@@ -200,8 +200,8 @@ func ArrayGav(arr []float64) float64 {
 	return math.Exp(sumOfLogs / float64(n))
 }
 
-// ArrayHav calculates the harmonic average of a given array of float64.
-func ArrayHav(arr []float64) float64 {
+// ARRAY_HAV calculates the harmonic average of a given array of float64.
+func ARRAY_HAV(arr []float64) float64 {
 	n := len(arr)
 	if n == 0 {
 		return 0.0
@@ -217,8 +217,8 @@ func ArrayHav(arr []float64) float64 {
 	return float64(n) / sumOfInverses
 }
 
-// IsSorted checks if an array of float64 is sorted in ascending order.
-func IsSorted(arr []float64) bool {
+// IS_SORTED checks if an array of float64 is sorted in ascending order.
+func IS_SORTED(arr []float64) bool {
 	// Go's standard library provides a convenient function for this.
 	return sort.Float64sAreSorted(arr)
 }

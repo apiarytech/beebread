@@ -12,15 +12,15 @@
 package logic
 
 import (
-	. "beebread/basic"
+	"beebread/basic"
 	"math"
 	"time"
 )
 
-// CrcGen generates a CRC checksum from a block of data.
+// CRC_GEN generates a CRC checksum from a block of data.
 // The CRC Polynom is specified with PN and the length of the Polynom is specified by PL.
 // A Polynom x^4 + x + 1 is represented by 0x3 with length 4.
-func CrcGen(data []byte, pl int, pn, init, xorOut uint32, revIn, revOut bool) uint32 {
+func CRC_GEN(data []byte, pl int, pn, init, xorOut uint32, revIn, revOut bool) uint32 {
 	if pl <= 0 || pl > 32 {
 		return 0
 	}
@@ -34,7 +34,7 @@ func CrcGen(data []byte, pl int, pn, init, xorOut uint32, revIn, revOut bool) ui
 	for i := 0; i < 4 && i < size; i++ {
 		var d byte
 		if revIn {
-			d = Reverse(data[i])
+			d = REVERSE(data[i])
 		} else {
 			d = data[i]
 		}
@@ -48,7 +48,7 @@ func CrcGen(data []byte, pl int, pn, init, xorOut uint32, revIn, revOut bool) ui
 	for i := 4; i < size; i++ {
 		var d byte
 		if revIn {
-			d = Reverse(data[i])
+			d = REVERSE(data[i])
 		} else {
 			d = data[i]
 		}
@@ -134,13 +134,13 @@ func (m *Matrix) Update(x1, x2, x3, x4, x5, release bool) {
 			if col > 0 {
 				m.Code = col
 				isPressed := (m.x[i]>>(col-1))&1 != 0
-				m.Code = BitLoadB(m.Code, isPressed, 7)
-				m.l[i] = BitLoadB(m.l[i], isPressed, uint(col-1))
+				m.Code = BIT_LOAD_B(m.Code, isPressed, 7)
+				m.l[i] = BIT_LOAD_B(m.l[i], isPressed, uint(col-1))
 
 				m.TP = true
-				m.Code = BitLoadB(m.Code, (byte(i)>>0)&1 != 0, 4)
-				m.Code = BitLoadB(m.Code, (byte(i)>>1)&1 != 0, 5)
-				m.Code = BitLoadB(m.Code, (byte(i)>>2)&1 != 0, 6)
+				m.Code = BIT_LOAD_B(m.Code, (byte(i)>>0)&1 != 0, 4)
+				m.Code = BIT_LOAD_B(m.Code, (byte(i)>>1)&1 != 0, 5)
+				m.Code = BIT_LOAD_B(m.Code, (byte(i)>>2)&1 != 0, 6)
 
 				if !release && !isPressed {
 					m.Code = 0
@@ -161,15 +161,15 @@ end_loop:
 	m.Y[3] = (temp & 0x08) != 0
 }
 
-// PinCode scans the input of a keypad (Matrix) for a sequence of characters.
-type PinCode struct {
+// PIN_CODE scans the input of a keypad (Matrix) for a sequence of characters.
+type PIN_CODE struct {
 	TP bool
 	// internal state
 	pos int
 }
 
 // Update executes the pin code checking logic.
-func (p *PinCode) Update(cb byte, e bool, pin string) {
+func (p *PIN_CODE) Update(cb byte, e bool, pin string) {
 	p.TP = false
 	if e {
 		if p.pos < len(pin) && cb == pin[p.pos] {
@@ -184,15 +184,15 @@ func (p *PinCode) Update(cb byte, e bool, pin string) {
 	}
 }
 
-// EsrCollect collects ESR data from up to 8 ESR_MON modules and stores them in an output array.
-type EsrCollect struct {
-	EsrOut [32]EsrData
+// ESR_COLLECT collects ESR data from up to 8 ESR_MON modules and stores them in an output array.
+type ESR_COLLECT struct {
+	EsrOut [32]basic.ESR_DATA
 	pos    int
 	cnt    int
 }
 
 // Update executes the ESR collection logic.
-func (e *EsrCollect) Update(rst bool, esrIn ...[]EsrData) int {
+func (e *ESR_COLLECT) Update(rst bool, esrIn ...[]basic.ESR_DATA) int {
 	if rst || e.cnt < 0 {
 		e.pos = -1
 		e.cnt = 0 // Set to 0 to allow processing
@@ -209,20 +209,20 @@ func (e *EsrCollect) Update(rst bool, esrIn ...[]EsrData) int {
 	return e.pos
 }
 
-// EsrMonB8 monitors up to 8 binary inputs and reports changes with a timestamp and address label.
-type EsrMonB8 struct {
+// ESR_MON_B8 monitors up to 8 binary inputs and reports changes with a timestamp and address label.
+type ESR_MON_B8 struct {
 	EsrFlag bool
-	EsrOut  [4]EsrData
+	EsrOut  [4]basic.ESR_DATA
 
 	// internal state
 	lastState [8]bool
 }
 
 // Update executes the monitoring logic.
-func (e *EsrMonB8) Update(dtIn time.Time, s [8]bool, a [8]string) {
+func (e *ESR_MON_B8) Update(dtIn time.Time, s [8]bool, a [8]string) {
 	e.EsrFlag = false
 	// Clear previous output
-	e.EsrOut = [4]EsrData{}
+	e.EsrOut = [4]basic.ESR_DATA{}
 	cnt := 0
 
 	for i := 0; i < 8 && cnt < 4; i++ {
@@ -238,20 +238,20 @@ func (e *EsrMonB8) Update(dtIn time.Time, s [8]bool, a [8]string) {
 	}
 }
 
-// EsrMonR4 monitors up to 4 real inputs and reports changes with a timestamp and address label.
-type EsrMonR4 struct {
+// ESR_MON_R4 monitors up to 4 real inputs and reports changes with a timestamp and address label.
+type ESR_MON_R4 struct {
 	EsrFlag bool
-	EsrOut  [4]EsrData
+	EsrOut  [4]basic.ESR_DATA
 
 	// internal state
 	lastState [4]float32
 }
 
 // Update executes the monitoring logic.
-func (e *EsrMonR4) Update(dtIn time.Time, r [4]float32, a [4]string, s [4]float32) {
+func (e *ESR_MON_R4) Update(dtIn time.Time, r [4]float32, a [4]string, s [4]float32) {
 	e.EsrFlag = false
 	// Clear previous output
-	e.EsrOut = [4]EsrData{}
+	e.EsrOut = [4]basic.ESR_DATA{}
 	cnt := 0
 
 	for i := 0; i < 4 && cnt < 4; i++ {
@@ -273,27 +273,27 @@ func (e *EsrMonR4) Update(dtIn time.Time, r [4]float32, a [4]string, s [4]float3
 	}
 }
 
-// EsrMonX8 monitors up to 8 status inputs (bytes) and reports changes.
-type EsrMonX8 struct {
+// ESR_MON_X8 monitors up to 8 status inputs (bytes) and reports changes.
+type ESR_MON_X8 struct {
 	EsrFlag bool
-	EsrOut  [4]EsrData
+	EsrOut  [4]basic.ESR_DATA
 
 	// internal state
 	lastState [8]byte
 }
 
 // Update executes the monitoring logic.
-func (e *EsrMonX8) Update(dtIn time.Time, s [8]byte, a [8]string, mode byte) {
+func (e *ESR_MON_X8) Update(dtIn time.Time, s [8]byte, a [8]string, mode byte) {
 	e.EsrFlag = false
 	// Clear previous output
-	e.EsrOut = [4]EsrData{}
+	e.EsrOut = [4]basic.ESR_DATA{}
 	cnt := 0
 
 	for i := 0; i < 8 && cnt < 4; i++ {
 		if s[i] != e.lastState[i] {
 			// Check mode: 1=error only, 2=error+status, 3=error+status+debug
 			if (s[i] < 100) || (s[i] >= 100 && s[i] < 200 && mode >= 2) || (s[i] >= 200 && mode == 3) {
-				e.EsrOut[cnt] = StatusToEsr(s[i], a[i], dtIn, time.Duration(time.Now().UnixNano()))
+				e.EsrOut[cnt] = STATUS_TO_ESR(s[i], a[i], dtIn, time.Duration(time.Now().UnixNano()))
 				e.lastState[i] = s[i]
 				cnt++
 				e.EsrFlag = true
@@ -302,19 +302,9 @@ func (e *EsrMonX8) Update(dtIn time.Time, s [8]byte, a [8]string, mode byte) {
 	}
 }
 
-// OscatVersion returns the library version number or release date.
-func OscatVersion(in bool) uint32 {
-	if in {
-		// Corresponds to DATE_TO_DWORD(D#2024-07-16)
-		// This is a placeholder. A real implementation would calculate this.
-		return 19736 // Days since 1970-01-01 for 2024-07-16
-	}
-	return 335
-}
-
-// StatusToEsr creates ESR data from a status byte.
-func StatusToEsr(status byte, address string, dtIn time.Time, ts time.Duration) EsrData {
-	var esr EsrData
+// STATUS_TO_ESR creates ESR data from a status byte.
+func STATUS_TO_ESR(status byte, address string, dtIn time.Time, ts time.Duration) basic.ESR_DATA {
+	var esr basic.ESR_DATA
 	if status < 100 {
 		esr.Typ = 1
 	} else if status < 200 {
@@ -334,4 +324,43 @@ func boolToByte(b bool) byte {
 		return 1
 	}
 	return 0
+}
+
+// inc implements a modular increment.
+func inc(x, d, m int) int {
+	if m <= 0 {
+		return x
+	}
+	return (x + d) % (m + 1)
+}
+
+// INC1 increments X by 1 and wraps around to 0 if N is reached.
+// It generates a sequence: 0, 1, 2, ..., N-1, 0, ...
+func inc1(x, n int) int {
+	if x >= n-1 {
+		return 0
+	}
+	return x + 1
+}
+
+// limit_B limits a byte value to a given range.
+func limit_B(min, val, max byte) byte {
+	if val < min {
+		return min
+	}
+	if val > max {
+		return max
+	}
+	return val
+}
+
+// limit_DW limits a dword (uint32) value to a given range.
+func limit_DW(min, val, max uint32) uint32 {
+	if val < min {
+		return min
+	}
+	if val > max {
+		return max
+	}
+	return val
 }
