@@ -2,7 +2,7 @@
  * Copyright (C) 2026 Franklin D. Amador
  *
  * This software is dual-licensed under:
- * - GPL v2.0
+ * - EPL v2.0
  * - Commercial
  *
  * You may choose to use this software under the terms of either license.
@@ -11,167 +11,185 @@
 
 package logic
 
-// FIFO_16 is a 16-element DWORD FIFO memory.
+import (
+	"time"
+
+	"github.com/apiarytech/beebread/basic/math"
+	"github.com/apiarytech/royaljelly/iec"
+)
+
+// fifo is a first in first out memory of n DWORDs, with the inputs and
+// outputs of FIFO_16 and FIFO_32.
+type fifo struct {
+	DIN   iec.DWORD
+	E     iec.BOOL // default TRUE
+	RD    iec.BOOL
+	WD    iec.BOOL
+	RST   iec.BOOL
+	DOUT  iec.DWORD
+	EMPTY iec.BOOL // default TRUE
+	FULL  iec.BOOL
+
+	pr, pw      iec.INT
+	initialized bool
+}
+
+func (f *fifo) defaults() {
+	f.initialized = true
+	f.EMPTY = true
+}
+
+func (f *fifo) run(buf []iec.DWORD) {
+	n := iec.INT(len(buf))
+	if f.RST {
+		f.pw = f.pr
+		f.FULL = false
+		f.EMPTY = true
+		f.DOUT = 0
+	} else if f.E {
+		if !f.EMPTY && f.RD {
+			f.DOUT = buf[f.pr]
+			f.pr = math.INC1(f.pr, n)
+			f.EMPTY = f.pr == f.pw
+			f.FULL = false
+		}
+		if !f.FULL && f.WD {
+			buf[f.pw] = f.DIN
+			f.pw = math.INC1(f.pw, n)
+			f.FULL = f.pw == f.pr
+			f.EMPTY = false
+		}
+	}
+}
+
+// FIFO_16 is a first in first out memory of 16 DWORDs. While E is true, RD
+// reads the oldest value to DOUT and WD writes DIN, once each scan.
 type FIFO_16 struct {
-	Dout  uint32
-	Empty bool
-	Full  bool
-
-	// internal state
-	fifo [16]uint32
-	pr   int // read pointer
-	pw   int // write pointer
+	fifo
+	buf [16]iec.DWORD
 }
 
-// Update executes the FIFO logic for one cycle.
-func (f *FIFO_16) Update(din uint32, e, rd, wd, rst bool) {
-	if rst {
-		f.pw = f.pr
-		f.Full = false
-		f.Empty = true
-		f.Dout = 0
-		return
-	}
-
-	if !e {
-		return
-	}
-
-	// A read and a write can happen in the same cycle.
-	if !f.Empty && rd {
-		f.Dout = f.fifo[f.pr]
-		f.pr = inc1(f.pr, 16)
-		f.Empty = (f.pr == f.pw)
-		f.Full = false
-	}
-
-	if !f.Full && wd {
-		f.fifo[f.pw] = din
-		f.pw = inc1(f.pw, 16)
-		f.Full = (f.pw == f.pr)
-		f.Empty = false
-	}
+// INIT resets the block and sets E to its initial value.
+func (f *FIFO_16) INIT() {
+	*f = FIFO_16{}
+	f.defaults()
+	f.E = true
 }
 
-// FIFO_32 is a 32-element DWORD FIFO memory.
+// Execute runs the block once.
+func (f *FIFO_16) Execute(now time.Time) {
+	if !f.initialized {
+		f.defaults()
+	}
+	f.run(f.buf[:])
+}
+
+// FIFO_32 is a first in first out memory of 32 DWORDs. While E is true, RD
+// reads the oldest value to DOUT and WD writes DIN, once each scan.
 type FIFO_32 struct {
-	Dout  uint32
-	Empty bool
-	Full  bool
-
-	// internal state
-	fifo [32]uint32
-	pr   int // read pointer
-	pw   int // write pointer
+	fifo
+	buf [32]iec.DWORD
 }
 
-// Update executes the FIFO logic for one cycle.
-func (f *FIFO_32) Update(din uint32, e, rd, wd, rst bool) {
-	if rst {
-		f.pw = f.pr
-		f.Full = false
-		f.Empty = true
-		f.Dout = 0
-		return
-	}
+// INIT resets the block and sets E to its initial value.
+func (f *FIFO_32) INIT() {
+	*f = FIFO_32{}
+	f.defaults()
+	f.E = true
+}
 
-	if !e {
-		return
+// Execute runs the block once.
+func (f *FIFO_32) Execute(now time.Time) {
+	if !f.initialized {
+		f.defaults()
 	}
+	f.run(f.buf[:])
+}
 
-	if !f.Empty && rd {
-		f.Dout = f.fifo[f.pr]
-		f.pr = inc1(f.pr, 32)
-		f.Empty = (f.pr == f.pw)
-		f.Full = false
-	}
+// stack is a last in first out memory of n DWORDs, with the inputs and
+// outputs of STACK_16 and STACK_32.
+type stack struct {
+	DIN   iec.DWORD
+	E     iec.BOOL // default TRUE
+	RD    iec.BOOL
+	WD    iec.BOOL
+	RST   iec.BOOL
+	DOUT  iec.DWORD
+	EMPTY iec.BOOL // default TRUE
+	FULL  iec.BOOL
 
-	if !f.Full && wd {
-		f.fifo[f.pw] = din
-		f.pw = inc1(f.pw, 32)
-		f.Full = (f.pw == f.pr)
-		f.Empty = false
+	pt          iec.INT
+	initialized bool
+}
+
+func (s *stack) defaults() {
+	s.initialized = true
+	s.EMPTY = true
+}
+
+func (s *stack) run(buf []iec.DWORD) {
+	n := iec.INT(len(buf)) - 1
+	if s.RST {
+		s.pt = 0
+		s.EMPTY = true
+		s.FULL = false
+		s.DOUT = 0
+	} else if s.E {
+		if !s.EMPTY && s.RD {
+			s.pt--
+			s.DOUT = buf[s.pt]
+			s.EMPTY = s.pt == 0
+			s.FULL = false
+		}
+		if !s.FULL && s.WD {
+			buf[s.pt] = s.DIN
+			s.pt++
+			s.FULL = s.pt > n
+			s.EMPTY = false
+		}
 	}
 }
 
-// STACK_16 is a 16-element DWORD LIFO (Last-In, First-Out) stack memory.
+// STACK_16 is a last in first out memory of 16 DWORDs. While E is true, RD
+// reads the newest value to DOUT and WD writes DIN, once each scan.
 type STACK_16 struct {
-	Dout  uint32
-	Empty bool
-	Full  bool
-
-	// internal state
-	stack [16]uint32
-	pt    int // stack pointer
+	stack
+	buf [16]iec.DWORD
 }
 
-// Update executes the stack logic for one cycle.
-func (s *STACK_16) Update(din uint32, e, rd, wd, rst bool) {
-	if rst {
-		s.pt = 0
-		s.Empty = true
-		s.Full = false
-		s.Dout = 0
-		return
-	}
-
-	if !e {
-		return
-	}
-
-	// A read and a write can happen in the same cycle.
-	if !s.Empty && rd {
-		s.pt--
-		s.Dout = s.stack[s.pt]
-		s.Empty = (s.pt == 0)
-		s.Full = false
-	}
-
-	if !s.Full && wd {
-		s.stack[s.pt] = din
-		s.pt++
-		s.Full = (s.pt >= 16)
-		s.Empty = false
-	}
+// INIT resets the block and sets E to its initial value.
+func (s *STACK_16) INIT() {
+	*s = STACK_16{}
+	s.defaults()
+	s.E = true
 }
 
-// STACK_32 is a 32-element DWORD LIFO (Last-In, First-Out) stack memory.
+// Execute runs the block once.
+func (s *STACK_16) Execute(now time.Time) {
+	if !s.initialized {
+		s.defaults()
+	}
+	s.run(s.buf[:])
+}
+
+// STACK_32 is a last in first out memory of 32 DWORDs. While E is true, RD
+// reads the newest value to DOUT and WD writes DIN, once each scan.
 type STACK_32 struct {
-	Dout  uint32
-	Empty bool
-	Full  bool
-
-	// internal state
-	stack [32]uint32
-	pt    int // stack pointer
+	stack
+	buf [32]iec.DWORD
 }
 
-// Update executes the stack logic for one cycle.
-func (s *STACK_32) Update(din uint32, e, rd, wd, rst bool) {
-	if rst {
-		s.pt = 0
-		s.Empty = true
-		s.Full = false
-		s.Dout = 0
-		return
-	}
+// INIT resets the block and sets E to its initial value.
+func (s *STACK_32) INIT() {
+	*s = STACK_32{}
+	s.defaults()
+	s.E = true
+}
 
-	if !e {
-		return
+// Execute runs the block once.
+func (s *STACK_32) Execute(now time.Time) {
+	if !s.initialized {
+		s.defaults()
 	}
-
-	// A read and a write can happen in the same cycle.
-	if !s.Empty && rd {
-		s.pt--
-		s.Dout = s.stack[s.pt]
-		s.Empty = (s.pt == 0)
-		s.Full = false
-	}
-
-	if !s.Full && wd {
-		s.stack[s.pt] = din
-		s.pt++
-		s.Full = (s.pt >= 32)
-		s.Empty = false
-	}
+	s.run(s.buf[:])
 }

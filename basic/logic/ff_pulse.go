@@ -2,7 +2,7 @@
  * Copyright (C) 2026 Franklin D. Amador
  *
  * This software is dual-licensed under:
- * - GPL v2.0
+ * - EPL v2.0
  * - Commercial
  *
  * You may choose to use this software under the terms of either license.
@@ -11,85 +11,86 @@
 
 package logic
 
-// LTCH is a transparent latch with an asynchronous reset.
-// As long as L (Latch) is true, the output Q follows the input D.
-// When L goes false, Q holds its last value.
-// RST asynchronously forces Q to false.
+import (
+	"time"
+
+	"github.com/apiarytech/royaljelly/iec"
+)
+
+// LTCH is a transparent latch with asynchronous reset: while L is true, Q
+// follows D.
 type LTCH struct {
-	Q bool
+	D, L, RST iec.BOOL
+	Q         iec.BOOL
 }
 
-// Update executes the latch logic for one cycle.
-func (l *LTCH) Update(d, latch, rst bool) {
-	if rst {
+// INIT resets the block.
+func (l *LTCH) INIT() { *l = LTCH{} }
+
+// Execute runs the block once.
+func (l *LTCH) Execute(now time.Time) {
+	if l.RST {
 		l.Q = false
-	} else if latch {
-		l.Q = d
+	} else if l.L {
+		l.Q = l.D
 	}
-	// If neither rst nor latch is true, Q retains its state.
 }
 
-// LTCH_4 is a quad transparent latch with a common asynchronous reset and latch input.
+// LTCH_4 is a quad transparent latch with asynchronous reset: while L is
+// true, Q0..Q3 follow D0..D3.
 type LTCH_4 struct {
-	Q0 bool
-	Q1 bool
-	Q2 bool
-	Q3 bool
+	D0, D1, D2, D3, L, RST iec.BOOL
+	Q0, Q1, Q2, Q3         iec.BOOL
 }
 
-// Update executes the latch logic for one cycle.
-func (l *LTCH_4) Update(d0, d1, d2, d3, latch, rst bool) {
-	if rst {
-		l.Q0 = false
-		l.Q1 = false
-		l.Q2 = false
-		l.Q3 = false
-	} else if latch {
-		l.Q0 = d0
-		l.Q1 = d1
-		l.Q2 = d2
-		l.Q3 = d3
+// INIT resets the block.
+func (l *LTCH_4) INIT() { *l = LTCH_4{} }
+
+// Execute runs the block once.
+func (l *LTCH_4) Execute(now time.Time) {
+	if l.RST {
+		l.Q0, l.Q1, l.Q2, l.Q3 = false, false, false, false
+	} else if l.L {
+		l.Q0, l.Q1, l.Q2, l.Q3 = l.D0, l.D1, l.D2, l.D3
 	}
-	// If neither rst nor latch is true, outputs retain their state.
 }
 
-// STORE_8 stores up to 8 boolean inputs until a reset clears the outputs.
-// The respective output is set with a true value at the respective input and stays true until a reset.
-// A Set input sets all outputs true simultaneously.
-// A rising edge on Clr resets the lowest priority output (Q0 first, then Q1, etc.).
+// STORE_8 stores 8 inputs: an output is set when its input is true and
+// stays set until RST. SET sets all outputs, and a rising edge of CLR clears
+// the lowest output that is set.
 type STORE_8 struct {
-	Q [8]bool
+	SET                            iec.BOOL
+	D0, D1, D2, D3, D4, D5, D6, D7 iec.BOOL
+	CLR, RST                       iec.BOOL
+	Q0, Q1, Q2, Q3, Q4, Q5, Q6, Q7 iec.BOOL
 
-	// internal state
-	clrEdge bool
+	edge iec.BOOL
 }
 
-// Update executes the storage logic for one cycle.
-func (s *STORE_8) Update(set bool, d [8]bool, clr, rst bool) {
-	if rst {
-		s.Q = [8]bool{} // Zeros all elements
-	} else if set {
-		for i := range s.Q {
-			s.Q[i] = true
-		}
-	} else {
-		// Set individual bits based on data inputs
-		for i, val := range d {
-			if val {
-				s.Q[i] = true
-			}
-		}
+// INIT resets the block.
+func (s *STORE_8) INIT() { *s = STORE_8{} }
 
-		// Rising edge on Clr
-		if clr && !s.clrEdge {
-			// Find the first set bit (from Q0 to Q7) and clear it.
-			for i := range s.Q {
-				if s.Q[i] {
-					s.Q[i] = false
-					break // Exit after clearing the first one found
-				}
-			}
+// Execute runs the block once.
+func (s *STORE_8) Execute(now time.Time) {
+	q := [8]*iec.BOOL{&s.Q0, &s.Q1, &s.Q2, &s.Q3, &s.Q4, &s.Q5, &s.Q6, &s.Q7}
+	if s.RST || s.SET {
+		for _, p := range q {
+			*p = !s.RST
+		}
+		return
+	}
+	d := [8]iec.BOOL{s.D0, s.D1, s.D2, s.D3, s.D4, s.D5, s.D6, s.D7}
+	for i, p := range q {
+		if d[i] {
+			*p = true
 		}
 	}
-	s.clrEdge = clr
+	if s.CLR && !s.edge {
+		i := 0
+		for i < 7 && !*q[i] {
+			i++
+		}
+		*q[i] = false
+	}
+	s.edge = s.CLR
 }

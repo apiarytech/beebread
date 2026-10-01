@@ -2,7 +2,7 @@
  * Copyright (C) 2026 Franklin D. Amador
  *
  * This software is dual-licensed under:
- * - GPL v2.0
+ * - EPL v2.0
  * - Commercial
  *
  * You may choose to use this software under the terms of either license.
@@ -12,608 +12,689 @@
 package engineering
 
 import (
-	"math"
 	"time"
 
-	"beebread/basic"
-	"beebread/basic/logic"
-	"beebread/basic/time_date"
-
-	beeMath "beebread/basic/math"
+	. "github.com/apiarytech/beebread/basic"
+	"github.com/apiarytech/beebread/basic/math"
+	td "github.com/apiarytech/beebread/basic/time_date"
+	"github.com/apiarytech/royaljelly/iec"
 )
 
-// ALARM_2 checks two pairs of limits and signals when the input is above or below a set limit.
+// ALARM_2 checks X against two pairs of limits with the hysteresis HYS:
+// Qn_LO is true below LO_n and Qn_HI above HI_n.
 type ALARM_2 struct {
-	Q1Lo bool
-	Q1Hi bool
-	Q2Lo bool
-	Q2Hi bool
+	X                          iec.REAL
+	LO_1, HI_1, LO_2, HI_2     iec.REAL
+	HYS                        iec.REAL
+	Q1_LO, Q1_HI, Q2_LO, Q2_HI iec.BOOL
 }
 
-// Update executes the alarm logic.
-func (a *ALARM_2) Update(x, lo1, hi1, lo2, hi2, hys float64) {
-	tmp := x - hys*0.5
-	if tmp > lo1 {
-		a.Q1Lo = false
-	}
-	if tmp > lo2 {
-		a.Q2Lo = false
-	}
-	if tmp > hi1 {
-		a.Q1Hi = true
-	}
-	if tmp > hi2 {
-		a.Q2Hi = true
-	}
+// INIT resets the block.
+func (a *ALARM_2) INIT() { *a = ALARM_2{} }
 
-	tmp += hys
-	if tmp < lo1 {
-		a.Q1Lo = true
+// Execute runs the block once.
+func (a *ALARM_2) Execute(now time.Time) {
+	tmp := a.X - a.HYS*0.5
+	if tmp > a.LO_1 {
+		a.Q1_LO = false
 	}
-	if tmp < lo2 {
-		a.Q2Lo = true
+	if tmp > a.LO_2 {
+		a.Q2_LO = false
 	}
-	if tmp < hi1 {
-		a.Q1Hi = false
+	if tmp > a.HI_1 {
+		a.Q1_HI = true
 	}
-	if tmp < hi2 {
-		a.Q2Hi = false
+	if tmp > a.HI_2 {
+		a.Q2_HI = true
+	}
+	tmp = tmp + a.HYS
+	if tmp < a.LO_1 {
+		a.Q1_LO = true
+	}
+	if tmp < a.LO_2 {
+		a.Q2_LO = true
+	}
+	if tmp < a.HI_1 {
+		a.Q1_HI = false
+	}
+	if tmp < a.HI_2 {
+		a.Q2_HI = false
 	}
 }
 
-// BAR_GRAPH is a multi-window comparator that displays an analog signal on 8 digital outputs.
+// BAR_GRAPH shows X on one of 8 outputs: LOW below TRIGGER_LOW, Q1..Q6 for
+// 6 equal steps, linear or logarithmic if LOG_SCALE is true, up to
+// TRIGGER_HIGH, and HIGH above. ALARM_LOW and ALARM_HIGH make LOW and HIGH
+// latch and set ALARM until RST. STATUS is 110 normal, 111 low, 112 high, 1
+// low alarm and 2 high alarm.
 type BAR_GRAPH struct {
-	Low    bool
-	Q1     bool
-	Q2     bool
-	Q3     bool
-	Q4     bool
-	Q5     bool
-	Q6     bool
-	High   bool
-	Alarm  bool
-	Status byte
+	X                                 iec.REAL
+	RST                               iec.BOOL
+	TRIGGER_LOW, TRIGGER_HIGH         iec.REAL
+	ALARM_LOW, ALARM_HIGH             iec.BOOL
+	LOG_SCALE                         iec.BOOL
+	LOW, Q1, Q2, Q3, Q4, Q5, Q6, HIGH iec.BOOL
+	ALARM                             iec.BOOL
+	STATUS                            iec.BYTE
 
-	// internal state
-	init bool
-	t    [5]float64
+	init iec.BOOL
+	t    [5]iec.REAL
 }
 
-// Update executes the bar graph logic.
-func (b *BAR_GRAPH) Update(x, triggerLow, triggerHigh float64, rst, alarmLow, alarmHigh, logScale bool) {
+// INIT resets the block.
+func (b *BAR_GRAPH) INIT() { *b = BAR_GRAPH{} }
+
+// Execute runs the block once.
+func (b *BAR_GRAPH) Execute(now time.Time) {
 	if !b.init {
 		b.init = true
-		if logScale {
-			temp := math.Exp(math.Log(triggerHigh/triggerLow) * 0.16666666666666666)
-			b.t[0] = triggerLow * temp
+		if b.LOG_SCALE {
+			temp := EXP(LN(b.TRIGGER_HIGH/b.TRIGGER_LOW) * 0.166666666666666666666)
+			b.t[0] = b.TRIGGER_LOW * temp
 			for i := 1; i < 5; i++ {
 				b.t[i] = b.t[i-1] * temp
 			}
 		} else {
-			temp := (triggerHigh - triggerLow) * 0.142857142
-			b.t[0] = triggerLow + temp
+			temp := (b.TRIGGER_HIGH - b.TRIGGER_LOW) * 0.142857142
+			b.t[0] = b.TRIGGER_LOW + temp
 			for i := 1; i < 5; i++ {
 				b.t[i] = b.t[i-1] + temp
 			}
 		}
 	}
-
 	b.Q1, b.Q2, b.Q3, b.Q4, b.Q5, b.Q6 = false, false, false, false, false, false
-	b.Status = 110
-
-	if !alarmLow {
-		b.Low = false
+	b.STATUS = 110
+	if !b.ALARM_LOW {
+		b.LOW = false
 	}
-	if !alarmHigh {
-		b.High = false
+	if !b.ALARM_HIGH {
+		b.HIGH = false
 	}
-	if rst {
-		b.Alarm, b.Low, b.High = false, false, false
+	if b.RST {
+		b.ALARM, b.LOW, b.HIGH = false, false, false
 	}
-
-	if x < triggerLow {
-		b.Low = true
-		b.Status = 111
-		if alarmLow {
-			b.Alarm = true
-			b.Status = 1
+	x := b.X
+	switch {
+	case x < b.TRIGGER_LOW:
+		b.LOW = true
+		b.STATUS = 111
+		if b.ALARM_LOW {
+			b.ALARM = true
+			b.STATUS = 1
 		}
-	} else if x < b.t[0] {
+	case x < b.t[0]:
 		b.Q1 = true
-	} else if x < b.t[1] {
+	case x < b.t[1]:
 		b.Q2 = true
-	} else if x < b.t[2] {
+	case x < b.t[2]:
 		b.Q3 = true
-	} else if x < b.t[3] {
+	case x < b.t[3]:
 		b.Q4 = true
-	} else if x < b.t[4] {
+	case x < b.t[4]:
 		b.Q5 = true
-	} else if x < triggerHigh {
+	case x < b.TRIGGER_HIGH:
 		b.Q6 = true
-	} else {
-		b.High = true
-		b.Status = 112
-		if alarmHigh {
-			b.Alarm = true
-			b.Status = 2
+	default:
+		b.HIGH = true
+		b.STATUS = 112
+		if b.ALARM_HIGH {
+			b.ALARM = true
+			b.STATUS = 2
 		}
 	}
 }
 
-// CALIBRATE allows for offset and scale calibration of an analog input.
+// CALIBRATE calibrates an analog value X to Y: while CO is true the offset
+// is set so Y is Y_OFFSET, and then while CS is true the scale is set so Y
+// is Y_SCALE.
 type CALIBRATE struct {
-	Y float64
-	// RETAIN fields
-	Offset float64
-	Scale  float64
+	X        iec.REAL
+	CO, CS   iec.BOOL
+	Y_OFFSET iec.REAL
+	Y_SCALE  iec.REAL
+	Y        iec.REAL
+
+	offset      iec.REAL
+	scale       iec.REAL
+	initialized bool
 }
 
-// NewCALIBRATE creates a CALIBRATE struct with default scale.
-func NewCALIBRATE() *CALIBRATE {
-	return &CALIBRATE{Scale: 1.0}
-}
+// INIT resets the block.
+func (c *CALIBRATE) INIT() { *c = CALIBRATE{scale: 1, initialized: true} }
 
-// Update executes the calibration logic.
-func (c *CALIBRATE) Update(x float64, co, cs bool, yOffset, yScale float64) {
-	if co {
-		c.Offset = yOffset - x
-	} else if cs {
-		c.Scale = yScale / (x + c.Offset)
+// Execute runs the block once.
+func (c *CALIBRATE) Execute(now time.Time) {
+	if !c.initialized {
+		c.initialized = true
+		c.scale = 1
 	}
-	c.Y = (x + c.Offset) * c.Scale
+	if c.CO {
+		c.offset = c.Y_OFFSET - c.X
+	} else if c.CS {
+		c.scale = c.Y_SCALE / (c.X + c.offset)
+	}
+	c.Y = (c.X + c.offset) * c.scale
 }
 
-// CYCLE_TIME measures PLC cycle time statistics.
+// CYCLE_TIME measures the time between its runs: the minimum CT_MIN, the
+// maximum CT_MAX and the last CT_LAST, the time running SYSTIME and SYSDAYS,
+// and the number of runs CYCLES. RST clears them.
 type CYCLE_TIME struct {
-	CtMin   time.Duration
-	CtMax   time.Duration
-	CtLast  time.Duration
-	SysTime time.Duration
-	SysDays int
-	Cycles  uint32
+	RST     iec.BOOL
+	CT_MIN  iec.TIME
+	CT_MAX  iec.TIME
+	CT_LAST iec.TIME
+	SYSTIME iec.TIME
+	SYSDAYS iec.INT
+	CYCLES  iec.DWORD
 
-	// internal state
-	lastCycle time.Duration
-	init      bool
+	lastCycle iec.DWORD
+	init      iec.BOOL
 }
 
-// Update executes the cycle time measurement.
-func (c *CYCLE_TIME) Update(rst bool) {
-	tx := time.Duration(logic.T_PLC_US()) * time.Microsecond
-	elapsed := tx - c.lastCycle
+// INIT resets the block.
+func (c *CYCLE_TIME) INIT() { *c = CYCLE_TIME{} }
 
-	if rst {
-		c.CtMin = 10 * time.Hour // A large value
-		c.CtMax = 0
-		c.Cycles = 0
-	} else if c.lastCycle > 0 {
-		if elapsed < c.CtMin {
-			c.CtMin = elapsed
+// Execute runs the block once.
+func (c *CYCLE_TIME) Execute(now time.Time) {
+	tx := PLC_MS(now) - c.lastCycle
+	t := DWORD_TO_TIME(tx)
+	switch {
+	case bool(c.RST):
+		c.CT_MIN = iec.TIME(10 * time.Hour)
+		c.CT_MAX = 0
+		c.CYCLES = 0
+	case c.lastCycle > 0:
+		if t < c.CT_MIN {
+			c.CT_MIN = t
+		} else if t > c.CT_MAX {
+			c.CT_MAX = t
 		}
-		if elapsed > c.CtMax {
-			c.CtMax = elapsed
-		}
-		c.CtLast = elapsed
+		c.CT_LAST = t
+	case c.CT_MIN == 0:
+		// The largest TIME, as t#0s - t#1ms is.
+		c.CT_MIN = DWORD_TO_TIME(0xFFFFFFFF)
 	}
-
 	if c.init {
-		c.SysTime += elapsed
-		if c.SysTime >= 24*time.Hour {
-			c.SysTime -= 24 * time.Hour
-			c.SysDays++
+		c.SYSTIME += t
+		if c.SYSTIME >= iec.TIME(24*time.Hour) {
+			c.SYSTIME -= iec.TIME(24 * time.Hour)
+			c.SYSDAYS++
 		}
 	}
 	c.init = true
-	c.lastCycle = tx
-	c.Cycles++
+	c.lastCycle += tx
+	c.CYCLES++
 }
 
-// DT_SIMU simulates a real-time clock with adjustable speed.
+// DT_SIMU simulates a clock DTS that starts at START and runs SPEED times as
+// fast as real time, or one second each run if SPEED is 0.
 type DT_SIMU struct {
-	Dts time.Time
+	START iec.DT
+	SPEED iec.REAL // default 1.0
+	DTS   iec.DT
 
-	// internal state
-	init bool
-	last int64
+	init iec.BOOL
+	last iec.DWORD
 }
 
-// Update executes the simulation logic.
-func (d *DT_SIMU) Update(start time.Time, speed float64) {
-	tx := logic.T_PLC_US()
-	if !d.init {
+// INIT resets the block and sets SPEED to its initial value.
+func (d *DT_SIMU) INIT() { *d = DT_SIMU{SPEED: 1} }
+
+// Execute runs the block once.
+func (d *DT_SIMU) Execute(now time.Time) {
+	tx := PLC_MS(now)
+	tc := REAL_TO_DWORD(iec.REAL(tx-d.last) * d.SPEED)
+	switch {
+	case !bool(d.init):
 		d.init = true
-		d.Dts = start
+		d.DTS = d.START
 		d.last = tx
-	}
-
-	elapsedMicroseconds := tx - d.last
-	d.last = tx
-
-	if speed == 0.0 {
-		// In ST, this was an increment by 1 tick. In Go, we can just hold the time.
-	} else {
-		scaledDuration := time.Duration(float64(elapsedMicroseconds) * speed)
-		d.Dts = d.Dts.Add(scaledDuration * time.Microsecond)
+	case d.SPEED == 0.0:
+		d.DTS = DWORD_TO_DT(DT_TO_DWORD(d.DTS) + 1)
+	case tc >= 1000:
+		t := tc / 1000 * 1000
+		d.DTS = DWORD_TO_DT(DT_TO_DWORD(d.DTS) + t/1000)
+		d.last += REAL_TO_DWORD(iec.REAL(t) / d.SPEED)
 	}
 }
 
-// METER_STAT calculates statistics for a metered value (daily, weekly, monthly, yearly).
-type METER_STAT struct {
-	LastDay      float64
-	CurrentDay   float64
-	LastWeek     float64
-	CurrentWeek  float64
-	LastMonth    float64
-	CurrentMonth float64
-	LastYear     float64
-	CurrentYear  float64
-
-	// RETAIN fields
-	yearStart  float64
-	monthStart float64
-	weekStart  float64
-	dayStart   float64
-	lastRun    time.Time
-}
-
-// Update executes the statistics logic.
-func (m *METER_STAT) Update(in float64, di time.Time, rst bool) {
-	if rst {
-		m.LastDay, m.CurrentDay = 0.0, 0.0
-		m.dayStart = in
-		m.LastWeek, m.CurrentWeek = 0.0, 0.0
-		m.weekStart = in
-		m.LastMonth, m.CurrentMonth = 0.0, 0.0
-		m.monthStart = in
-		m.LastYear, m.CurrentYear = 0.0, 0.0
-		m.yearStart = in
-	} else {
-		m.CurrentDay = in - m.dayStart
-		m.CurrentWeek = in - m.weekStart
-		m.CurrentMonth = in - m.monthStart
-		m.CurrentYear = in - m.yearStart
-	}
-
-	if !m.lastRun.IsZero() {
-		if di.Year() > m.lastRun.Year() {
-			m.LastYear = m.CurrentYear
-			m.yearStart = in
-			m.LastMonth = m.CurrentMonth
-			m.monthStart = in
-			m.LastWeek = m.CurrentWeek // Week can also span year-end
-			m.weekStart = in
-			m.LastDay = m.CurrentDay
-			m.dayStart = in
-		} else if di.Month() > m.lastRun.Month() {
-			m.LastMonth = m.CurrentMonth
-			m.monthStart = in
-			m.LastDay = m.CurrentDay
-			m.dayStart = in
-		} else if di.YearDay() > m.lastRun.YearDay() {
-			m.LastDay = m.CurrentDay
-			m.dayStart = in
-		}
-
-		_, w_di := di.ISOWeek()
-		w_last := time_date.WORK_WEEK(m.lastRun)
-		if w_di != w_last {
-			m.LastWeek = m.CurrentWeek
-			m.weekStart = in
-		}
-	}
-
-	m.lastRun = di
-}
-
-// ONTIME measures the total on-time and number of cycles for a boolean signal.
-type ONTIME struct {
-	Seconds uint32
-	Cycles  uint32
-
-	// internal state
-	last int64
-	edge bool
-	init bool
-	ms   int64
-}
-
-// Update executes the on-time measurement logic.
-func (o *ONTIME) Update(in, rst bool) {
-	tx := logic.T_PLC_US()
-
-	if !o.init {
-		o.init = true
-		o.last = tx
-	}
-
-	if rst {
-		o.Seconds = 0
-		o.Cycles = 0
-		o.ms = 0
-	} else if in {
-		o.ms += (tx - o.last) / 1000 // Add elapsed milliseconds
-		if o.ms >= 1000 {
-			o.Seconds += uint32(o.ms / 1000)
-			o.ms %= 1000
-		}
-		if !o.edge {
-			o.Cycles++
-		}
-	}
-
-	o.last = tx
-	o.edge = in
-}
-
-// FLOW_METER measures flow according to gated time or pulses.
+// FLOW_METER measures a flow: while E is true it integrates the flow VX, in
+// units per hour, into X and whole units into Y, or with PULSE_MODE it adds
+// VX to X on each rising edge of E. F is the flow in units per hour,
+// updated every UPDATE_TIME.
 type FLOW_METER struct {
-	F float64
-	X float64 // VAR_IN_OUT
-	Y uint64  // VAR_IN_OUT
+	VX          iec.REAL
+	E           iec.BOOL
+	RST         iec.BOOL
+	PULSE_MODE  iec.BOOL
+	UPDATE_TIME iec.TIME // default T#1s
+	F           iec.REAL
+	X           *iec.REAL
+	Y           *iec.UDINT
 
-	// internal state
-	tl    time.Time
-	int1  Integrate
-	init  bool
-	eLast bool
-	xLast float64
-	yLast uint64
+	tl    iec.DWORD
+	int1  INTEGRATE
+	init  iec.BOOL
+	eLast iec.BOOL
+	xLast iec.REAL
+	yLast iec.UDINT
 }
 
-// Update executes the flow meter logic.
-func (fm *FLOW_METER) Update(vx float64, e, rst, pulseMode bool, updateTime time.Duration) {
-	tx := time.Now()
+// INIT resets the block and sets UPDATE_TIME to its initial value.
+func (f *FLOW_METER) INIT() { *f = FLOW_METER{X: f.X, Y: f.Y, UPDATE_TIME: iec.TIME(time.Second)} }
 
-	if !fm.init {
-		fm.init = true
-		fm.tl = tx
-		fm.xLast = fm.X
-		fm.yLast = fm.Y
+// Execute runs the block once.
+func (f *FLOW_METER) Execute(now time.Time) {
+	if f.X == nil || f.Y == nil {
+		return
 	}
-
-	// Gated operation
-	fm.int1.Update(vx, 2.7777777777777777e-4, !rst && !pulseMode && e, &fm.X)
-
-	if rst {
-		fm.X = 0.0
-		fm.Y = 0
-		fm.tl = tx
-		fm.xLast = 0.0
-		fm.yLast = 0
-	} else if e && pulseMode {
-		if !fm.eLast {
-			fm.X += vx
-		}
+	tx := PLC_MS(now)
+	if !f.init {
+		f.init = true
+		// OSCAT takes the time before it has read it, which is 0.
+		f.tl = 0
+		f.xLast = *f.X
+		f.yLast = *f.Y
+		f.int1.INIT()
+		f.int1.K = 2.7777777777777777e-4
 	}
-	fm.eLast = e
-
-	// Reduce X to be less than 1 and increase Y
-	if fm.X > 1.0 {
-		tmp := math.Floor(fm.X)
-		fm.Y += uint64(tmp)
-		fm.X -= tmp
+	// Gated operation.
+	f.int1.E = !(f.RST || f.PULSE_MODE) && f.E
+	f.int1.X = f.VX
+	f.int1.Y = f.X
+	f.int1.Execute(now)
+	if f.RST {
+		*f.X = 0
+		*f.Y = 0
+		f.tl = tx
+		f.xLast = 0
+		f.yLast = 0
+	} else if f.E && f.PULSE_MODE && !f.eLast {
+		*f.X += f.VX
 	}
-
-	// Calculate current flow
-	if tx.Sub(fm.tl) >= updateTime && updateTime > 0 {
-		fm.F = (float64(fm.Y-fm.yLast) + fm.X - fm.xLast) / tx.Sub(fm.tl).Seconds() * 3600.0
-		fm.yLast = fm.Y
-		fm.xLast = fm.X
-		fm.tl = tx
+	f.eLast = f.E
+	if *f.X > 1.0 {
+		tmp := math.FLOOR(*f.X)
+		*f.Y += iec.UDINT(tmp)
+		*f.X -= iec.REAL(tmp)
+	}
+	if tx-f.tl >= ms(f.UPDATE_TIME) && f.UPDATE_TIME > 0 {
+		f.F = (iec.REAL(*f.Y-f.yLast) + *f.X - f.xLast) / iec.REAL(tx-f.tl) * 3.6e6
+		f.yLast = *f.Y
+		f.xLast = *f.X
+		f.tl = tx
 	}
 }
 
-// M_D measures the time between a rising edge on Start and a rising edge on Stop.
+// M_D measures the time from a rising edge of START to STOP: ET counts
+// while it runs and PT is the last time measured. A time over TMAX, or RST,
+// clears them.
 type M_D struct {
-	PT  time.Duration
-	ET  time.Duration
-	Run bool
+	START, STOP iec.BOOL
+	TMAX        iec.TIME // default T#10d
+	RST         iec.BOOL
+	PT          iec.TIME
+	ET          iec.TIME
+	RUN         iec.BOOL
 
-	// internal state
-	edge    bool
-	t0      time.Time
-	startup bool
+	edge    iec.BOOL
+	t0      iec.DWORD
+	startup iec.BOOL
 }
 
-// Update executes the measurement logic.
-func (m *M_D) Update(start, stop, rst bool, tmax time.Duration) {
-	if rst || m.ET >= tmax {
-		m.PT = 0
-		m.ET = 0
-		m.startup = false
-		m.Run = false
-	}
+// INIT resets the block and sets TMAX to its initial value.
+func (m *M_D) INIT() { *m = M_D{TMAX: iec.TIME(240 * time.Hour)} }
 
+// Execute runs the block once.
+func (m *M_D) Execute(now time.Time) {
+	if m.RST || m.ET >= m.TMAX {
+		m.PT, m.ET = 0, 0
+		m.startup = false
+		m.RUN = false
+	}
 	if !m.startup {
-		m.edge = start
+		m.edge = m.START
 		m.startup = true
 	}
-
-	tx := time.Now()
-
-	if start && !m.edge && !stop {
+	tx := PLC_MS(now)
+	if m.START && !m.edge && !m.STOP {
 		m.t0 = tx
-		m.Run = true
+		m.RUN = true
 		m.PT = 0
-	} else if stop && m.Run {
+	} else if m.STOP && m.RUN {
 		m.PT = m.ET
-		m.Run = false
+		m.RUN = false
 	}
-	m.edge = start
-
-	if m.Run {
-		m.ET = tx.Sub(m.t0)
+	m.edge = m.START
+	if m.RUN {
+		m.ET = DWORD_TO_TIME(tx - m.t0)
 	}
 }
 
-// M_T measures the width of a high pulse.
+// M_T measures the width of a pulse of IN: ET counts while IN is true and
+// PT is the last width. A pulse over TMAX, or RST, clears them.
 type M_T struct {
-	PT time.Duration
-	ET time.Duration
+	IN   iec.BOOL
+	TMAX iec.TIME // default T#10d
+	RST  iec.BOOL
+	PT   iec.TIME
+	ET   iec.TIME
 
-	// internal state
-	edge  bool
-	start time.Time
+	edge  iec.BOOL
+	start iec.DWORD
 }
 
-// Update executes the measurement logic.
-func (m *M_T) Update(in, rst bool, tmax time.Duration) {
-	tx := time.Now()
+// INIT resets the block and sets TMAX to its initial value.
+func (m *M_T) INIT() { *m = M_T{TMAX: iec.TIME(240 * time.Hour)} }
 
-	if rst || m.ET >= tmax {
-		m.PT = 0
-		m.ET = 0
-	} else if in {
+// Execute runs the block once.
+func (m *M_T) Execute(now time.Time) {
+	tx := PLC_MS(now)
+	switch {
+	case bool(m.RST) || m.ET >= m.TMAX:
+		m.PT, m.ET = 0, 0
+	case bool(m.IN):
 		if !m.edge {
 			m.start = tx
 		}
-		m.ET = tx.Sub(m.start)
-	} else {
+		m.ET = DWORD_TO_TIME(tx - m.start)
+	default:
 		m.PT = m.ET
 	}
-	m.edge = in
+	m.edge = m.IN
 }
 
-// M_TX measures the timing of a signal (High time, Low time, Duty Cycle, Frequency).
+// M_TX measures a signal IN: the high time TH, the low time TL, the duty
+// cycle DC, the frequency F in Hz, and the time since the last rising edge
+// ET. A period over TMAX, or RST, clears them.
 type M_TX struct {
-	TH time.Duration
-	TL time.Duration
-	DC float64
-	F  float64
-	ET time.Duration
+	IN   iec.BOOL
+	TMAX iec.TIME // default T#10d
+	RST  iec.BOOL
+	TH   iec.TIME
+	TL   iec.TIME
+	DC   iec.REAL
+	F    iec.REAL
+	ET   iec.TIME
 
-	// internal state
-	edge    bool
-	start   time.Time
-	stop    time.Time
-	rise    bool
-	fall    bool
-	startup bool
+	edge        iec.BOOL
+	start, stop iec.DWORD
+	rise, fall  iec.BOOL
+	startup     iec.BOOL
 }
 
-// Update executes the measurement logic.
-func (m *M_TX) Update(in, rst bool, tmax time.Duration) {
-	if rst || (m.ET >= tmax) {
-		m.rise, m.fall, m.startup = false, false, false
-		m.TH, m.TL, m.ET = 0, 0, 0
-		m.DC, m.F = 0.0, 0.0
-	}
+// INIT resets the block and sets TMAX to its initial value.
+func (m *M_TX) INIT() { *m = M_TX{TMAX: iec.TIME(240 * time.Hour)} }
 
+// Execute runs the block once.
+func (m *M_TX) Execute(now time.Time) {
+	if m.RST || m.ET >= m.TMAX {
+		m.rise, m.fall, m.startup = false, false, false
+		m.TH, m.TL, m.DC, m.F, m.ET = 0, 0, 0, 0, 0
+	}
 	if !m.startup {
-		m.edge = in
+		m.edge = m.IN
 		m.startup = true
 	}
-
-	tx := time.Now()
-
-	if in != m.edge {
-		m.edge = in
-		if in { // Rising edge
+	tx := PLC_MS(now)
+	ratio := func() {
+		if m.TH > 0 && m.TL > 0 {
+			m.DC = TIME_TO_REAL(m.TH) / TIME_TO_REAL(m.TH+m.TL)
+			m.F = 1000.0 / TIME_TO_REAL(m.TH+m.TL)
+		}
+	}
+	if m.IN != m.edge {
+		m.edge = m.IN
+		if m.IN {
 			m.start = tx
 			m.rise = true
 			if m.fall {
-				m.TL = m.start.Sub(m.stop)
+				m.TL = DWORD_TO_TIME(m.start - m.stop)
 			}
-		} else { // Falling edge
+		} else {
 			m.stop = tx
 			m.fall = true
 			if m.rise {
-				m.TH = m.stop.Sub(m.start)
+				m.TH = DWORD_TO_TIME(m.stop - m.start)
 			}
 		}
-
-		if m.TH > 0 && m.TL > 0 {
-			total := float64(m.TH + m.TL)
-			m.DC = float64(m.TH) / total
-			m.F = 1.0 / (total / float64(time.Second))
-		}
+		ratio()
 	}
-
 	if m.rise {
-		m.ET = tx.Sub(m.start)
+		m.ET = DWORD_TO_TIME(tx - m.start)
 	}
 }
 
-// METER measures usage of power or similar values over time.
+// METER sums a consumption over time in MX: M1 while I1 is true plus M2
+// while I2 is true, per second, divided by D. It sums with double precision.
 type METER struct {
-	Mx float64 // VAR_IN_OUT
+	M1, M2 iec.REAL
+	I1, I2 iec.BOOL
+	D      iec.REAL // default 1.0
+	RST    iec.BOOL
+	MX     *iec.REAL
 
-	// internal state
-	mr   basic.REAL2
-	last int64
-	init bool
+	mr   REAL2
+	last iec.DWORD
+	init iec.BOOL
 }
 
-// Update executes the meter logic.
-func (m *METER) Update(m1, m2, d float64, i1, i2, rst bool) {
-	tx := logic.T_PLC_US()
+// INIT resets the block and sets D to its initial value.
+func (m *METER) INIT() { *m = METER{MX: m.MX, D: 1} }
+
+// Execute runs the block once.
+func (m *METER) Execute(now time.Time) {
+	if m.MX == nil {
+		return
+	}
+	tx := PLC_MS(now)
+	var tc iec.REAL
 	if !m.init {
 		m.init = true
 		m.last = tx
-		m.mr.Rx = float32(m.Mx)
+		m.mr.RX = *m.MX
 		m.mr.R1 = 0.0
+	} else if tx == m.last {
+		return
+	} else {
+		tc = iec.REAL(tx-m.last) * 0.001
 	}
-
-	if tx == m.last {
+	m.last = tx
+	if m.RST {
+		m.mr = REAL2{}
 		return
 	}
+	var mx1, mx2 iec.REAL
+	if m.I1 {
+		mx1 = m.M1
+	}
+	if m.I2 {
+		mx2 = m.M2
+	}
+	m.mr = math.R2_ADD(m.mr, (mx1+mx2)/m.D*tc)
+	*m.MX = m.mr.RX
+}
 
-	tc := float64(tx-m.last) * 0.001 // Cycle time in seconds
-	m.last = tx
+// METER_STAT keeps the statistics of a meter reading IN on the date DI:
+// the consumption of the current and last day, week, month and year.
+type METER_STAT struct {
+	IN            iec.REAL
+	DI            iec.DATE
+	RST           iec.BOOL
+	LAST_DAY      *iec.REAL
+	CURRENT_DAY   *iec.REAL
+	LAST_WEEK     *iec.REAL
+	CURRENT_WEEK  *iec.REAL
+	LAST_MONTH    *iec.REAL
+	CURRENT_MONTH *iec.REAL
+	LAST_YEAR     *iec.REAL
+	CURRENT_YEAR  *iec.REAL
 
-	if rst {
-		m.mr = basic.REAL2{}
-	} else {
-		var mx1, mx2 float64
-		if i1 {
-			mx1 = m1
-		}
-		if i2 {
-			mx2 = m2
-		}
-		if d != 0.0 {
-			m.mr = beeMath.R2_ADD(m.mr, float32(((mx1+mx2)/d)*tc))
+	yearStart, monthStart, weekStart, dayStart iec.REAL
+	lastRun                                    iec.DATE
+}
+
+// INIT resets the block.
+func (m *METER_STAT) INIT() {
+	*m = METER_STAT{LAST_DAY: m.LAST_DAY, CURRENT_DAY: m.CURRENT_DAY, LAST_WEEK: m.LAST_WEEK,
+		CURRENT_WEEK: m.CURRENT_WEEK, LAST_MONTH: m.LAST_MONTH, CURRENT_MONTH: m.CURRENT_MONTH,
+		LAST_YEAR: m.LAST_YEAR, CURRENT_YEAR: m.CURRENT_YEAR}
+}
+
+// Execute runs the block once.
+func (m *METER_STAT) Execute(now time.Time) {
+	for _, p := range []*iec.REAL{m.LAST_DAY, m.CURRENT_DAY, m.LAST_WEEK, m.CURRENT_WEEK,
+		m.LAST_MONTH, m.CURRENT_MONTH, m.LAST_YEAR, m.CURRENT_YEAR} {
+		if p == nil {
+			return
 		}
 	}
-	m.Mx = float64(m.mr.Rx)
+	if m.RST {
+		*m.LAST_DAY, *m.CURRENT_DAY, m.dayStart = 0, 0, m.IN
+		*m.LAST_WEEK, *m.CURRENT_WEEK, m.weekStart = 0, 0, m.IN
+		*m.LAST_MONTH, *m.CURRENT_MONTH, m.monthStart = 0, 0, m.IN
+		*m.LAST_YEAR, *m.CURRENT_YEAR, m.yearStart = 0, 0, m.IN
+	} else {
+		*m.CURRENT_DAY = m.IN - m.dayStart
+		*m.CURRENT_WEEK = m.IN - m.weekStart
+		*m.CURRENT_MONTH = m.IN - m.monthStart
+		*m.CURRENT_YEAR = m.IN - m.yearStart
+	}
+	newDay := func() {
+		*m.LAST_DAY, *m.CURRENT_DAY, m.dayStart = *m.CURRENT_DAY, 0, m.IN
+	}
+	newMonth := func() {
+		*m.LAST_MONTH, *m.CURRENT_MONTH, m.monthStart = *m.CURRENT_MONTH, 0, m.IN
+		newDay()
+	}
+	switch {
+	case td.YEAR_OF_DATE(m.DI) > td.YEAR_OF_DATE(m.lastRun):
+		*m.LAST_YEAR, *m.CURRENT_YEAR, m.yearStart = *m.CURRENT_YEAR, 0, m.IN
+		newMonth()
+	case td.MONTH_OF_DATE(m.DI) > td.MONTH_OF_DATE(m.lastRun):
+		newMonth()
+	case td.DAY_OF_YEAR(m.DI) > td.DAY_OF_YEAR(m.lastRun):
+		newDay()
+	}
+	if td.DAY_OF_WEEK(m.DI) < td.DAY_OF_WEEK(m.lastRun) {
+		*m.LAST_WEEK, *m.CURRENT_WEEK, m.weekStart = *m.CURRENT_WEEK, 0, m.IN
+	}
+	m.lastRun = m.DI
 }
 
-// TC_MS measures the cycle time in milliseconds.
+// ONTIME measures the time IN is true, in SECONDS, and counts its rising
+// edges in CYCLES.
+type ONTIME struct {
+	IN      iec.BOOL
+	RST     iec.BOOL
+	SECONDS *iec.UDINT
+	CYCLES  *iec.UDINT
+
+	last iec.DWORD
+	edge iec.BOOL
+	init iec.BOOL
+	ms   iec.DWORD
+}
+
+// INIT resets the block.
+func (o *ONTIME) INIT() { *o = ONTIME{SECONDS: o.SECONDS, CYCLES: o.CYCLES} }
+
+// Execute runs the block once.
+func (o *ONTIME) Execute(now time.Time) {
+	if o.SECONDS == nil || o.CYCLES == nil {
+		return
+	}
+	tx := PLC_MS(now)
+	if !o.init {
+		o.init = true
+		o.last = tx
+		o.ms = 0
+	}
+	if o.RST {
+		*o.SECONDS = 0
+		*o.CYCLES = 0
+		o.last = tx
+		o.ms = 0
+	} else if o.IN {
+		o.ms += tx - o.last
+		if o.ms >= 1000 {
+			*o.SECONDS++
+			o.ms -= 1000
+		}
+		if !o.edge {
+			*o.CYCLES++
+		}
+	}
+	o.last = tx
+	o.edge = o.IN
+}
+
+// TC_MS gives the time since its last run in TC, in milliseconds.
 type TC_MS struct {
-	TC uint32
-	// internal state
-	init bool
-	last int64
+	TC iec.DWORD
+
+	init iec.BOOL
+	last iec.DWORD
 }
 
-// Update executes the logic.
-func (t *TC_MS) Update() {
-	tx := logic.T_PLC_US() / 1000 // to milliseconds
+// INIT resets the block.
+func (t *TC_MS) INIT() { *t = TC_MS{} }
+
+// Execute runs the block once.
+func (t *TC_MS) Execute(now time.Time) {
+	tx := PLC_MS(now)
 	if !t.init {
 		t.init = true
 		t.TC = 0
 	} else {
-		t.TC = uint32(tx - t.last)
+		t.TC = tx - t.last
 	}
 	t.last = tx
 }
 
-// TC_US measures the cycle time in microseconds.
-type TC_US struct {
-	TC uint32
-	// internal state
-	init bool
-	last int64
+// TC_S gives the time since its last run in TC, in seconds.
+type TC_S struct {
+	TC iec.REAL
+
+	init iec.BOOL
+	last iec.DWORD
 }
 
-// Update executes the logic.
-func (t *TC_US) Update() {
-	tx := logic.T_PLC_US()
+// INIT resets the block.
+func (t *TC_S) INIT() { *t = TC_S{} }
+
+// Execute runs the block once.
+func (t *TC_S) Execute(now time.Time) {
+	tx := PLC_US(now)
 	if !t.init {
 		t.init = true
 		t.TC = 0
 	} else {
-		t.TC = uint32(tx - t.last)
+		t.TC = iec.REAL(tx-t.last) * 1.0e-6
+	}
+	t.last = tx
+}
+
+// TC_US gives the time since its last run in TC, in microseconds.
+type TC_US struct {
+	TC iec.DWORD
+
+	init iec.BOOL
+	last iec.DWORD
+}
+
+// INIT resets the block.
+func (t *TC_US) INIT() { *t = TC_US{} }
+
+// Execute runs the block once.
+func (t *TC_US) Execute(now time.Time) {
+	tx := PLC_US(now)
+	if !t.init {
+		t.init = true
+		t.TC = 0
+	} else {
+		t.TC = tx - t.last
 	}
 	t.last = tx
 }

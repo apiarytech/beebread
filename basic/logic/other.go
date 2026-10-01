@@ -2,7 +2,7 @@
  * Copyright (C) 2026 Franklin D. Amador
  *
  * This software is dual-licensed under:
- * - GPL v2.0
+ * - EPL v2.0
  * - Commercial
  *
  * You may choose to use this software under the terms of either license.
@@ -12,355 +12,157 @@
 package logic
 
 import (
-	"beebread/basic"
-	"math"
 	"time"
+
+	. "github.com/apiarytech/beebread/basic"
+	"github.com/apiarytech/royaljelly/iec"
 )
 
-// CRC_GEN generates a CRC checksum from a block of data.
-// The CRC Polynom is specified with PN and the length of the Polynom is specified by PL.
-// A Polynom x^4 + x + 1 is represented by 0x3 with length 4.
-func CRC_GEN(data []byte, pl int, pn, init, xorOut uint32, revIn, revOut bool) uint32 {
-	if pl <= 0 || pl > 32 {
+// CRC_GEN calculates the CRC of the first size bytes of pt with the
+// polynomial pn of length pl, whose highest bit is left out: x4 + x + 1 is
+// 2#0011 with length 4. init is the start value and xorOut is XORed with the
+// result. revIn reflects each input byte and revOut the result. A message
+// shorter than 4 bytes is filled with 0s at the beginning.
+func CRC_GEN(pt []iec.BYTE, size, pl iec.INT, pn, init iec.DWORD, revIn, revOut iec.BOOL, xorOut iec.DWORD) iec.DWORD {
+	at := func(i iec.INT) iec.BYTE {
+		if int(i) < len(pt) && i < size {
+			return pt[i]
+		}
 		return 0
 	}
-
-	var crc uint32
-	size := len(data)
-	shift := uint(32 - pl)
-	poly := pn << shift
-
-	// Load first bytes into register
-	for i := 0; i < 4 && i < size; i++ {
-		var d byte
+	shift := 32 - pl
+	pn = SHL(pn, shift)
+	var crc iec.DWORD
+	for pos := iec.INT(0); pos <= 3; pos++ {
 		if revIn {
-			d = REVERSE(data[i])
+			crc = crc<<8 | iec.DWORD(REVERSE(at(pos)))
 		} else {
-			d = data[i]
+			crc = crc<<8 | iec.DWORD(at(pos))
 		}
-		crc = (crc << 8) | uint32(d)
 	}
-
-	// XOR with init value
-	crc ^= (init << shift)
-
-	// Process remaining bytes
-	for i := 4; i < size; i++ {
-		var d byte
+	crc = crc ^ SHL(init, shift)
+	for pos := iec.INT(4); pos < size; pos++ {
+		dx := at(pos)
 		if revIn {
-			d = REVERSE(data[i])
-		} else {
-			d = data[i]
+			dx = REVERSE(dx)
 		}
-		for j := 0; j < 8; j++ {
-			if (crc & 0x80000000) != 0 {
-				crc = (crc << 1) | uint32((d>>7)&1) ^ poly
+		for bit := 0; bit < 8; bit++ {
+			in := iec.DWORD(dx >> 7)
+			if crc&0x80000000 != 0 {
+				crc = (crc<<1 | in) ^ pn
 			} else {
-				crc = (crc << 1) | uint32((d>>7)&1)
+				crc = crc<<1 | in
 			}
-			d <<= 1
+			dx <<= 1
 		}
 	}
-
-	// Finish the register's 32 bits
-	for i := 0; i < 32; i++ {
-		if (crc & 0x80000000) != 0 {
-			crc = (crc << 1) ^ poly
+	// Finish the register's 32 bits.
+	for bit := 0; bit < 32; bit++ {
+		if crc&0x80000000 != 0 {
+			crc = crc<<1 ^ pn
 		} else {
-			crc <<= 1
+			crc = crc << 1
 		}
 	}
-
-	// Final XOR and shift
-	crc = (crc >> shift) ^ xorOut
-
-	// Reverse output if necessary
+	crc = SHR(crc, shift) ^ xorOut
 	if revOut {
-		crc = Reflect(crc, uint(pl))
+		crc = REFLECT(crc, pl)
 	}
-
 	return crc
 }
 
-// Matrix is a matrix keyboard encoder for 4 rows and up to 5 columns.
-type Matrix struct {
-	Code byte
-	TP   bool
-	Y    [4]bool
+// MATRIX encodes a keyboard matrix of 4 rows and up to 5 columns. It drives
+// one row, Y1..Y4, each scan and reads the columns on X1..X5. When a key is
+// pressed, TP is true for one scan and CODE holds the column 1..5 in bits
+// 0..2, the row in bits 4..6 and 1 in bit 7. When RELEASE is true, the
+// release of a key sends its code with bit 7 = 0.
+type MATRIX struct {
+	X1, X2, X3, X4, X5 iec.BOOL
+	RELEASE            iec.BOOL
+	CODE               iec.BYTE
+	TP                 iec.BOOL
+	Y1                 iec.BOOL // default TRUE
+	Y2, Y3, Y4         iec.BOOL
 
-	// internal state
-	line byte
-	x    [4]byte // scan line inputs
-	l    [4]byte // scan line status
+	line        iec.BYTE
+	x           [4]iec.BYTE // scan line inputs
+	l           [4]iec.BYTE // scan line status
+	initialized bool
 }
 
-// Update executes the matrix scan logic for one cycle.
-func (m *Matrix) Update(x1, x2, x3, x4, x5, release bool) {
+// INIT resets the block and sets Y1 to its initial value.
+func (m *MATRIX) INIT() { *m = MATRIX{Y1: true, initialized: true} }
+
+// Execute runs the block once.
+func (m *MATRIX) Execute(now time.Time) {
+	if !m.initialized {
+		m.initialized = true
+		m.Y1 = true
+	}
 	m.TP = false
-	m.Code = 0
-
-	// Read scan lines
-	var currentX byte
-	if x1 {
-		currentX |= 1 << 0
-	}
-	if x2 {
-		currentX |= 1 << 1
-	}
-	if x3 {
-		currentX |= 1 << 2
-	}
-	if x4 {
-		currentX |= 1 << 3
-	}
-	if x5 {
-		currentX |= 1 << 4
-	}
-	m.x[m.line] = currentX
-
-	// Compare for change
-	for i := 0; i < 4; i++ {
-		if m.x[i] != m.l[i] {
-			diff := m.x[i] ^ m.l[i]
-			var col byte
-			// Find which bit changed
-			for j := 0; j < 5; j++ {
-				if (diff>>j)&1 != 0 {
-					col = byte(j + 1)
-					break
-				}
-			}
-
-			if col > 0 {
-				m.Code = col
-				isPressed := (m.x[i]>>(col-1))&1 != 0
-				m.Code = BIT_LOAD_B(m.Code, isPressed, 7)
-				m.l[i] = BIT_LOAD_B(m.l[i], isPressed, uint(col-1))
-
-				m.TP = true
-				m.Code = BIT_LOAD_B(m.Code, (byte(i)>>0)&1 != 0, 4)
-				m.Code = BIT_LOAD_B(m.Code, (byte(i)>>1)&1 != 0, 5)
-				m.Code = BIT_LOAD_B(m.Code, (byte(i)>>2)&1 != 0, 6)
-
-				if !release && !isPressed {
-					m.Code = 0
-					m.TP = false
-				}
-				goto end_loop // Exit after finding the first change
+	m.CODE = 0
+	m.x[m.line] = BYTE_OF_BIT(m.X1, m.X2, m.X3, m.X4, m.X5, false, false, false) |
+		m.x[m.line]&0xE0
+	for i := 0; i <= 3; i++ {
+		if m.x[i] == m.l[i] {
+			continue
+		}
+		// The scan line has changed: find and send the code.
+		temp := m.x[i] ^ m.l[i]
+		for bit := iec.BYTE(0); bit <= 4; bit++ {
+			if temp>>bit&1 != 0 {
+				mask := iec.BYTE(1) << bit
+				m.CODE = bit + 1 | m.x[i]&mask>>bit<<7
+				m.l[i] = m.l[i]&^mask | m.x[i]&mask
+				break
 			}
 		}
+		m.TP = true
+		m.CODE = m.CODE&0x8F | (m.line&7)<<4
+		if !m.RELEASE && m.CODE < 127 {
+			m.CODE = 0
+			m.TP = false
+		}
+		break
 	}
-end_loop:
-
-	// Increment scan line for the next cycle
-	m.line = (m.line + 1) & 0x03
-	temp := byte(1 << m.line)
-	m.Y[0] = (temp & 0x01) != 0
-	m.Y[1] = (temp & 0x02) != 0
-	m.Y[2] = (temp & 0x04) != 0
-	m.Y[3] = (temp & 0x08) != 0
+	m.line = (m.line + 1) & 3
+	temp := iec.BYTE(1) << m.line
+	m.Y1, m.Y2, m.Y3, m.Y4 = temp&1 != 0, temp&2 != 0, temp&4 != 0, temp&8 != 0
 }
 
-// PIN_CODE scans the input of a keypad (Matrix) for a sequence of characters.
+// PIN_CODE sets TP for one scan when the codes CB, taken each scan E is
+// true, spell PIN.
 type PIN_CODE struct {
-	TP bool
-	// internal state
-	pos int
+	CB  iec.BYTE
+	E   iec.BOOL
+	PIN iec.STRING // STRING(8)
+	TP  iec.BOOL
+
+	pos         iec.INT
+	initialized bool
 }
 
-// Update executes the pin code checking logic.
-func (p *PIN_CODE) Update(cb byte, e bool, pin string) {
+// INIT resets the block.
+func (p *PIN_CODE) INIT() { *p = PIN_CODE{pos: 1, initialized: true} }
+
+// Execute runs the block once.
+func (p *PIN_CODE) Execute(now time.Time) {
+	if !p.initialized {
+		p.initialized = true
+		p.pos = 1
+	}
 	p.TP = false
-	if e {
-		if p.pos < len(pin) && cb == pin[p.pos] {
-			p.pos++
-			if p.pos == len(pin) {
-				p.TP = true
-				p.pos = 0 // Reset for next attempt
-			}
-		} else {
-			p.pos = 0 // Reset on wrong character
-		}
+	if !p.E {
+		return
 	}
-}
-
-// ESR_COLLECT collects ESR data from up to 8 ESR_MON modules and stores them in an output array.
-type ESR_COLLECT struct {
-	EsrOut [32]basic.ESR_DATA
-	pos    int
-	cnt    int
-}
-
-// Update executes the ESR collection logic.
-func (e *ESR_COLLECT) Update(rst bool, esrIn ...[]basic.ESR_DATA) int {
-	if rst || e.cnt < 0 {
-		e.pos = -1
-		e.cnt = 0 // Set to 0 to allow processing
+	pin := CHARS(p.PIN)
+	if int(p.pos) <= len(pin) && p.CB == pin[p.pos-1] {
+		p.pos++
+		if int(p.pos) > len(pin) {
+			p.TP = true
+			p.pos = 1
+		}
 	} else {
-		for _, esrArray := range esrIn {
-			for _, esrItem := range esrArray {
-				if esrItem.Typ > 0 {
-					e.pos = (e.pos + 1) % 32 // Wrap around using modulo
-					e.EsrOut[e.pos] = esrItem
-				}
-			}
-		}
+		p.pos = 1
 	}
-	return e.pos
-}
-
-// ESR_MON_B8 monitors up to 8 binary inputs and reports changes with a timestamp and address label.
-type ESR_MON_B8 struct {
-	EsrFlag bool
-	EsrOut  [4]basic.ESR_DATA
-
-	// internal state
-	lastState [8]bool
-}
-
-// Update executes the monitoring logic.
-func (e *ESR_MON_B8) Update(dtIn time.Time, s [8]bool, a [8]string) {
-	e.EsrFlag = false
-	// Clear previous output
-	e.EsrOut = [4]basic.ESR_DATA{}
-	cnt := 0
-
-	for i := 0; i < 8 && cnt < 4; i++ {
-		if s[i] != e.lastState[i] {
-			e.EsrOut[cnt].Typ = 10 + boolToByte(s[i])
-			e.EsrOut[cnt].Adress = a[i]
-			e.EsrOut[cnt].Ds = dtIn
-			e.EsrOut[cnt].Ts = time.Duration(time.Now().UnixNano())
-			e.lastState[i] = s[i]
-			cnt++
-			e.EsrFlag = true
-		}
-	}
-}
-
-// ESR_MON_R4 monitors up to 4 real inputs and reports changes with a timestamp and address label.
-type ESR_MON_R4 struct {
-	EsrFlag bool
-	EsrOut  [4]basic.ESR_DATA
-
-	// internal state
-	lastState [4]float32
-}
-
-// Update executes the monitoring logic.
-func (e *ESR_MON_R4) Update(dtIn time.Time, r [4]float32, a [4]string, s [4]float32) {
-	e.EsrFlag = false
-	// Clear previous output
-	e.EsrOut = [4]basic.ESR_DATA{}
-	cnt := 0
-
-	for i := 0; i < 4 && cnt < 4; i++ {
-		if math.Abs(float64(r[i]-e.lastState[i])) > float64(s[i]) {
-			e.EsrOut[cnt].Typ = 20
-			e.EsrOut[cnt].Adress = a[i]
-			e.EsrOut[cnt].Ds = dtIn
-			e.EsrOut[cnt].Ts = time.Duration(time.Now().UnixNano())
-			// Store the float32 bits in the data array
-			bits := math.Float32bits(r[i])
-			e.EsrOut[cnt].Data[0] = byte(bits)
-			e.EsrOut[cnt].Data[1] = byte(bits >> 8)
-			e.EsrOut[cnt].Data[2] = byte(bits >> 16)
-			e.EsrOut[cnt].Data[3] = byte(bits >> 24)
-			e.lastState[i] = r[i]
-			cnt++
-			e.EsrFlag = true
-		}
-	}
-}
-
-// ESR_MON_X8 monitors up to 8 status inputs (bytes) and reports changes.
-type ESR_MON_X8 struct {
-	EsrFlag bool
-	EsrOut  [4]basic.ESR_DATA
-
-	// internal state
-	lastState [8]byte
-}
-
-// Update executes the monitoring logic.
-func (e *ESR_MON_X8) Update(dtIn time.Time, s [8]byte, a [8]string, mode byte) {
-	e.EsrFlag = false
-	// Clear previous output
-	e.EsrOut = [4]basic.ESR_DATA{}
-	cnt := 0
-
-	for i := 0; i < 8 && cnt < 4; i++ {
-		if s[i] != e.lastState[i] {
-			// Check mode: 1=error only, 2=error+status, 3=error+status+debug
-			if (s[i] < 100) || (s[i] >= 100 && s[i] < 200 && mode >= 2) || (s[i] >= 200 && mode == 3) {
-				e.EsrOut[cnt] = STATUS_TO_ESR(s[i], a[i], dtIn, time.Duration(time.Now().UnixNano()))
-				e.lastState[i] = s[i]
-				cnt++
-				e.EsrFlag = true
-			}
-		}
-	}
-}
-
-// STATUS_TO_ESR creates ESR data from a status byte.
-func STATUS_TO_ESR(status byte, address string, dtIn time.Time, ts time.Duration) basic.ESR_DATA {
-	var esr basic.ESR_DATA
-	if status < 100 {
-		esr.Typ = 1
-	} else if status < 200 {
-		esr.Typ = 2
-	} else {
-		esr.Typ = 3
-	}
-	esr.Adress = address
-	esr.Ds = dtIn
-	esr.Ts = ts
-	esr.Data[0] = status
-	return esr
-}
-
-func boolToByte(b bool) byte {
-	if b {
-		return 1
-	}
-	return 0
-}
-
-// inc implements a modular increment.
-func inc(x, d, m int) int {
-	if m <= 0 {
-		return x
-	}
-	return (x + d) % (m + 1)
-}
-
-// INC1 increments X by 1 and wraps around to 0 if N is reached.
-// It generates a sequence: 0, 1, 2, ..., N-1, 0, ...
-func inc1(x, n int) int {
-	if x >= n-1 {
-		return 0
-	}
-	return x + 1
-}
-
-// limit_B limits a byte value to a given range.
-func limit_B(min, val, max byte) byte {
-	if val < min {
-		return min
-	}
-	if val > max {
-		return max
-	}
-	return val
-}
-
-// limit_DW limits a dword (uint32) value to a given range.
-func limit_DW(min, val, max uint32) uint32 {
-	if val < min {
-		return min
-	}
-	if val > max {
-		return max
-	}
-	return val
 }

@@ -2,176 +2,239 @@
  * Copyright (C) 2026 Franklin D. Amador
  *
  * This software is dual-licensed under:
- * - GPL v2.0
+ * - EPL v2.0
  * - Commercial
  *
  * You may choose to use this software under the terms of either license.
  * See the LICENSE files in the project root for full license text.
  */
 
+// Package other is the port of the OSCAT BASIC functions for event, status
+// and error reports (ESR), and the library's version.
 package other
 
 import (
 	"time"
 
-	. "beebread/basic"
-	"beebread/basic/logic"
-	"beebread/basic/math"
+	. "github.com/apiarytech/beebread/basic"
+	"github.com/apiarytech/beebread/basic/logic"
+	"github.com/apiarytech/beebread/basic/math"
+	"github.com/apiarytech/royaljelly/iec"
 )
 
-// ESR_COLLECT collects ESR data from up to 8 ESR_MON modules and stores them in an output array.
+// ESR_COLLECT collects the reports of up to 8 ESR_MON blocks in ESR_OUT. POS
+// is the position of the last report, or -1 if there is none; whoever reads
+// the reports sets it back to -1. When ESR_OUT is full, it starts again at
+// position 0.
+//
+// OSCAT 3.35 never leaves its reset state, because its counter starts at -1
+// and only the collecting code changes it; the port starts collecting after
+// the first run.
 type ESR_COLLECT struct {
-	EsrOut [32]ESR_DATA
-	pos    int
-	cnt    int
+	ESR_0, ESR_1, ESR_2, ESR_3, ESR_4, ESR_5, ESR_6, ESR_7 [4]ESR_DATA
+	RST                                                    iec.BOOL
+	POS                                                    *iec.INT
+	ESR_OUT                                                [32]ESR_DATA
+
+	init iec.BOOL
 }
 
-// Update executes the ESR collection logic.
-// The variadic esrIn parameter allows passing multiple slices of EsrData.
-func (e *ESR_COLLECT) Update(rst bool, esrIn ...[]ESR_DATA) int {
-	if rst {
-		e.pos = -1
-		e.cnt = 0
-	} else if e.cnt >= 0 {
-		for _, esrArray := range esrIn {
-			for _, esrItem := range esrArray {
-				if esrItem.Typ > 0 {
-					e.pos = math.INC1(e.pos, 32)
-					e.EsrOut[e.pos] = esrItem
-				}
+// INIT resets the block.
+func (e *ESR_COLLECT) INIT() { *e = ESR_COLLECT{POS: e.POS} }
+
+// Execute runs the block once.
+func (e *ESR_COLLECT) Execute(now time.Time) {
+	if e.POS == nil {
+		return
+	}
+	if e.RST || !e.init {
+		e.init = true
+		*e.POS = -1
+		return
+	}
+	in := [8]*[4]ESR_DATA{&e.ESR_0, &e.ESR_1, &e.ESR_2, &e.ESR_3, &e.ESR_4, &e.ESR_5, &e.ESR_6, &e.ESR_7}
+	for cnt := 0; cnt <= 3; cnt++ {
+		for _, esr := range in {
+			if esr[cnt].TYP > 0 {
+				*e.POS = math.INC1(*e.POS, 32)
+				e.ESR_OUT[*e.POS] = esr[cnt]
 			}
 		}
 	}
-	return e.pos
 }
 
-// ESR_MON_R4 monitors up to 4 real inputs and reports changes with a timestamp and address label.
+// esrMon is the part the ESR_MON blocks share: ESR_OUT, cleared each run,
+// takes up to 4 reports, and ESR_FLAG is true when there are any.
+type esrMon struct {
+	cnt int
+}
+
+func (m *esrMon) start(out *[4]ESR_DATA, flag *iec.BOOL) {
+	*flag = false
+	for i := range out {
+		out[i].TYP = 0
+	}
+	m.cnt = 0
+}
+
+// ESR_MON_B8 reports the changes of up to 8 binary inputs S0..S7, labelled
+// A0..A7, with the time DT_IN, in ESR_OUT: type 10 for a change to false
+// and 11 for a change to true. It reports up to 4 changes in a run; the
+// changes of S4..S7 beyond that wait for the next run.
+type ESR_MON_B8 struct {
+	S0, S1, S2, S3, S4, S5, S6, S7 iec.BOOL
+	DT_IN                          iec.DT
+	A0, A1, A2, A3, A4, A5, A6, A7 iec.STRING // STRING(10)
+	ESR_FLAG                       iec.BOOL
+	ESR_OUT                        *[4]ESR_DATA
+
+	x   [8]iec.BOOL
+	mon esrMon
+}
+
+// INIT resets the block.
+func (e *ESR_MON_B8) INIT() { *e = ESR_MON_B8{ESR_OUT: e.ESR_OUT} }
+
+// Execute runs the block once.
+func (e *ESR_MON_B8) Execute(now time.Time) {
+	if e.ESR_OUT == nil {
+		return
+	}
+	tx := DWORD_TO_TIME(PLC_MS(now))
+	e.mon.start(e.ESR_OUT, &e.ESR_FLAG)
+	s := [8]iec.BOOL{e.S0, e.S1, e.S2, e.S3, e.S4, e.S5, e.S6, e.S7}
+	a := [8]iec.STRING{e.A0, e.A1, e.A2, e.A3, e.A4, e.A5, e.A6, e.A7}
+	for i := range s {
+		// The first 4 inputs always fit; the others only while there is
+		// room.
+		if s[i] == e.x[i] || (i >= 4 && e.mon.cnt >= 4) {
+			continue
+		}
+		out := &e.ESR_OUT[e.mon.cnt]
+		out.TYP = 10 + iec.BYTE(BOOL_TO_INT(s[i]))
+		out.ADRESS = a[i]
+		out.DS = e.DT_IN
+		out.TS = tx
+		e.x[i] = s[i]
+		e.mon.cnt++
+		e.ESR_FLAG = true
+	}
+}
+
+// ESR_MON_R4 reports the changes of up to 4 REAL inputs R0..R3, labelled
+// A0..A3, of more than S0..S3, with the time DT_IN, in ESR_OUT: type 20,
+// with the value's 4 bytes in DATA.
 type ESR_MON_R4 struct {
-	EsrFlag bool
-	EsrOut  [4]ESR_DATA
+	R0, R1, R2, R3 iec.REAL
+	DT_IN          iec.DT
+	A0, A1, A2, A3 iec.STRING // STRING(10)
+	S0, S1, S2, S3 iec.REAL
+	ESR_FLAG       iec.BOOL
+	ESR_OUT        *[4]ESR_DATA
 
-	// internal state
-	lastState [4]float32
+	x   [4]iec.REAL
+	mon esrMon
 }
 
-// Update executes the monitoring logic.
-func (e *ESR_MON_R4) Update(dtIn time.Time, r [4]float32, a [4]string, s [4]float32) {
-	e.EsrFlag = false
-	// Clear previous output
-	e.EsrOut = [4]ESR_DATA{}
-	cnt := 0
+// INIT resets the block.
+func (e *ESR_MON_R4) INIT() { *e = ESR_MON_R4{ESR_OUT: e.ESR_OUT} }
 
-	for i := 0; i < 4 && cnt < 4; i++ {
-		if math.DIFFER(float64(r[i]), float64(e.lastState[i]), float64(s[i])) {
-			e.EsrOut[cnt].Typ = 20
-			e.EsrOut[cnt].Adress = a[i]
-			e.EsrOut[cnt].Ds = dtIn
-			e.EsrOut[cnt].Ts = time.Duration(time.Now().UnixNano())
-			// Store the float32 bits in the data array
-			bits := logic.REAL_TO_DW(r[i])
-			e.EsrOut[cnt].Data[0] = logic.BYTE_OF_DWORD(bits, 0)
-			e.EsrOut[cnt].Data[1] = logic.BYTE_OF_DWORD(bits, 1)
-			e.EsrOut[cnt].Data[2] = logic.BYTE_OF_DWORD(bits, 2)
-			e.EsrOut[cnt].Data[3] = logic.BYTE_OF_DWORD(bits, 3)
-			e.lastState[i] = r[i]
-			cnt++
-			e.EsrFlag = true
+// Execute runs the block once.
+func (e *ESR_MON_R4) Execute(now time.Time) {
+	if e.ESR_OUT == nil {
+		return
+	}
+	tx := DWORD_TO_TIME(PLC_MS(now))
+	e.mon.start(e.ESR_OUT, &e.ESR_FLAG)
+	r := [4]iec.REAL{e.R0, e.R1, e.R2, e.R3}
+	a := [4]iec.STRING{e.A0, e.A1, e.A2, e.A3}
+	s := [4]iec.REAL{e.S0, e.S1, e.S2, e.S3}
+	for i := range r {
+		if !math.DIFFER(r[i], e.x[i], s[i]) {
+			continue
 		}
+		out := &e.ESR_OUT[e.mon.cnt]
+		out.TYP = 20
+		out.ADRESS = a[i]
+		out.DS = e.DT_IN
+		out.TS = tx
+		bits := logic.REAL_TO_DW(r[i])
+		for b := iec.BYTE(0); b < 4; b++ {
+			out.DATA[b] = logic.BYTE_OF_DWORD(bits, b)
+		}
+		e.x[i] = r[i]
+		e.mon.cnt++
+		e.ESR_FLAG = true
 	}
 }
 
-// ESR_MON_X8 monitors up to 8 status inputs (bytes) and reports changes.
+// ESR_MON_X8 reports the changes of up to 8 status inputs S0..S7, labelled
+// A0..A7, with the time DT_IN, in ESR_OUT; see STATUS_TO_ESR. MODE 1
+// reports errors, below 100, 2 also status, below 200, and 3 also debug
+// messages. It reports up to 4 changes in a run.
 type ESR_MON_X8 struct {
-	EsrFlag bool
-	EsrOut  [4]ESR_DATA
+	S0, S1, S2, S3, S4, S5, S6, S7 iec.BYTE
+	DT_IN                          iec.DT
+	MODE                           iec.BYTE // default 3
+	A0, A1, A2, A3, A4, A5, A6, A7 iec.STRING
+	ESR_FLAG                       iec.BOOL
+	ESR_OUT                        *[4]ESR_DATA
 
-	// internal state
-	lastState [8]byte
+	x   [8]iec.BYTE
+	mon esrMon
 }
 
-// Update executes the monitoring logic.
-func (e *ESR_MON_X8) Update(dtIn time.Time, s [8]byte, a [8]string, mode byte) {
-	e.EsrFlag = false
-	// Clear previous output
-	e.EsrOut = [4]ESR_DATA{}
-	cnt := 0
+// INIT resets the block and sets MODE to its initial value.
+func (e *ESR_MON_X8) INIT() { *e = ESR_MON_X8{ESR_OUT: e.ESR_OUT, MODE: 3} }
 
-	for i := 0; i < 8 && cnt < 4; i++ {
-		if s[i] != e.lastState[i] {
-			// Check mode: 1=error only, 2=error+status, 3=error+status+debug
-			if (s[i] < 100) || (s[i] >= 100 && s[i] < 200 && mode >= 2) || (s[i] >= 200 && mode == 3) {
-				e.EsrOut[cnt] = STATUS_TO_ESR(s[i], a[i], dtIn, time.Duration(time.Now().UnixNano()))
-				e.lastState[i] = s[i]
-				cnt++
-				e.EsrFlag = true
-			}
+// Execute runs the block once.
+func (e *ESR_MON_X8) Execute(now time.Time) {
+	if e.ESR_OUT == nil {
+		return
+	}
+	tx := DWORD_TO_TIME(PLC_MS(now))
+	e.mon.start(e.ESR_OUT, &e.ESR_FLAG)
+	s := [8]iec.BYTE{e.S0, e.S1, e.S2, e.S3, e.S4, e.S5, e.S6, e.S7}
+	a := [8]iec.STRING{e.A0, e.A1, e.A2, e.A3, e.A4, e.A5, e.A6, e.A7}
+	for i, v := range s {
+		if i >= 4 && e.mon.cnt >= 4 {
+			continue
 		}
+		report := v < 100 || v > 99 && v < 200 && e.MODE >= 2 || v > 199 && e.MODE == 3
+		if v == e.x[i] || !report {
+			continue
+		}
+		e.ESR_OUT[e.mon.cnt] = STATUS_TO_ESR(v, a[i], e.DT_IN, tx)
+		e.x[i] = v
+		e.mon.cnt++
+		e.ESR_FLAG = true
 	}
 }
 
-// STATUS_TO_ESR creates ESR data from a status byte.
-func STATUS_TO_ESR(status byte, address string, dtIn time.Time, ts time.Duration) ESR_DATA {
-	var esr ESR_DATA
-	if status < 100 {
-		esr.Typ = 1
-	} else if status < 200 {
-		esr.Typ = 2
-	} else {
-		esr.Typ = 3
+// OSCAT_VERSION returns the library's version, 335 for 3.35, or if in is
+// true its release date as DATE_TO_DWORD(D#2024-07-16).
+func OSCAT_VERSION(in iec.BOOL) iec.DWORD {
+	if in {
+		return DATE_TO_DWORD(iec.DATE(time.Date(2024, 7, 16, 0, 0, 0, 0, time.UTC)))
 	}
-	esr.Adress = address
-	esr.Ds = dtIn
-	esr.Ts = ts
-	esr.Data[0] = status
-	return esr
+	return 335
 }
 
-func boolToByte(b bool) byte {
-	if b {
-		return 1
+// STATUS_TO_ESR creates a report of a status byte: type 1 for an error,
+// below 100, 2 for a status, below 200, and 3 for a debug message.
+func STATUS_TO_ESR(status iec.BYTE, adress iec.STRING, dtIn iec.DT, ts iec.TIME) ESR_DATA {
+	var out ESR_DATA
+	switch {
+	case status < 100:
+		out.TYP = 1
+	case status < 200:
+		out.TYP = 2
+	default:
+		out.TYP = 3
 	}
-	return 0
-}
-
-// RDM calculates a pseudo-random number between 0.0 and 1.0.
-// To use Rdm more than once per cycle, it needs to be called with different seed values for `last`.
-func RDM(last float64) float64 {
-	tn := uint32(logic.T_PLC_US())
-	tc := logic.BIT_COUNT(tn)
-
-	// Scramble bits based on original ST logic
-	tn = logic.BIT_LOAD_DW(tn, logic.BIT_OF_DWORD(tn, 2), 31)
-	tn = logic.BIT_LOAD_DW(tn, logic.BIT_OF_DWORD(tn, 5), 30)
-	tn = logic.BIT_LOAD_DW(tn, logic.BIT_OF_DWORD(tn, 4), 29)
-	tn = logic.BIT_LOAD_DW(tn, logic.BIT_OF_DWORD(tn, 1), 28)
-	tn = logic.BIT_LOAD_DW(tn, logic.BIT_OF_DWORD(tn, 0), 27)
-	tn = logic.BIT_LOAD_DW(tn, logic.BIT_OF_DWORD(tn, 7), 26)
-	tn = logic.BIT_LOAD_DW(tn, logic.BIT_OF_DWORD(tn, 6), 25)
-	tn = logic.BIT_LOAD_DW(tn, logic.BIT_OF_DWORD(tn, 3), 24)
-
-	tn = (tn << uint(tc)) | (tn >> (32 - uint(tc))) // ROL
-	tn |= 0x80000001
-	tn = tn%71474513 + uint32(tc+77)
-
-	return math.FRACT(float64(tn) / 10000000.0 * (Math.E - math.LIMIT(0.0, last, 1.0)))
-}
-
-// RDM2 calculates an integer pseudo-random number in a given range.
-func RDM2(last, low, high int) int {
-	if high < low {
-		low, high = high, low
-	}
-	return int(RDM(math.FRACT(float64(last)*Math.Pi))*(float64(high-low+1))) + low
-}
-
-// RDMDW calculates a DWORD pseudo-random number.
-func RDMDW(last uint32) uint32 {
-	m := float64(logic.BIT_COUNT(last))
-	rx1 := RDM(math.FRACT(m * Math.Pi))
-	rdm1 := uint32(rx1 * 65535)
-
-	rx2 := RDM(math.FRACT(m * Math.E))
-	rdm2 := uint32(rx2 * 65535)
-
-	return (rdm1 << 16) | (rdm2 & 0x0000FFFF)
+	out.ADRESS = adress
+	out.DS = dtIn
+	out.TS = ts
+	out.DATA[0] = status
+	return out
 }

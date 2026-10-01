@@ -2,7 +2,7 @@
  * Copyright (C) 2026 Franklin D. Amador
  *
  * This software is dual-licensed under:
- * - GPL v2.0
+ * - EPL v2.0
  * - Commercial
  *
  * You may choose to use this software under the terms of either license.
@@ -12,57 +12,58 @@
 package math
 
 import (
-	. "beebread/basic"
-	"math"
+	. "github.com/apiarytech/beebread/basic"
+	"github.com/apiarytech/royaljelly/iec"
 )
 
-// CIRCLE_AREA calculates the area of a circle with radius R. This is a helper function.
-func CIRCLE_AREA(r float64) float64 {
-	return r * r * Math.Pi
+// CIRCLE_A calculates the area of a circle segment with the radius rx and
+// the angle ax in degrees; ax = 360 is the whole circle.
+func CIRCLE_A(rx, ax iec.REAL) iec.REAL {
+	return rx * rx * 8.726646e-3 * ax
 }
 
-// CIRCLE_C calculates the circumference of a circle sector with radius R and angle A.
-func CIRCLE_C(r, a float64) float64 {
-	return r * Math.Pi2
+// CIRCLE_C calculates the length of the arc of a circle with the radius rx
+// over the angle ax in degrees; ax = 360 is the whole circumference.
+func CIRCLE_C(rx, ax iec.REAL) iec.REAL {
+	return 1.7453293e-2 * rx * ax
 }
 
-// CIRCLE_A calculates the area of a circle sector with radius R and angle A.
-func CIRCLE_A(r, a float64) float64 {
-	return r * r * Math.Pi * a / 360.0
-}
-
-// CONE_V calculates the volume of a cone with radius R and height H.
-func CONE_V(r, h float64) float64 {
-	return r * r * Math.Pi * h / 3.0
-}
-
-// SPHERE_V calculates the volume of a sphere with radius R.
-func SPHERE_V(r float64) float64 {
-	return r * r * r * Math.Pi4 / 3.0
-}
-
-// ELLIPSE_A calculates the area of an ellipse based on its two radii.
-func ELLIPSE_A(r1, r2 float64) float64 {
-	return Math.Pi * r1 * r2
-}
-
-// ELLIPSE_C calculates an approximation of the circumference of an ellipse.
-// This uses Ramanujan's second approximation.
-func ELLIPSE_C(r1, r2 float64) float64 {
-	return Math.Pi * (3.0*(r1+r2) - math.Sqrt((3.0*r1+r2)*(r1+3.0*r2)))
-}
-
-// TRIANGLE_A calculates the area of a triangle.
-// If angle A is 0, it uses Heron's formula with three sides (s1, s2, s3).
-// Otherwise, it uses the formula with two sides and the included angle (s1, s2, A).
-func TRIANGLE_A(s1, a, s2, s3 float64) float64 {
-	if a == 0.0 {
-		// Heron's formula for area from three sides
-		s := (s1 + s2 + s3) / 2.0
-		return math.Sqrt(s * (s - s1) * (s - s2) * (s - s3))
+// CIRCLE_SEG calculates the area of the circle segment between a secant
+// line and the circumference, for the radius rx and the segment's height hx.
+func CIRCLE_SEG(rx, hx iec.REAL) iec.REAL {
+	if rx > 0.0 {
+		seg := 2.0 * ACOS(1.0-LIMIT(0.0, hx/rx, 2.0))
+		return (seg - SIN(seg)) * rx * rx / 2.0
 	}
+	return 0.0
+}
 
-	// Area from two sides and the included angle
-	// The angle is converted from degrees to radians.
-	return 0.5 * s1 * s2 * math.Sin(a/math.Pi)
+// CONE_V calculates the volume of a cone with the radius rx and height hx.
+func CONE_V(rx, hx iec.REAL) iec.REAL {
+	return 1.047197551 * rx * rx * hx
+}
+
+// ELLIPSE_A calculates the area of an ellipse with the radii r1 and r2.
+func ELLIPSE_A(r1, r2 iec.REAL) iec.REAL {
+	return MATH.PI * r1 * r2
+}
+
+// ELLIPSE_C calculates the circumference of an ellipse with the radii r1
+// and r2.
+func ELLIPSE_C(r1, r2 iec.REAL) iec.REAL {
+	return MATH.PI * (3.0*(r1+r2) - SQRT((3.0*r1+r2)*(3.0*r2+r1)))
+}
+
+// SPHERE_V calculates the volume of a sphere with the radius rx.
+func SPHERE_V(rx iec.REAL) iec.REAL {
+	return 4.188790205 * rx * rx * rx
+}
+
+// TRIANGLE_A calculates the area of a triangle from two sides s1 and s2 and
+// the angle a between them in degrees, or, if a is 0, from the three sides.
+func TRIANGLE_A(s1, a, s2, s3 iec.REAL) iec.REAL {
+	if a == 0.0 {
+		return SQRT((s1+s2+s3)*(s1+s2-s3)*(s2+s3-s1)*(s3+s1-s2)) * 0.25
+	}
+	return s1 * s2 * SIN(RAD(a)) * 0.5
 }

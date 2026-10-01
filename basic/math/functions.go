@@ -2,7 +2,7 @@
  * Copyright (C) 2026 Franklin D. Amador
  *
  * This software is dual-licensed under:
- * - GPL v2.0
+ * - EPL v2.0
  * - Commercial
  *
  * You may choose to use this software under the terms of either license.
@@ -12,233 +12,226 @@
 package math
 
 import (
-	"math"
 	"time"
+
+	. "github.com/apiarytech/beebread/basic"
+	"github.com/apiarytech/royaljelly/iec"
 )
 
-// F_LIN calculates the linear equation f_lin = a*x + b.
-func F_LIN(x, a, b float64) float64 {
+// F_LIN calculates the linear equation a*x + b.
+func F_LIN(x, a, b iec.REAL) iec.REAL {
 	return a*x + b
 }
 
-// F_LIN2 calculates the linear equation f_lin = a*x + b given by two points (x1, y1) and (x2, y2).
-// It handles the vertical line case by returning y1.
-func F_LIN2(x, x1, y1, x2, y2 float64) float64 {
-	if x2-x1 == 0.0 {
-		return y1
-	}
+// F_LIN2 calculates the linear equation through the points x1/y1 and x2/y2.
+func F_LIN2(x, x1, y1, x2, y2 iec.REAL) iec.REAL {
 	return (y2-y1)/(x2-x1)*(x-x1) + y1
 }
 
-// F_POLY calculates a polynomial using Horner's method for efficiency.
-// It evaluates C[0] + C[1]*X^1 + C[2]*X^2 + ... + C[7]*X^7.
-func F_POLY(x float64, c [8]float64) float64 {
-	res := c[7]
-	for i := 6; i >= 0; i-- {
-		res = res*x + c[i]
-	}
-	return res
+// F_POLY calculates the polynomial c[0] + c[1]*x + c[2]*x^2 + ... + c[7]*x^7.
+func F_POLY(x iec.REAL, c [8]iec.REAL) iec.REAL {
+	return ((((((c[7]*x+c[6])*x+c[5])*x+c[4])*x+c[3])*x+c[2])*x+c[1])*x + c[0]
 }
 
-// F_POWER calculates the power equation f_power = a * x^n.
-func F_POWER(a, x, n float64) float64 {
-	return a * math.Pow(x, n)
+// F_POWER calculates the power equation a*x^n.
+func F_POWER(a, x, n iec.REAL) iec.REAL {
+	return a * EXPT(x, n)
 }
 
-// F_QUAD calculates the quadratic equation f_quad = a*x^2 + b*x + c.
-func F_QUAD(x, a, b, c float64) float64 {
+// F_QUAD calculates the quadratic equation a*x^2 + b*x + c.
+func F_QUAD(x, a, b, c iec.REAL) iec.REAL {
 	return (a*x+b)*x + c
 }
 
-// FRMP_B calculates a ramp for a byte value and limits the output to 0-255.
-// It avoids overflow issues during calculation.
-func FRMP_B(start byte, dir bool, td, tr time.Duration) byte {
-	if td < tr && tr > 0 {
-		// Calculate the ramped value.
-		// The calculation is done using larger integer types to prevent overflow before scaling down.
-		val := byte((uint64(td) * 256) / uint64(tr))
-
-		if dir { // Ramp up
-			// Prevent overflow when adding
-			if int(start)+int(val) > 255 {
-				return 255
-			}
-			return start + val
-		} else { // Ramp down
-			// Prevent underflow when subtracting
-			if int(val) > int(start) {
-				return 0
-			}
-			return start - val
+// FRMP_B calculates a ramp from start, up if dir is true and down if not,
+// that has run for td of the time tr a full ramp of 255 takes. The result is
+// limited to 0..255.
+func FRMP_B(start iec.BYTE, dir iec.BOOL, td, tr iec.TIME) iec.BYTE {
+	if td < tr {
+		step := iec.BYTE((TIME_TO_DWORD(td) << 8) / TIME_TO_DWORD(tr))
+		step = min(step, SEL(dir, start, 255-start))
+		if dir {
+			return start + step
 		}
-	} else if dir {
-		return 255
+		return start - step
 	}
-	return 0
+	return SEL[iec.BYTE](dir, 0, 255)
 }
 
-// LINEAR_INT calculates an output based on a linear interpolation of up to 20 coordinates.
-// The input coordinates in xy must be sorted by ascending X values.
-func LINEAR_INT(x float64, xy [][2]float64, pts int) float64 {
-	// Ensure pts is within the array bounds
-	numPts := len(xy)
-	if pts > numPts {
-		pts = numPts
-	}
-	if pts < 2 {
-		return 0.0 // Not enough points to interpolate
-	}
-
-	// Find the correct segment for interpolation
-	i := 1
-	for i < pts-1 && xy[i][0] < x {
-		i++
-	}
-
-	// Calculate the output value on the corresponding segment
-	return F_LIN2(x, xy[i-1][0], xy[i-1][1], xy[i][0], xy[i][1])
+// delay is the DELAY function block of the signal processing functions,
+// which FT_AVG uses.
+type delay struct {
+	in   iec.REAL
+	n    iec.INT
+	out  iec.REAL
+	buf  [32]iec.REAL
+	i    iec.INT
+	init iec.BOOL
 }
 
-// POLYNOM_INT calculates an output based on a Newton polynomial interpolation of up to 5 coordinates.
-// The input coordinates in xy must be sorted by ascending X values.
-func POLYNOM_INT(x float64, xy [][2]float64, pts int) float64 {
-	// Ensure pts is within the array bounds
-	numPts := len(xy)
-	if pts > numPts {
-		pts = numPts
-	}
-	if pts == 0 {
-		return 0.0
-	}
-
-	// Create a mutable copy to perform the divided differences calculation
-	xyCopy := make([][2]float64, pts)
-	copy(xyCopy, xy)
-
-	// Calculate divided differences
-	for i := 1; i < pts; i++ {
-		for j := pts - 1; j >= i; j-- {
-			if xyCopy[j][0]-xyCopy[j-i][0] != 0 {
-				xyCopy[j][1] = (xyCopy[j][1] - xyCopy[j-1][1]) / (xyCopy[j][0] - xyCopy[j-i][0])
-			} else {
-				xyCopy[j][1] = 0 // Avoid division by zero
-			}
+func (d *delay) run() {
+	stop := LIMIT(0, d.n, 32) - 1
+	switch {
+	case !bool(d.init):
+		d.init = true
+		for i := iec.INT(0); i <= stop; i++ {
+			d.buf[i] = d.in
 		}
+		d.out = d.in
+		d.i = 0
+	case stop < 0:
+		d.out = d.in
+	default:
+		d.out = d.buf[d.i]
+		d.buf[d.i] = d.in
+		d.i = INC1(d.i, d.n)
 	}
-
-	// Evaluate the polynomial using Horner's method
-	res := xyCopy[pts-1][1]
-	for i := pts - 2; i >= 0; i-- {
-		res = res*(x-xyCopy[i][0]) + xyCopy[i][1]
-	}
-
-	return res
 }
 
-// FT_AVG is a moving average filter over N samples.
+// FT_AVG calculates the moving average of the last N samples of IN, up to
+// 32. A sample is taken each scan E is true. RST loads the buffer with IN.
 type FT_AVG struct {
-	Avg float64
+	IN  iec.REAL
+	E   iec.BOOL // default TRUE
+	N   iec.INT  // default 32
+	RST iec.BOOL
+	AVG iec.REAL
 
-	// internal state
-	buff []float64
-	init bool
+	buff delay
+	init iec.BOOL
 }
 
-// Update calculates the moving average.
-func (f *FT_AVG) Update(in float64, e bool, n int, rst bool) {
-	if n <= 0 {
-		n = 1
-	}
-	if n > 32 {
-		n = 32
-	}
+// INIT resets the block and sets E and N to their initial values.
+func (f *FT_AVG) INIT() {
+	*f = FT_AVG{E: true, N: 32}
+}
 
-	if !f.init || rst {
-		f.buff = make([]float64, n)
-		for i := 0; i < n; i++ {
-			f.buff[i] = in
+// Execute runs the block once.
+func (f *FT_AVG) Execute(now time.Time) {
+	f.buff.n = LIMIT(0, f.N, 32)
+	if !f.init || f.RST {
+		for i := iec.INT(1); i <= f.N; i++ {
+			f.buff.in = f.IN
+			f.buff.run()
 		}
-		f.Avg = in
+		f.AVG = f.IN
 		f.init = true
-	} else if e {
-		// The original ST code uses a DELAY block which is a circular buffer.
-		// A more efficient way to calculate moving average is to subtract the
-		// oldest value and add the new one.
-		f.Avg = f.Avg + (in-f.buff[0])/float64(n)
-
-		// Shift buffer
-		copy(f.buff, f.buff[1:])
-		f.buff[n-1] = in
+	} else if f.E {
+		f.buff.in = f.IN
+		f.buff.run()
+		f.AVG = f.AVG + (f.IN-f.buff.out)/iec.REAL(f.N)
 	}
 }
 
-// FT_MIN_MAX stores the minimum and maximum value of an input signal.
+// FT_MIN_MAX holds the minimum and maximum of IN since the first scan or the
+// last RST.
 type FT_MIN_MAX struct {
-	Max float64
-	Min float64
+	IN  iec.REAL
+	RST iec.BOOL
+	MX  iec.REAL
+	MN  iec.REAL
 
-	// internal state
-	init bool
+	init iec.BOOL
 }
 
-// Update executes the min/max tracking logic.
-func (f *FT_MIN_MAX) Update(in float64, rst bool) {
-	if rst || !f.init {
-		f.Min = in
-		f.Max = in
+// INIT resets the block.
+func (f *FT_MIN_MAX) INIT() { *f = FT_MIN_MAX{} }
+
+// Execute runs the block once.
+func (f *FT_MIN_MAX) Execute(now time.Time) {
+	switch {
+	case bool(f.RST || !f.init):
+		f.MN = f.IN
+		f.MX = f.IN
 		f.init = true
-	} else if in < f.Min {
-		f.Min = in
-	} else if in > f.Max {
-		f.Max = in
+	case f.IN < f.MN:
+		f.MN = f.IN
+	case f.IN > f.MX:
+		f.MX = f.IN
 	}
 }
 
-// FT_RMP is a ramp function that follows an input signal with a linear ramp.
+// FT_RMP follows IN with a ramp that rises KR and falls KF units per second.
+// If RMP is false OUT follows IN directly. BUSY is true while the ramp runs
+// and UD is true when it runs up.
 type FT_RMP struct {
-	Out  float64
-	Busy bool
-	UD   bool // Up/Down direction
+	RMP  iec.BOOL // default TRUE
+	IN   iec.REAL
+	KR   iec.REAL
+	KF   iec.REAL
+	OUT  iec.REAL
+	BUSY iec.BOOL
+	UD   iec.BOOL
 
-	// internal state
-	last time.Time
-	init bool
+	last iec.DWORD
+	init iec.BOOL
 }
 
-// Update executes the ramp logic for one cycle.
-func (f *FT_RMP) Update(rmp bool, in, kr, kf float64) {
-	tx := time.Now()
+// INIT resets the block and sets RMP to its initial value.
+func (f *FT_RMP) INIT() { *f = FT_RMP{RMP: true} }
 
+// Execute runs the block once.
+func (f *FT_RMP) Execute(now time.Time) {
+	tx := PLC_MS(now) - f.last
 	if !f.init {
 		f.init = true
 		f.last = tx
-		f.Out = in
+		tx = 0
+		f.OUT = f.IN
 	}
-
-	elapsed := tx.Sub(f.last).Seconds()
-
-	if !rmp {
-		f.Out = in
-		f.Busy = false
-	} else if f.Out > in {
-		// Ramp down
-		f.Out -= elapsed * kf
-		f.Out = math.Max(in, f.Out)
-	} else if f.Out < in {
-		// Ramp up
-		f.Out += elapsed * kr
-		f.Out = math.Min(in, f.Out)
+	switch {
+	case !bool(f.RMP):
+		f.OUT = f.IN
+		f.BUSY = false
+	case f.OUT > f.IN:
+		f.OUT = f.OUT - iec.REAL(tx)*0.001*f.KF
+		f.OUT = max(f.IN, f.OUT)
+	case f.OUT < f.IN:
+		f.OUT = f.OUT + iec.REAL(tx)*0.001*f.KR
+		f.OUT = min(f.IN, f.OUT)
 	}
-
-	// Set busy and direction flags
-	if f.Out < in {
-		f.Busy = true
+	switch {
+	case f.OUT < f.IN:
+		f.BUSY = true
 		f.UD = true
-	} else if f.Out > in {
-		f.Busy = true
+	case f.OUT > f.IN:
+		f.BUSY = true
 		f.UD = false
-	} else {
-		f.Busy = false
+	default:
+		f.BUSY = false
 	}
-	f.last = tx
+	f.last = f.last + tx
+}
+
+// LINEAR_INT interpolates linearly between up to 20 points xy, sorted by
+// ascending x. Below and above the points the first and last segments are
+// extended. xy[i] is the point i+1 of OSCAT's ARRAY[1..20, 0..1].
+func LINEAR_INT(x iec.REAL, xy [20][2]iec.REAL, pts iec.INT) iec.REAL {
+	pts = min(pts, 20)
+	// OSCAT's index i is Go's i-1.
+	i := iec.INT(2)
+	for i < pts && xy[i-1][0] < x {
+		i++
+	}
+	a, b := xy[i-2], xy[i-1]
+	return ((b[1]-a[1])*x - b[1]*a[0] + a[1]*b[0]) / (b[0] - a[0])
+}
+
+// POLYNOM_INT interpolates with a polynomial through up to 5 points xy,
+// sorted by ascending x. xy[i] is the point i+1 of OSCAT's
+// ARRAY[1..5, 0..1].
+func POLYNOM_INT(x iec.REAL, xy [5][2]iec.REAL, pts iec.INT) iec.REAL {
+	pts = min(pts, 5)
+	// Newton's divided differences, stored in the y values. OSCAT's
+	// index i is Go's i-1.
+	for i := iec.INT(1); i <= pts; i++ {
+		for j := pts; j >= i+1; j-- {
+			xy[j-1][1] = (xy[j-1][1] - xy[j-2][1]) / (xy[j-1][0] - xy[j-i-1][0])
+		}
+	}
+	var out iec.REAL
+	for i := pts; i >= 1; i-- {
+		out = out*(x-xy[i-1][0]) + xy[i-1][1]
+	}
+	return out
 }

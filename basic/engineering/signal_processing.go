@@ -2,7 +2,7 @@
  * Copyright (C) 2026 Franklin D. Amador
  *
  * This software is dual-licensed under:
- * - GPL v2.0
+ * - EPL v2.0
  * - Commercial
  *
  * You may choose to use this software under the terms of either license.
@@ -12,724 +12,812 @@
 package engineering
 
 import (
-	"math"
-	"sort"
 	"time"
 
-	"beebread/basic/logic"
-	beeMath "beebread/basic/math"
+	. "github.com/apiarytech/beebread/basic"
+	"github.com/apiarytech/beebread/basic/math"
+	"github.com/apiarytech/royaljelly/fb/timers"
+	"github.com/apiarytech/royaljelly/iec"
 )
 
-// AIN converts signals from A/D converters to a real value.
-func AIN(in uint32, bits, sign byte, low, high float64) float64 {
-	var sx bool
-	if sign < 32 {
-		sx = (in>>sign)&1 == 1
-	}
+// A function's VAR_INPUT CONSTANTs are parameters after its inputs, in
+// OSCAT's order; their initial values are in the comments, for a caller
+// that leaves them out.
 
-	mask := (uint32(1) << bits) - 1
-	val := in & mask
-
-	var result float64
-	if mask > 0 {
-		result = (high-low)*float64(val)/float64(mask) + low
-	} else {
-		result = low
-	}
-
+// AIN converts the lowest bits bits of an A/D converter's value to a REAL
+// from low to high, negative if the bit sign is set. sign is 255, for none,
+// and high 10.0 by default.
+func AIN(in iec.DWORD, bits, sign iec.BYTE, low, high iec.REAL) iec.REAL {
+	sx := sign < 32 && SHR(in, sign)&1 != 0
+	temp1 := SHR(iec.DWORD(0xFFFFFFFF), 32-int(bits))
+	temp2 := in & temp1
+	out := (high-low)*iec.REAL(temp2)/iec.REAL(temp1) + low
 	if sx {
-		return -result
+		return -out
 	}
-	return result
+	return out
 }
 
-// AIN1 converts signals from A/D converters to a real value with error handling.
+// AIN1 converts the bits BIT_0..BIT_N of an A/D converter's value, from
+// CODE_MIN..CODE_MAX, to OUT from OUT_MIN to OUT_MAX, negative if the bit
+// SIGN_BIT is set. The bit ERROR_BIT or the value ERROR_CODE is an error,
+// giving ERROR_OUTPUT, and the bit OVERFLOW_BIT, the value OVERFLOW_CODE or
+// a value outside CODE_MIN..CODE_MAX is an overflow, giving
+// OVERFLOW_OUTPUT. A bit number of 255 is none.
 type AIN1 struct {
-	Out      float64
-	Sign     bool
-	Error    bool
-	Overflow bool
+	IN               iec.DWORD
+	SIGN_BIT         iec.INT // default 255
+	ERROR_BIT        iec.INT // default 255
+	ERROR_CODE_EN    iec.BOOL
+	ERROR_CODE       iec.DWORD
+	OVERFLOW_BIT     iec.INT // default 255
+	OVERFLOW_CODE_EN iec.BOOL
+	OVERFLOW_CODE    iec.DWORD
+	BIT_0            iec.INT
+	BIT_N            iec.INT // default 31
+	OUT_MIN          iec.REAL
+	OUT_MAX          iec.REAL // default 10.0
+	CODE_MIN         iec.DWORD
+	CODE_MAX         iec.DWORD // default 16#FFFFFFFF
+	ERROR_OUTPUT     iec.REAL
+	OVERFLOW_OUTPUT  iec.REAL // default 10.0
+	OUT              iec.REAL
+	SIGN             iec.BOOL
+	ERROR            iec.BOOL
+	OVERFLOW         iec.BOOL
 }
 
-// Update executes the conversion logic.
-func (a *AIN1) Update(in, errorCode, overflowCode, codeMin, codeMax uint32, signBit, errorBit, overflowBit, bit0, bitN int, errCodeEn, ovfCodeEn bool, outMin, outMax, errorOut, overflowOut float64) {
-	a.Error = (logic.BIT_OF_DWORD(in, uint(errorBit))) || (errCodeEn && errorCode == in)
-	if a.Error {
-		a.Out = errorOut
+// INIT resets the block and sets its inputs to their initial values.
+func (a *AIN1) INIT() {
+	*a = AIN1{SIGN_BIT: 255, ERROR_BIT: 255, OVERFLOW_BIT: 255, BIT_N: 31, OUT_MAX: 10,
+		CODE_MAX: 0xFFFFFFFF, OVERFLOW_OUTPUT: 10}
+}
+
+// Execute runs the block once.
+func (a *AIN1) Execute(now time.Time) {
+	a.ERROR = iec.BOOL(SHR(a.IN, a.ERROR_BIT)&1 == 1 || bool(a.ERROR_CODE_EN) && a.ERROR_CODE == a.IN)
+	if a.ERROR {
+		a.OUT = a.ERROR_OUTPUT
 		return
 	}
-
-	// Strip off the data input
-	tb := (in << (31 - uint(bitN))) >> (31 - uint(bitN) + uint(bit0))
-
-	a.Overflow = (logic.BIT_OF_DWORD(in, uint(overflowBit))) || (ovfCodeEn && overflowCode == in) || (tb < codeMin || tb > codeMax)
-	if a.Overflow {
-		a.Out = overflowOut
+	tb := SHR(SHL(a.IN, 31-a.BIT_N), 31-a.BIT_N+a.BIT_0)
+	a.OVERFLOW = iec.BOOL(SHR(a.IN, a.OVERFLOW_BIT)&1 == 1 || bool(a.OVERFLOW_CODE_EN) && a.OVERFLOW_CODE == a.IN ||
+		tb < a.CODE_MIN || tb > a.CODE_MAX)
+	if a.OVERFLOW {
+		a.OUT = a.OVERFLOW_OUTPUT
 		return
 	}
-
-	a.Sign = logic.BIT_OF_DWORD(in, uint(signBit))
-
-	// Convert in to out
-	if codeMax-codeMin > 0 {
-		a.Out = (float64(tb-codeMin)*(outMax-outMin)/float64(codeMax-codeMin) + outMin)
-	} else {
-		a.Out = outMin
-	}
-
-	if a.Sign {
-		a.Out *= -1.0
+	a.SIGN = SHR(a.IN, a.SIGN_BIT)&1 == 1
+	a.OUT = iec.REAL(tb-a.CODE_MIN)*(a.OUT_MAX-a.OUT_MIN)/iec.REAL(a.CODE_MAX-a.CODE_MIN) + a.OUT_MIN
+	if a.SIGN {
+		a.OUT = -a.OUT
 	}
 }
 
-// AOUT converts a real value for a D/A converter.
-func AOUT(in, low, high float64, bits, sign byte) uint32 {
-	var sx bool
-	var in2 = in
-
+// AOUT converts in, from low to high, to a value of bits bits for a D/A
+// converter, with the bit sign set for a negative value. sign is 255, for
+// none, and high 10.0 by default.
+func AOUT(in iec.REAL, bits, sign iec.BYTE, low, high iec.REAL) iec.DWORD {
+	var sx iec.BOOL
+	in2 := in
 	if sign < 32 {
-		sx = in < 0.0
-		in2 = math.Abs(in)
+		sx = math.SIGN_R(in)
+		in2 = ABS(in)
 	}
-
-	in2 = beeMath.LIMIT(low, in2, high)
-
-	var result uint32
-	if high-low != 0.0 {
-		mask := (uint32(1) << bits) - 1
-		result = uint32((in2 - low) / (high - low) * float64(mask))
-	}
-
+	in2 = LIMIT(low, in2, high)
+	out := REAL_TO_DWORD((in2 - low) / (high - low) * iec.REAL(SHL(iec.DWORD(1), bits)-1))
 	if sx {
-		result |= (1 << sign)
+		out |= SHL(iec.DWORD(1), sign)
 	}
-	return result
+	return out
 }
 
-// AOUT1 converts a real value for a D/A converter with bit field placement.
-func AOUT1(in, low, high float64, bit0, bitN, sign int) uint32 {
-	var sx bool
-	var in2 = in
-
+// AOUT1 converts in, from low to high, to the bits bit0..bitN of a value
+// for a D/A converter, with the bit sign set for a negative value. bitN is
+// 31, sign 255, for none, and high 10.0 by default.
+func AOUT1(in iec.REAL, bit0, bitN, sign iec.INT, low, high iec.REAL) iec.DWORD {
+	var sx iec.BOOL
+	in2 := in
 	if sign < 32 {
-		sx = in < 0.0
-		in2 = math.Abs(in)
+		sx = math.SIGN_R(in)
+		in2 = ABS(in)
 	}
-
-	in2 = beeMath.LIMIT(low, in2, high)
-
-	var result uint32
-	if high-low != 0.0 {
-		mask := (uint32(1) << (bitN - bit0 + 1)) - 1
-		result = uint32((in2-low)/(high-low)*float64(mask)) << uint(bit0)
-	}
-
+	in2 = LIMIT(low, in2, high)
+	out := SHL(REAL_TO_DWORD((in2-low)/(high-low)*iec.REAL(SHL(iec.DWORD(1), bitN-bit0+1)-1)), bit0)
 	if sx {
-		result |= (1 << uint(sign))
+		out |= SHL(iec.DWORD(1), sign)
 	}
-	return result
+	return out
 }
 
-// BYTE_TO_RANGE converts a byte into a real value between low and high.
-func BYTE_TO_RANGE(x byte, low, high float64) float64 {
-	return (high-low)*float64(x)/255.0 + low
+// BYTE_TO_RANGE converts a byte to a REAL from low to high.
+func BYTE_TO_RANGE(x iec.BYTE, low, high iec.REAL) iec.REAL {
+	return (high-low)*iec.REAL(x)/255.0 + low
 }
 
-// DELAY delays input values by N program cycles.
+// DELAY delays IN by N scans, 0..32. RST loads the delay with IN.
 type DELAY struct {
-	Out float64
+	IN  iec.REAL
+	N   iec.INT
+	RST iec.BOOL
+	OUT iec.REAL
 
-	// internal state
-	buf  []float64
-	i    int
-	init bool
+	buf  [32]iec.REAL
+	i    iec.INT
+	init iec.BOOL
 }
 
-// Update executes the delay logic.
-func (d *DELAY) Update(in float64, n int, rst bool) {
-	n = int(beeMath.LIMIT(0, float64(n), 32))
+// INIT resets the block.
+func (d *DELAY) INIT() { *d = DELAY{} }
 
-	if rst || !d.init || len(d.buf) != n {
+// Execute runs the block once.
+func (d *DELAY) Execute(now time.Time) {
+	stop := LIMIT(0, d.N, 32) - 1
+	switch {
+	case bool(d.RST || !d.init):
 		d.init = true
-		d.buf = make([]float64, n)
-		for j := 0; j < n; j++ {
-			d.buf[j] = in
+		for i := iec.INT(0); i <= stop; i++ {
+			d.buf[i] = d.IN
 		}
-		d.Out = in
+		d.OUT = d.IN
 		d.i = 0
-	} else if n > 0 {
-		d.Out = d.buf[d.i]
-		d.buf[d.i] = in
-		d.i = beeMath.INC1(d.i, n)
-	} else {
-		d.Out = in
+	case stop < 0:
+		d.OUT = d.IN
+	default:
+		d.OUT = d.buf[d.i]
+		d.buf[d.i] = d.IN
+		d.i = math.INC1(d.i, d.N)
 	}
 }
 
-// DELAY_4 delays input values by 4 program cycles.
+// DELAY_4 delays IN by 1 to 4 scans on OUT1..OUT4.
 type DELAY_4 struct {
-	Out1, Out2, Out3, Out4 float64
-	temp                   float64
+	IN                     iec.REAL
+	OUT1, OUT2, OUT3, OUT4 iec.REAL
+
+	temp iec.REAL
 }
 
-// Update executes the delay logic.
-func (d *DELAY_4) Update(in float64) {
-	d.Out4 = d.Out3
-	d.Out3 = d.Out2
-	d.Out2 = d.Out1
-	d.Out1 = d.temp
-	d.temp = in
+// INIT resets the block.
+func (d *DELAY_4) INIT() { *d = DELAY_4{} }
+
+// Execute runs the block once.
+func (d *DELAY_4) Execute(now time.Time) {
+	d.OUT4, d.OUT3, d.OUT2, d.OUT1, d.temp = d.OUT3, d.OUT2, d.OUT1, d.temp, d.IN
 }
 
-// FILTER_DW is a low-pass filter for a DWORD value.
+// FADE fades Y from IN1 to IN2 over TF while F is true, and back while it
+// is false. RST sets Y to IN1 or IN2 at once.
+type FADE struct {
+	IN1, IN2 iec.REAL
+	F        iec.BOOL
+	TF       iec.TIME
+	RST      iec.BOOL
+	Y        iec.REAL
+
+	rmx         RMP_W
+	initialized bool
+}
+
+// INIT resets the block.
+func (f *FADE) INIT() {
+	*f = FADE{initialized: true}
+	f.rmx.INIT()
+}
+
+// Execute runs the block once.
+func (f *FADE) Execute(now time.Time) {
+	if !f.initialized {
+		f.initialized = true
+		f.rmx.INIT()
+	}
+	f.rmx.RST, f.rmx.SET, f.rmx.PT, f.rmx.UP = f.RST && !f.F, f.RST && f.F, f.TF, f.F
+	f.rmx.Execute(now)
+	f.Y = (f.IN2-f.IN1)/65535.0*iec.REAL(f.rmx.OUT) + f.IN1
+}
+
+// FILTER_DW is a low pass filter with the time T for DWORD values.
 type FILTER_DW struct {
-	Y    uint32
-	yi   float64
-	last int64
-	init bool
+	X iec.DWORD
+	T iec.TIME
+	Y iec.DWORD
+
+	last iec.DWORD
+	init iec.BOOL
+	yi   iec.REAL
 }
 
-// Update executes the filter logic.
-func (f *FILTER_DW) Update(x uint32, t time.Duration) {
-	tx := logic.T_PLC_US() / 1000 // T_PLC_MS
+// INIT resets the block.
+func (f *FILTER_DW) INIT() { *f = FILTER_DW{} }
 
-	if !f.init || t == 0 {
+// Execute runs the block once.
+func (f *FILTER_DW) Execute(now time.Time) {
+	tx := PLC_MS(now)
+	if !f.init || f.T == 0 {
 		f.init = true
-		f.yi = float64(x)
+		f.yi = iec.REAL(f.X)
 	} else {
-		f.yi += (float64(x) - float64(f.Y)) * float64(tx-f.last) / t.Seconds() / 1000.0
+		f.yi = f.yi + (iec.REAL(f.X)-iec.REAL(f.Y))*iec.REAL(tx-f.last)/TIME_TO_REAL(f.T)
 	}
 	f.last = tx
-	f.Y = uint32(f.yi)
+	f.Y = REAL_TO_DWORD(f.yi)
 }
 
-// FILTER_I is a low-pass filter for an INT value.
+// FILTER_I is a low pass filter with the time T for INT values.
 type FILTER_I struct {
-	Y    int
-	yi   int64
-	last int64
-	init bool
+	X iec.INT
+	T iec.TIME
+	Y iec.INT
+
+	yi   iec.DINT
+	last iec.DWORD
+	init iec.BOOL
 }
 
-// Update executes the filter logic.
-func (f *FILTER_I) Update(x int, t time.Duration) {
-	tx := logic.T_PLC_US() / 1000 // T_PLC_MS
+// INIT resets the block.
+func (f *FILTER_I) INIT() { *f = FILTER_I{} }
 
-	if !f.init || t == 0 {
+// Execute runs the block once.
+func (f *FILTER_I) Execute(now time.Time) {
+	tx := PLC_MS(now)
+	if !f.init || f.T == 0 {
 		f.init = true
-		f.yi = int64(x) * 1000
-	} else if t > 0 {
-		f.yi += (int64(x-f.Y) * (tx - f.last) * 1000) / t.Milliseconds()
+		f.yi = iec.DINT(f.X) * 1000
+	} else {
+		f.yi = f.yi + iec.DINT(f.X-f.Y)*iec.DINT(tx-f.last)*1000/iec.DINT(ms(f.T))
 	}
 	f.last = tx
-	f.Y = int(f.yi / 1000)
+	f.Y = iec.INT(f.yi / 1000)
 }
 
-// FILTER_MAV_DW is a moving average filter for DWORD data.
+// FILTER_MAV_DW is a moving average over the last N values of X, up to 32,
+// for DWORD values.
 type FILTER_MAV_DW struct {
-	Y      uint32
-	init   bool
-	buffer [32]uint32
-	i      int
+	X   iec.DWORD
+	N   iec.UINT
+	RST iec.BOOL
+	Y   iec.DWORD
+
+	init   iec.BOOL
+	buffer [32]iec.DWORD
+	i      iec.INT
 }
 
-// Update executes the filter logic.
-func (f *FILTER_MAV_DW) Update(x uint32, n int, rst bool) {
-	n = int(beeMath.LIMIT(0, float64(n), 32))
+// INIT resets the block.
+func (f *FILTER_MAV_DW) INIT() { *f = FILTER_MAV_DW{} }
 
-	if !f.init || rst || n == 0 {
+// Execute runs the block once.
+func (f *FILTER_MAV_DW) Execute(now time.Time) {
+	f.N = min(f.N, 32)
+	if !f.init || f.RST || f.N == 0 {
 		f.init = true
-		for j := 0; j < n; j++ {
-			f.buffer[j] = x
+		for i := 0; i < int(f.N); i++ {
+			f.buffer[i] = f.X
 		}
-		f.Y = x
-		f.i = 0
-	} else {
-		f.i = beeMath.INC1(f.i, n)
-		f.Y = f.Y + (x-f.buffer[f.i])/uint32(n)
-		f.buffer[f.i] = x
+		f.Y = f.X
+		return
 	}
+	f.i = math.INC1(f.i, iec.INT(f.N))
+	f.Y = f.Y + (f.X-f.buffer[f.i])/iec.DWORD(f.N)
+	f.buffer[f.i] = f.X
 }
 
-// FILTER_MAV_W is a moving average filter for WORD data.
+// FILTER_MAV_W is a moving average over the last N values of X, up to 32,
+// for WORD values.
+//
+// OSCAT's buffer is ARRAY[1..32] but the block uses positions 0..N-1, and it
+// starts its sum from the previous Y; the port keeps both.
 type FILTER_MAV_W struct {
-	Y      uint16
-	init   bool
-	buffer [32]uint16
-	i      int
-	sum    uint32
+	X   iec.WORD
+	N   iec.UINT
+	RST iec.BOOL
+	Y   iec.WORD
+
+	init   iec.BOOL
+	buffer [33]iec.WORD
+	i      iec.INT
+	sum    iec.DWORD
 }
 
-// Update executes the filter logic.
-func (f *FILTER_MAV_W) Update(x uint16, n int, rst bool) {
-	n = int(beeMath.LIMIT(0, float64(n), 32))
+// INIT resets the block.
+func (f *FILTER_MAV_W) INIT() { *f = FILTER_MAV_W{} }
 
-	if !f.init || rst || n == 0 {
+// Execute runs the block once.
+func (f *FILTER_MAV_W) Execute(now time.Time) {
+	f.N = min(f.N, 32)
+	if !f.init || f.RST || f.N == 0 {
 		f.init = true
-		for j := 0; j < n; j++ {
-			f.buffer[j] = x
+		for i := 1; i <= int(f.N)-1; i++ {
+			f.buffer[i] = f.X
 		}
-		f.Y = x
-		f.sum = uint32(x) * uint32(n)
-		f.i = 0
-	} else {
-		f.i = beeMath.INC1(f.i, n)
-		f.sum = f.sum + uint32(x) - uint32(f.buffer[f.i])
-		f.Y = uint16(f.sum / uint32(n))
-		f.buffer[f.i] = x
+		f.sum = iec.DWORD(f.Y) * iec.DWORD(f.N)
+		f.Y = f.X
+		return
 	}
+	f.i = math.INC1(f.i, iec.INT(f.N))
+	f.sum = f.sum + iec.DWORD(f.X) - iec.DWORD(f.buffer[f.i])
+	f.Y = iec.WORD(f.sum / iec.DWORD(f.N))
+	f.buffer[f.i] = f.X
 }
 
-// FILTER_W is a low-pass filter for a WORD value.
+// FILTER_W is a low pass filter with the time T for WORD values.
 type FILTER_W struct {
-	Y    uint16
-	last int64
-	init bool
+	X iec.WORD
+	T iec.TIME
+	Y iec.WORD
+
+	last iec.DWORD
+	init iec.BOOL
 }
 
-// Update executes the filter logic.
-func (f *FILTER_W) Update(x uint16, t time.Duration) {
-	tx := logic.T_PLC_US() / 1000 // T_PLC_MS
+// INIT resets the block.
+func (f *FILTER_W) INIT() { *f = FILTER_W{} }
 
-	if !f.init || t == 0 {
+// Execute runs the block once.
+func (f *FILTER_W) Execute(now time.Time) {
+	tx := PLC_MS(now)
+	switch {
+	case !bool(f.init) || f.T == 0:
 		f.init = true
 		f.last = tx
-		f.Y = x
-	} else if f.Y == x {
+		f.Y = f.X
+	case f.Y == f.X:
 		f.last = tx
-	} else if t > 0 {
-		tmp := (int64(x) - int64(f.Y)) * (tx - f.last) / t.Milliseconds()
+	default:
+		tmp := iec.DWORD(f.X-f.Y) * (tx - f.last) / ms(f.T)
 		if tmp != 0 {
-			f.Y = uint16(int64(f.Y) + tmp)
+			f.Y = iec.WORD(int32(f.Y) + int32(tmp))
 			f.last = tx
 		}
 	}
 }
 
-// FILTER_WAV is a weighted moving average filter.
+// FILTER_WAV is a moving average over the last 16 values of X, weighted by
+// W: the newest value by W[0].
 type FILTER_WAV struct {
-	Y      float64
-	init   bool
-	buffer [16]float64
-	i      int
+	X   iec.REAL
+	W   [16]iec.REAL
+	RST iec.BOOL
+	Y   iec.REAL
+
+	init   iec.BOOL
+	buffer [16]iec.REAL
+	i      iec.INT
 }
 
-// Update executes the filter logic.
-func (f *FILTER_WAV) Update(x float64, w [16]float64, rst bool) {
-	if !f.init || rst {
+// INIT resets the block.
+func (f *FILTER_WAV) INIT() { *f = FILTER_WAV{} }
+
+// Execute runs the block once.
+func (f *FILTER_WAV) Execute(now time.Time) {
+	if !f.init || f.RST {
 		f.init = true
-		for j := 0; j < 16; j++ {
-			f.buffer[j] = x
+		for i := range f.buffer {
+			f.buffer[i] = f.X
 		}
 		f.i = 15
-		f.Y = x
 	} else {
-		f.i = beeMath.INC1(f.i, 16)
-		f.buffer[f.i] = x
+		f.i = math.INC1(f.i, 16)
+		f.buffer[f.i] = f.X
 	}
-
-	f.Y = 0.0
-	idx := f.i
+	f.Y = 0
 	for n := 0; n < 16; n++ {
-		f.Y += f.buffer[idx] * w[n]
-		idx = (idx - 1 + 16) % 16 // DEC1
+		f.Y = f.buffer[f.i]*f.W[n] + f.Y
+		f.i = math.DEC1(f.i, 16)
 	}
 }
 
-// MIX is an analog mixer: Y = (1-M)*A + M*B.
-func MIX(a, b, m float64) float64 {
+// MIX mixes a and b: (1 - m) * a + m * b.
+func MIX(a, b, m iec.REAL) iec.REAL {
 	return (1.0-m)*a + m*b
 }
 
-// MUX_R2 is a 2-to-1 analog multiplexer.
-func MUX_R2(in0, in1 float64, a bool) float64 {
-	if a {
-		return in1
-	}
-	return in0
+// MUX_R2 returns in0 if a is false and in1 if it is true.
+func MUX_R2(in0, in1 iec.REAL, a iec.BOOL) iec.REAL {
+	return SEL(a, in0, in1)
 }
 
-// MUX_R4 is a 4-to-1 analog multiplexer.
-func MUX_R4(in0, in1, in2, in3 float64, a0, a1 bool) float64 {
+// MUX_R4 returns the input in0..in3 the address a1, a0 selects.
+func MUX_R4(in0, in1, in2, in3 iec.REAL, a0, a1 iec.BOOL) iec.REAL {
 	if a1 {
-		return MUX_R2(in2, in3, a0)
+		return SEL(a0, in2, in3)
 	}
-	return MUX_R2(in0, in1, a0)
+	return SEL(a0, in0, in1)
 }
 
-// OFFSET adds multiple offsets to an input signal.
-func OFFSET(x, o1, o2, o3, o4, def float64, b1, b2, b3, b4, d bool) float64 {
-	var res float64
-	if d {
-		res = def
-	} else {
-		res = x
+// OFFSET returns x, or def if d is true, plus each offset whose input
+// o1..o4 is true.
+func OFFSET(x iec.REAL, o1, o2, o3, o4, d iec.BOOL, offset1, offset2, offset3, offset4, def iec.REAL) iec.REAL {
+	out := SEL(d, x, def)
+	for _, o := range []struct {
+		on iec.BOOL
+		v  iec.REAL
+	}{{o1, offset1}, {o2, offset2}, {o3, offset3}, {o4, offset4}} {
+		if o.on {
+			out += o.v
+		}
 	}
-	if b1 {
-		res += o1
-	}
-	if b2 {
-		res += o2
-	}
-	if b3 {
-		res += o3
-	}
-	if b4 {
-		res += o4
-	}
-	return res
+	return out
 }
 
-// OFFSET2 adds a prioritized offset to an input signal.
-func OFFSET2(x, o1, o2, o3, o4, def float64, b1, b2, b3, b4, d bool) float64 {
-	var res float64
-	if d {
-		res = def
-	} else {
-		res = x
+// OFFSET2 returns x, or def if d is true, plus the offset of the highest
+// input o1..o4 that is true.
+func OFFSET2(x iec.REAL, o1, o2, o3, o4, d iec.BOOL, offset1, offset2, offset3, offset4, def iec.REAL) iec.REAL {
+	out := SEL(d, x, def)
+	switch {
+	case bool(o4):
+		out += offset4
+	case bool(o3):
+		out += offset3
+	case bool(o2):
+		out += offset2
+	case bool(o1):
+		out += offset1
 	}
-
-	if b4 {
-		return res + o4
-	} else if b3 {
-		return res + o3
-	} else if b2 {
-		return res + o2
-	} else if b1 {
-		return res + o1
-	}
-	return res
+	return out
 }
 
-// OVERRIDE selects an input based on enabled flags, prioritizing the one with the largest absolute value.
-func OVERRIDE(x1, x2, x3 float64, e1, e2, e3 bool) float64 {
-	var res float64
+// OVERRIDE returns the input x1..x3 of the greatest absolute value whose
+// enable e1..e3 is true, or 0.
+func OVERRIDE(x1, x2, x3 iec.REAL, e1, e2, e3 iec.BOOL) iec.REAL {
+	var out iec.REAL
 	if e1 {
-		res = x1
+		out = x1
 	}
-	if e2 && math.Abs(x2) > math.Abs(res) {
-		res = x2
+	if e2 && ABS(x2) > ABS(out) {
+		out = x2
 	}
-	if e3 && math.Abs(x3) > math.Abs(res) {
-		res = x3
+	if e3 && ABS(x3) > ABS(out) {
+		out = x3
 	}
-	return res
+	return out
 }
 
-// RANGE_TO_BYTE converts a real value between low and high into a byte.
-func RANGE_TO_BYTE(x, low, high float64) byte {
-	if high == low {
-		return 0
-	}
-	val := (beeMath.LIMIT(low, x, high) - low) * 255.0 / (high - low)
-	return byte(math.Trunc(val))
+// RANGE_TO_BYTE converts x from low to high to a byte.
+func RANGE_TO_BYTE(x, low, high iec.REAL) iec.BYTE {
+	return iec.BYTE(TRUNC((LIMIT(low, x, high) - low) * 255.0 / (high - low)))
 }
 
-// RANGE_TO_WORD converts a real value between low and high into a word.
-func RANGE_TO_WORD(x, low, high float64) uint16 {
-	if high == low {
-		return 0
-	}
-	val := (beeMath.LIMIT(low, x, high) - low) * 65535.0 / (high - low)
-	return uint16(math.Trunc(val))
+// RANGE_TO_WORD converts x from low to high to a word.
+func RANGE_TO_WORD(x, low, high iec.REAL) iec.WORD {
+	return iec.WORD(TRUNC((LIMIT(low, x, high) - low) * 65535.0 / (high - low)))
 }
 
-// SCALE scales and limits an input signal. Y = (X*K + O) limited by MN and MX.
-func SCALE(x, k, o, mx, mn float64) float64 {
-	return beeMath.LIMIT(mn, x*k+o, mx)
+// SCALE returns x * k + o, limited to mn..mx.
+func SCALE(x, k, o, mx, mn iec.REAL) iec.REAL {
+	return LIMIT(mn, x*k+o, mx)
 }
 
-// SCALE_B scales a byte input to a real output range.
-func SCALE_B(x, iLo, iHi byte, oLo, oHi float64) float64 {
+// SCALE_B scales a byte x from iLo..iHi to oLo..oHi, as OSCAT does, which
+// neither subtracts iLo nor adds oLo.
+func SCALE_B(x, iLo, iHi iec.BYTE, oLo, oHi iec.REAL) iec.REAL {
 	if iHi == iLo {
 		return oLo
 	}
-	val := beeMath.LIMIT_B(iLo, x, iHi)
-	return (oHi-oLo)/float64(iHi-iLo)*float64(val) + oLo
+	return (oHi - oLo) / iec.REAL(iHi-iLo) * iec.REAL(LIMIT(iLo, x, iHi))
 }
 
-// SCALE_B2 scales and sums two byte inputs.
-func SCALE_B2(in1, in2 byte, k, o, in1Min, in1Max, in2Min, in2Max float64) float64 {
-	val1 := (in1Max-in1Min)*float64(in1) + (in2Max-in2Min)*float64(in2)
-	return (val1*0.003921569+in1Min+in2Min)*k + o
+// SCALE_B2 scales 2 bytes, each 0..255 to its range inN_min..inN_max, sums
+// them, and returns the sum * k + o. The maxima are 1000.0 by default.
+func SCALE_B2(in1, in2 iec.BYTE, k, o, in1Min, in1Max, in2Min, in2Max iec.REAL) iec.REAL {
+	return (((in1Max-in1Min)*iec.REAL(in1)+(in2Max-in2Min)*iec.REAL(in2))*0.003921569+in1Min+in2Min)*k + o
 }
 
-// SCALE_B4 scales and sums four byte inputs.
-func SCALE_B4(in1, in2, in3, in4 byte, k, o, in1Min, in1Max, in2Min, in2Max, in3Min, in3Max, in4Min, in4Max float64) float64 {
-	val1 := (in1Max-in1Min)*float64(in1) + (in2Max-in2Min)*float64(in2)
-	val2 := (in3Max-in3Min)*float64(in3) + (in4Max-in4Min)*float64(in4)
-	return ((val1+val2)*0.003921569+in1Min+in2Min+in3Min+in4Min)*k + o
+// SCALE_B4 scales 4 bytes; see SCALE_B2.
+func SCALE_B4(in1, in2, in3, in4 iec.BYTE, k, o, in1Min, in1Max, in2Min, in2Max, in3Min, in3Max, in4Min, in4Max iec.REAL) iec.REAL {
+	return (((in1Max-in1Min)*iec.REAL(in1)+(in2Max-in2Min)*iec.REAL(in2)+(in3Max-in3Min)*iec.REAL(in3)+
+		(in4Max-in4Min)*iec.REAL(in4))*0.003921569+in1Min+in2Min+in3Min+in4Min)*k + o
 }
 
-// SCALE_B8 scales and sums eight byte inputs.
-func SCALE_B8(in1, in2, in3, in4, in5, in6, in7, in8 byte, k, o float64, ranges [8][2]float64) float64 {
-	var sum float64
-	var minSum float64
-	for i := 0; i < 8; i++ {
-		sum += (ranges[i][1] - ranges[i][0]) * float64([]byte{in1, in2, in3, in4, in5, in6, in7, in8}[i])
-		minSum += ranges[i][0]
-	}
-	return (sum*0.003921569+minSum)*k + o
+// SCALE_B8 scales 8 bytes; see SCALE_B2.
+func SCALE_B8(in1, in2, in3, in4, in5, in6, in7, in8 iec.BYTE, k, o,
+	in1Min, in1Max, in2Min, in2Max, in3Min, in3Max, in4Min, in4Max,
+	in5Min, in5Max, in6Min, in6Max, in7Min, in7Max, in8Min, in8Max iec.REAL) iec.REAL {
+	return (((in1Max-in1Min)*iec.REAL(in1)+(in2Max-in2Min)*iec.REAL(in2)+(in3Max-in3Min)*iec.REAL(in3)+
+		(in4Max-in4Min)*iec.REAL(in4)+(in5Max-in5Min)*iec.REAL(in5)+(in6Max-in6Min)*iec.REAL(in6)+
+		(in7Max-in7Min)*iec.REAL(in7)+(in8Max-in8Min)*iec.REAL(in8))*0.003921569+
+		in1Min+in2Min+in3Min+in4Min+in5Min+in6Min+in7Min+in8Min)*k + o
 }
 
-// SCALE_D scales a DWORD input to a real output range.
-func SCALE_D(x, iLo, iHi uint32, oLo, oHi float64) float64 {
+// SCALE_D scales a DWORD x from iLo..iHi, to which it is limited, to
+// oLo..oHi.
+func SCALE_D(x, iLo, iHi iec.DWORD, oLo, oHi iec.REAL) iec.REAL {
 	if iHi == iLo {
 		return oLo
 	}
-	val := beeMath.LIMIT_DW(iLo, x, iHi)
-	return (oHi-oLo)/float64(iHi-iLo)*float64(val-iLo) + oLo
+	return (oHi-oLo)/iec.REAL(iHi-iLo)*iec.REAL(LIMIT(iLo, x, iHi)-iLo) + oLo
 }
 
-// SCALE_R scales a REAL input to a real output range.
-func SCALE_R(x, iLo, iHi, oLo, oHi float64) float64 {
-	if iHi == iLo {
+// SCALE_R scales a REAL x from iLo..iHi, to which it is limited, to
+// oLo..oHi.
+func SCALE_R(x, iLo, iHi, oLo, oHi iec.REAL) iec.REAL {
+	if iLo == iHi {
 		return oLo
 	}
-	val := beeMath.LIMIT(iLo, x, iHi)
-	return (oHi-oLo)/(iHi-iLo)*(val-iLo) + oLo
+	return (oHi-oLo)/(iHi-iLo)*(LIMIT(iLo, x, iHi)-iLo) + oLo
 }
 
-// SCALE_X2 scales and sums two boolean inputs.
-func SCALE_X2(in1, in2 bool, k, o, in1Min, in1Max, in2Min, in2Max float64) float64 {
-	var v1, v2 float64
-	if in1 {
-		v1 = in1Max
-	} else {
-		v1 = in1Min
-	}
-	if in2 {
-		v2 = in2Max
-	} else {
-		v2 = in2Min
-	}
-	return (v1+v2)*k + o
+// SCALE_X2 sums, for 2 inputs, inN_max if the input is true and inN_min if
+// it is false, and returns the sum * k + o. The maxima are 1000.0 by
+// default.
+func SCALE_X2(in1, in2 iec.BOOL, k, o, in1Min, in1Max, in2Min, in2Max iec.REAL) iec.REAL {
+	return (SEL(in1, in1Min, in1Max)+SEL(in2, in2Min, in2Max))*k + o
 }
 
-// SCALE_X4 scales and sums four boolean inputs.
-func SCALE_X4(in1, in2, in3, in4 bool, k, o float64, ranges [4][2]float64) float64 {
-	var sum float64
-	inputs := []bool{in1, in2, in3, in4}
-	for i := 0; i < 4; i++ {
-		if inputs[i] {
-			sum += ranges[i][1]
-		} else {
-			sum += ranges[i][0]
-		}
-	}
-	return sum*k + o
+// SCALE_X4 is SCALE_X2 for 4 inputs.
+func SCALE_X4(in1, in2, in3, in4 iec.BOOL, k, o, in1Min, in1Max, in2Min, in2Max, in3Min, in3Max, in4Min, in4Max iec.REAL) iec.REAL {
+	return (SEL(in1, in1Min, in1Max)+SEL(in2, in2Min, in2Max)+SEL(in3, in3Min, in3Max)+SEL(in4, in4Min, in4Max))*k + o
 }
 
-// SCALE_X8 scales and sums eight boolean inputs.
-func SCALE_X8(in1, in2, in3, in4, in5, in6, in7, in8 bool, k, o float64, ranges [8][2]float64) float64 {
-	var sum float64
-	inputs := []bool{in1, in2, in3, in4, in5, in6, in7, in8}
-	for i := 0; i < 8; i++ {
-		if inputs[i] {
-			sum += ranges[i][1]
-		} else {
-			sum += ranges[i][0]
-		}
-	}
-	return sum*k + o
+// SCALE_X8 is SCALE_X2 for 8 inputs.
+func SCALE_X8(in1, in2, in3, in4, in5, in6, in7, in8 iec.BOOL, k, o,
+	in1Min, in1Max, in2Min, in2Max, in3Min, in3Max, in4Min, in4Max,
+	in5Min, in5Max, in6Min, in6Max, in7Min, in7Max, in8Min, in8Max iec.REAL) iec.REAL {
+	return (SEL(in1, in1Min, in1Max)+SEL(in2, in2Min, in2Max)+SEL(in3, in3Min, in3Max)+SEL(in4, in4Min, in4Max)+
+		SEL(in5, in5Min, in5Max)+SEL(in6, in6Min, in6Max)+SEL(in7, in7Min, in7Max)+SEL(in8, in8Min, in8Max))*k + o
 }
 
-// SEL2_OF_3 selects the average of two out of three inputs that are closest to each other.
+// SEL2_OF_3 averages 3 redundant signals that are within D of each other.
+// A signal that is not is left out and its number shown on W; if no two
+// agree, E is true, W is 4 and Y keeps its value.
 type SEL2_OF_3 struct {
-	Y float64
-	W int
-	E bool
+	IN1, IN2, IN3, D iec.REAL
+	Y                iec.REAL
+	W                iec.INT
+	E                iec.BOOL
 }
 
-// Update executes the selection logic.
-func (s *SEL2_OF_3) Update(in1, in2, in3, d float64) {
-	d12 := math.Abs(in1-in2) <= d
-	d23 := math.Abs(in2-in3) <= d
-	d31 := math.Abs(in3-in1) <= d
+// INIT resets the block.
+func (s *SEL2_OF_3) INIT() { *s = SEL2_OF_3{} }
 
-	if (d12 && d23) || (d12 && d31) || (d23 && d31) {
-		s.Y = beeMath.MID3(in1, in2, in3)
-		s.E = false
-		s.W = 0
-	} else if d12 {
-		s.Y = (in1 + in2) * 0.5
-		s.E = false
-		s.W = 3
-	} else if d23 {
-		s.Y = (in2 + in3) * 0.5
-		s.E = false
-		s.W = 1
-	} else if d31 {
-		s.Y = (in3 + in1) * 0.5
-		s.E = false
-		s.W = 2
-	} else {
-		s.E = true
-		s.W = 4
+// Execute runs the block once.
+func (s *SEL2_OF_3) Execute(now time.Time) {
+	d12 := ABS(s.IN1-s.IN2) <= s.D
+	d23 := ABS(s.IN2-s.IN3) <= s.D
+	d31 := ABS(s.IN3-s.IN1) <= s.D
+	switch {
+	case d12 && d23 || d12 && d31 || d23 && d31:
+		s.Y, s.E, s.W = (s.IN1+s.IN2+s.IN3)*0.333333333333, false, 0
+	case d12:
+		s.Y, s.E, s.W = (s.IN1+s.IN2)*0.5, false, 3
+	case d23:
+		s.Y, s.E, s.W = (s.IN2+s.IN3)*0.5, false, 1
+	case d31:
+		s.Y, s.E, s.W = (s.IN3+s.IN1)*0.5, false, 2
+	default:
+		s.E, s.W = true, 4
 	}
 }
 
-// SEL2_OF_3B is a 2-out-of-3 voter for boolean signals.
+// SEL2_OF_3B is the majority of 3 redundant binary signals. W is true when
+// they have disagreed for TD.
 type SEL2_OF_3B struct {
-	Q    bool
-	W    bool
-	tdel logic.TON
+	IN1, IN2, IN3 iec.BOOL
+	TD            iec.TIME
+	Q             iec.BOOL
+	W             iec.BOOL
+
+	tdel timers.TON
 }
 
-// Update executes the voter logic.
-func (s *SEL2_OF_3B) Update(in1, in2, in3 bool, td time.Duration) {
-	s.Q = (in1 && in2) || (in1 && in3) || (in2 && in3)
-	s.tdel.Update((in1 != in2) || (in1 != in3), td)
+// INIT resets the block.
+func (s *SEL2_OF_3B) INIT() { *s = SEL2_OF_3B{} }
+
+// Execute runs the block once.
+func (s *SEL2_OF_3B) Execute(now time.Time) {
+	s.Q = s.IN1 && s.IN2 || s.IN1 && s.IN3 || s.IN2 && s.IN3
+	s.tdel.IN = s.IN1 != s.IN2 || s.IN1 != s.IN3 || s.IN2 != s.IN3
+	s.tdel.PT = s.TD
+	s.tdel.Execute(now)
 	s.W = s.tdel.Q
 }
 
-// SH is a sample and hold block, triggered by a clock.
+// SH samples IN on a rising edge of CLK and holds it in OUT. TRIG is true
+// for one scan when it samples.
 type SH struct {
-	Out  float64
-	Trig bool
-	edge bool
+	IN   iec.REAL
+	CLK  iec.BOOL
+	OUT  iec.REAL
+	TRIG iec.BOOL
+
+	edge iec.BOOL
 }
 
-// Update executes the logic.
-func (s *SH) Update(in float64, clk bool) {
-	if clk && !s.edge {
-		s.Out = in
-		s.Trig = true
+// INIT resets the block.
+func (s *SH) INIT() { *s = SH{} }
+
+// Execute runs the block once.
+func (s *SH) Execute(now time.Time) {
+	if s.CLK && !s.edge {
+		s.OUT = s.IN
+		s.TRIG = true
 	} else {
-		s.Trig = false
+		s.TRIG = false
 	}
-	s.edge = clk
+	s.edge = s.CLK
 }
 
-// SH_1 is a sample and hold block, triggered by a timer.
+// SH_1 samples IN every PT and holds it in OUT. TRIG is true for one scan
+// when it samples.
 type SH_1 struct {
-	Out  float64
-	Trig bool
-	last time.Time
+	IN   iec.REAL
+	PT   iec.TIME
+	OUT  iec.REAL
+	TRIG iec.BOOL
+
+	last iec.DWORD
 }
 
-// Update executes the logic.
-func (s *SH_1) Update(in float64, pt time.Duration) {
-	tx := time.Now()
-	if tx.Sub(s.last) >= pt {
+// INIT resets the block.
+func (s *SH_1) INIT() { *s = SH_1{} }
+
+// Execute runs the block once.
+func (s *SH_1) Execute(now time.Time) {
+	tx := PLC_MS(now)
+	if tx-s.last >= ms(s.PT) {
 		s.last = tx
-		s.Out = in
-		s.Trig = true
+		s.OUT = s.IN
+		s.TRIG = true
 	} else {
-		s.Trig = false
+		s.TRIG = false
 	}
 }
 
-// SH_2 is a sample and hold block with statistics.
+// SH_2 samples IN every PT and holds it in OUT, and gives the average, the
+// lowest and the highest of the last N samples, up to 16, leaving out DISC
+// samples: the lowest, then the highest, and so on.
 type SH_2 struct {
-	Out  float64
-	Trig bool
-	Avg  float64
-	High float64
-	Low  float64
+	IN   iec.REAL
+	PT   iec.TIME
+	N    iec.INT // default 16
+	DISC iec.INT
+	OUT  iec.REAL
+	TRIG iec.BOOL
+	AVG  iec.REAL
+	HIGH iec.REAL
+	LOW  iec.REAL
 
-	buf  [16]float64
-	last time.Time
-	m    int
+	buf2 [16]iec.REAL
+	last iec.DWORD
 }
 
-// Update executes the logic.
-func (s *SH_2) Update(in float64, pt time.Duration, n, disc int) {
-	tx := time.Now()
-	s.Trig = false
+// INIT resets the block and sets N to its initial value.
+func (s *SH_2) INIT() { *s = SH_2{N: 16} }
 
-	if tx.Sub(s.last) >= pt {
-		s.last = tx
-		s.Trig = true
-		s.m = int(beeMath.LIMIT(1, float64(n), 16))
-
-		// Shift buffer
-		copy(s.buf[1:], s.buf[:s.m-1])
-		s.buf[0] = in
-		s.Out = in
-
-		// Sort a copy for statistics
-		sortedBuf := make([]float64, s.m)
-		copy(sortedBuf, s.buf[:s.m])
-		sort.Float64s(sortedBuf)
-
-		d2 := disc / 2
-		start := d2
-		stop := s.m - 1 - d2
-		if disc%2 != 0 { // odd
-			start++
-		}
-
-		if start > stop {
-			s.Avg, s.Low, s.High = 0.0, 0.0, 0.0
-			return
-		}
-
-		var sum float64
-		for i := start; i <= stop; i++ {
-			sum += sortedBuf[i]
-		}
-		s.Avg = sum / float64(stop-start+1)
-		s.Low = sortedBuf[start]
-		s.High = sortedBuf[stop]
+// Execute runs the block once.
+func (s *SH_2) Execute(now time.Time) {
+	tx := PLC_MS(now)
+	d2 := s.DISC >> 1
+	if tx-s.last < ms(s.PT) {
+		s.TRIG = false
+		return
 	}
+	s.last = tx
+	s.TRIG = true
+	m := LIMIT(1, s.N, 16)
+	for i := m - 1; i >= 1; i-- {
+		s.buf2[i] = s.buf2[i-1]
+	}
+	s.buf2[0] = s.IN
+	s.OUT = s.IN
+	buf := s.buf2
+	for start := iec.INT(0); start <= m-2; start++ {
+		for i := start + 1; i <= m-1; i++ {
+			if buf[start] > buf[i] {
+				buf[start], buf[i] = buf[i], buf[start]
+			}
+		}
+	}
+	stop := m - 1 - d2
+	start := d2
+	if !math.EVEN(iec.DINT(s.DISC)) {
+		start++
+	}
+	s.AVG = 0
+	for i := start; i <= stop; i++ {
+		s.AVG += buf[LIMIT(0, i, 15)]
+	}
+	s.AVG /= iec.REAL(stop - start + 1)
+	s.LOW = buf[LIMIT(0, start, 15)]
+	s.HIGH = buf[LIMIT(0, stop, 15)]
 }
 
-// SH_T is a sample and hold block, transparent when enabled.
+// SH_T follows IN with OUT while E is true and holds it while E is false.
 type SH_T struct {
-	Out float64
+	IN  iec.REAL
+	E   iec.BOOL
+	OUT iec.REAL
 }
 
-// Update executes the logic.
-func (s *SH_T) Update(in float64, e bool) {
-	if e {
-		s.Out = in
+// INIT resets the block.
+func (s *SH_T) INIT() { *s = SH_T{} }
+
+// Execute runs the block once.
+func (s *SH_T) Execute(now time.Time) {
+	if s.E {
+		s.OUT = s.IN
 	}
 }
 
-// STAIR converts an analog signal to a staircase-like output.
-func STAIR(x, d float64) float64 {
+// STAIR rounds x to steps of d, or returns x if d is not above 0.
+func STAIR(x, d iec.REAL) iec.REAL {
 	if d > 0.0 {
-		return math.Trunc(x/d) * d
+		return iec.REAL(REAL_TO_DINT(x/d)) * d
 	}
 	return x
 }
 
-// STAIR2 is a staircase function with hysteresis.
+// STAIR2 follows X in steps of D, with D as a hysteresis.
 type STAIR2 struct {
-	Y float64
+	X, D iec.REAL
+	Y    iec.REAL
 }
 
-// Update executes the logic.
-func (s *STAIR2) Update(x, d float64) {
-	if d > 0.0 {
-		if x >= s.Y+d || x <= s.Y-d {
-			s.Y = math.Floor(x/d) * d
+// INIT resets the block.
+func (s *STAIR2) INIT() { *s = STAIR2{} }
+
+// Execute runs the block once.
+func (s *STAIR2) Execute(now time.Time) {
+	if s.D > 0.0 {
+		if s.X >= s.Y+s.D || s.X <= s.Y-s.D {
+			s.Y = iec.REAL(math.FLOOR(s.X/s.D)) * s.D
 		}
 	} else {
-		s.Y = x
+		s.Y = s.X
 	}
 }
 
-// TREND analyses the trend of a real input signal.
+// TREND shows how X changes: TU for one scan when it rises, TD when it
+// falls, Q when it changes, and D the change.
 type TREND struct {
-	Q     bool
-	TU    bool
-	TD    bool
-	D     float64
-	lastX float64
+	X      iec.REAL
+	Q      iec.BOOL
+	TU, TD iec.BOOL
+	D      iec.REAL
+
+	lastX iec.REAL
 }
 
-// Update executes the trend analysis logic.
-func (t *TREND) Update(x float64) {
-	t.TU = x > t.lastX
-	t.TD = x < t.lastX
+// INIT resets the block.
+func (t *TREND) INIT() { *t = TREND{} }
+
+// Execute runs the block once.
+func (t *TREND) Execute(now time.Time) {
+	t.TU = t.X > t.lastX
+	t.TD = t.X < t.lastX
 	t.Q = t.TU || t.TD
-	t.D = x - t.lastX
-	t.lastX = x
+	t.D = t.X - t.lastX
+	t.lastX = t.X
 }
 
-// WORD_TO_RANGE converts a word into a real value between low and high.
-func WORD_TO_RANGE(x uint16, low, high float64) float64 {
-	return (high-low)*float64(x)*0.0000152590218966964 + low
+// TREND_DW shows how X changes: TU for one scan when it rises, TD when it
+// falls, Q true after a rise and false after a fall, and D the change.
+type TREND_DW struct {
+	X      iec.DWORD
+	Q      iec.BOOL
+	TU, TD iec.BOOL
+	D      iec.DWORD
+
+	lastX iec.DWORD
+}
+
+// INIT resets the block.
+func (t *TREND_DW) INIT() { *t = TREND_DW{} }
+
+// Execute runs the block once.
+func (t *TREND_DW) Execute(now time.Time) {
+	switch {
+	case t.X > t.lastX:
+		t.TU, t.TD, t.D, t.Q = true, false, t.X-t.lastX, true
+	case t.X < t.lastX:
+		t.TD, t.TU, t.D, t.Q = true, false, t.lastX-t.X, false
+	default:
+		t.TU, t.TD, t.D = false, false, 0
+	}
+	t.lastX = t.X
+}
+
+// WORD_TO_RANGE converts a word to a REAL from low to high.
+func WORD_TO_RANGE(x iec.WORD, low, high iec.REAL) iec.REAL {
+	return (high-low)*iec.REAL(x)*0.00001525902189669640 + low
 }

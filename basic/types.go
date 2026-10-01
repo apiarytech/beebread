@@ -2,7 +2,7 @@
  * Copyright (C) 2026 Franklin D. Amador
  *
  * This software is dual-licensed under:
- * - GPL v2.0
+ * - EPL v2.0
  * - Commercial
  *
  * You may choose to use this software under the terms of either license.
@@ -11,155 +11,153 @@
 
 package basic
 
-import "time"
+import "github.com/apiarytech/royaljelly/iec"
 
-// CALENDAR corresponds to the CALENDAR struct in OSCAT, holding date, time,
-// and astronomical data.
+// CALENDAR holds date, time and astronomical data for a location.
 type CALENDAR struct {
-	UTC       time.Time     // world time UTC
-	LocalDT   time.Time     // local time
-	LocalDate time.Time     // local date
-	LocalTOD  time.Duration // local time of day
-	Year      int16         // year of LocalDate
-	Month     int16         // month of LocalDate
-	Day       int16         // day of LocalDate
-	Weekday   int16         // weekday of LocalDate
-	Offset    int16         // Time Zone Offset for Local time in minutes
-	DstEn     bool          // daylight savings time enable
-	DstOn     bool          // true when daylight savings time is on
-	Name      string        // name of time zone (originally STRING(5))
-	Language  int16         // location number pls see location setup
-	Longitude float32       // longitude of current location
-	Latitude  float32       // latitude of current location
-	SunRise   time.Duration // sun_rise for current location
-	SunSet    time.Duration // sun_set for current location
-	SunMidday time.Duration // worldtime when sun stands at south position
-	SunHeigth float32       // suns heigth at midday, south position
-	SunHor    float32       // sun angle horizontal 0 = north in degrees
-	SunVer    float32       // sun angle vertical above horizon in degrees
-	Night     bool          // true between sun_set and sun_rise
-	Holiday   bool          // true when holiday
-	HolyName  string        // name of holiday (originally STRING(30))
-	WorkWeek  int16         // current work week
+	UTC        iec.DT     // world time UTC
+	LOCAL_DT   iec.DT     // local time
+	LOCAL_DATE iec.DATE   // local date
+	LOCAL_TOD  iec.TOD    // local time of day
+	YEAR       iec.INT    // year of LOCAL_DATE
+	MONTH      iec.INT    // month of LOCAL_DATE
+	DAY        iec.INT    // day of LOCAL_DATE
+	WEEKDAY    iec.INT    // weekday of LOCAL_DATE
+	OFFSET     iec.INT    // time zone offset for local time in minutes
+	DST_EN     iec.BOOL   // daylight savings time enable
+	DST_ON     iec.BOOL   // true when daylight savings time is on
+	NAME       iec.STRING // name of time zone, STRING(5)
+	LANGUAGE   iec.INT    // language number, see the language setup
+	LONGITUDE  iec.REAL   // longitude of current location
+	LATITUDE   iec.REAL   // latitude of current location
+	SUN_RISE   iec.TOD    // sun rise for current location
+	SUN_SET    iec.TOD    // sun set for current location
+	SUN_MIDDAY iec.TOD    // world time when the sun stands at south position
+	SUN_HEIGTH iec.REAL   // sun's height at midday, south position
+	SUN_HOR    iec.REAL   // sun angle horizontal, 0 = north, in degrees
+	SUN_VER    iec.REAL   // sun angle vertical above horizon in degrees
+	NIGHT      iec.BOOL   // true between sun set and sun rise
+	HOLIDAY    iec.BOOL   // true when holiday
+	HOLY_NAME  iec.STRING // name of holiday, STRING(30)
+	WORK_WEEK  iec.INT    // current work week
 }
 
-// COMPLEX corresponds to the COMPLEX struct in OSCAT for representing complex numbers.
+// COMPLEX is a complex number.
 type COMPLEX struct {
-	Re float32
-	Im float32
+	RE iec.REAL
+	IM iec.REAL
 }
 
-// CONSTANTS_LANGUAGE corresponds to the CONSTANTS_LANGUAGE struct in OSCAT.
+// CONSTANTS_LANGUAGE is the language setup. The arrays' first index is the
+// language, 1=english, 2=german, 3=french, at Go index language-1.
 type CONSTANTS_LANGUAGE struct {
-	// Language Setup
-	Default   int16 // 1=english, 2=german 3=french
-	Lmax      int16
-	Weekdays  [3][7]string  // Corresponds to ARRAY[1..3, 1..7] OF STRING(10)
-	Weekdays2 [3][7]string  // Corresponds to ARRAY[1..3, 1..7] OF STRING(2)
-	Months    [3][12]string // Corresponds to ARRAY[1..3, 1..12] OF STRING(10)
-	Months3   [3][12]string // Corresponds to ARRAY[1..3, 1..12] OF STRING(3)
-	Dirs      [3][16]string // Corresponds to ARRAY[1..3, 0..15] OF STRING(3)
+	DEFAULT   iec.INT
+	LMAX      iec.INT
+	WEEKDAYS  [3][7]iec.STRING  // ARRAY[1..3, 1..7] OF STRING(10)
+	WEEKDAYS2 [3][7]iec.STRING  // ARRAY[1..3, 1..7] OF STRING(2)
+	MONTHS    [3][12]iec.STRING // ARRAY[1..3, 1..12] OF STRING(10)
+	MONTHS3   [3][12]iec.STRING // ARRAY[1..3, 1..12] OF STRING(3)
+	DIRS      [3][16]iec.STRING // ARRAY[1..3, 0..15] OF STRING(3)
 }
 
-// CONSTANTS_LOCATION corresponds to the CONSTANTS_LOCATION struct in OSCAT.
+// CONSTANTS_LOCATION is the location setup: 1=germany, 2=austria, 3=france,
+// 4=belgium-german, 5=italy-south tyrol.
 type CONSTANTS_LOCATION struct {
-	// location setup
-	Default int16 // 1=germany, 2=austria 3=france 4=belgium-german 5= italien-Sdtirol
-	Lmax    int16
-
-	// language spoken in the location
-	Language [5]int16 // Corresponds to ARRAY[1..5] OF INT
+	DEFAULT  iec.INT
+	LMAX     iec.INT
+	LANGUAGE [5]iec.INT // ARRAY[1..5] OF INT, the language spoken in the location
 }
 
-// CONSTANTS_MATH corresponds to the CONSTANTS_MATH struct in OSCAT.
+// CONSTANTS_MATH holds mathematical constants.
 type CONSTANTS_MATH struct {
-	Pi     float64   // Kreiszahl PI
-	Pi2    float64   // PI * 2
-	Pi4    float64   // PI * 4
-	Pi05   float64   // PI / 2
-	Pi025  float64   // PI / 4
-	Pi_inv float64   // 1 / PI
-	E      float64   // Euler constant e
-	E_inv  float64   // 1 / e
-	Sq2    float64   // Wurzel von 2
-	Facts  [13]int32 // Corresponds to ARRAY[0..12] OF DINT
+	PI     iec.REAL
+	PI2    iec.REAL // PI * 2
+	PI4    iec.REAL // PI * 4
+	PI05   iec.REAL // PI / 2
+	PI025  iec.REAL // PI / 4
+	PI_INV iec.REAL // 1 / PI
+	E      iec.REAL // Euler constant e
+	E_INV  iec.REAL // 1 / e
+	SQ2    iec.REAL // square root of 2
+	FACTS  [13]iec.DINT
 }
 
-// CONSTANTS_PHYS corresponds to the CONSTANTS_PHYS struct in OSCAT.
+// CONSTANTS_PHYS holds physical constants.
 type CONSTANTS_PHYS struct {
-	C  float64 // Lichtgeschwindigkeit in m/s
-	E  float64 // elementarladung in Colomb = A * s
-	G  float64 // Erdbeschleunigung in m / s
-	T0 float32 // absoluter Nullpunkt in C
-	Ru float32 // Universelle Gaskonstante in J / (mol  K)
-	Pn float32 // NormalDruck in Pa
+	C  iec.REAL // speed of light in m/s
+	E  iec.REAL // elementary charge in Coulomb = A * s
+	G  iec.REAL // acceleration of gravity in m/s²
+	T0 iec.REAL // absolute zero in °C
+	RU iec.REAL // universal gas constant in J / (mol * K)
+	PN iec.REAL // standard pressure in Pa
 }
 
-// CONSTANTS_SETUP corresponds to the CONSTANTS_SETUP struct in OSCAT.
+// CONSTANTS_SETUP holds the library's setup parameters.
 type CONSTANTS_SETUP struct {
-	// setup Parameters
-	ExtendedASCII bool
-	Charnames     [4]string  // Corresponds to ARRAY[1..4] OF STRING(253)
-	MthOfs        [12]int16  // Corresponds to ARRAY[1..12] OF INT
-	Decades       [9]float32 // Corresponds to ARRAY[0..8] OF REAL
+	EXTENDED_ASCII iec.BOOL
+	CHARNAMES      [4]iec.STRING // ARRAY[1..4] OF STRING(253)
+	MTH_OFS        [12]iec.INT   // ARRAY[1..12] OF INT
+	DECADES        [9]iec.REAL   // ARRAY[0..8] OF REAL
 }
 
-// ESR_DATA corresponds to the ESR_DATA struct in OSCAT.
+// ESR_DATA is an event, status or error record.
 type ESR_DATA struct {
-	Typ    byte
-	Adress string // Originally STRING(10)
-	Ds     time.Time
-	Ts     time.Duration
-	Data   [8]byte // Corresponds to ARRAY[0..7] OF BYTE
+	TYP    iec.BYTE
+	ADRESS iec.STRING // STRING(10)
+	DS     iec.DT
+	TS     iec.TIME
+	DATA   [8]iec.BYTE
 }
 
-// FRACTION corresponds to the FRACTION struct in OSCAT.
+// FRACTION is a fraction of two integers.
 type FRACTION struct {
-	Numerator   int16
-	Denominator int16
+	NUMERATOR   iec.INT
+	DENOMINATOR iec.INT
 }
 
-// HOLIDAY_DATA corresponds to the HOLIDAY_DATA struct in OSCAT.
+// HOLIDAY_DATA describes a holiday. If MONTH is 0, DAY is the offset in days
+// from easter. USE is 0 for not used, 1 for used, and -1..-7 for the weekday
+// before the date, for example -3 is the wednesday before DAY.MONTH.
 type HOLIDAY_DATA struct {
-	Name  string // Originally STRING(30)
-	Day   int8
-	Month int8
-	Use   int8
+	NAME  iec.STRING // STRING(30)
+	DAY   iec.SINT
+	MONTH iec.SINT
+	USE   iec.SINT
 }
 
-// REAL2 corresponds to the REAL2 struct in OSCAT for double-precision emulation.
+// REAL2 emulates a double precision value with two REALs.
 type REAL2 struct {
-	R1 float32 // small value
-	Rx float32 // big value
+	R1 iec.REAL // small value
+	RX iec.REAL // big value
 }
 
-// Sdt corresponds to the SDT (Structured Date Time) struct in OSCAT.
+// SDT is a structured date and time.
 type SDT struct {
-	Year    int16
-	Month   int16
-	Day     int16
-	Weekday int16
-	Hour    int16
-	Minute  int16
-	Second  int16
-	Ms      int16
+	YEAR    iec.INT
+	MONTH   iec.INT
+	DAY     iec.INT
+	WEEKDAY iec.INT
+	HOUR    iec.INT
+	MINUTE  iec.INT
+	SECOND  iec.INT
+	MS      iec.INT
 }
 
-// TIMER_EVENT corresponds to the TIMER_EVENT struct in OSCAT.
+// TIMER_EVENT describes one event of a timer switch.
 type TIMER_EVENT struct {
-	Typ      byte
-	Channel  byte
-	Day      byte
-	Start    time.Duration
-	Duration time.Duration
-	Land     byte
-	Lor      byte
-	Last     time.Time
+	TYP      iec.BYTE
+	CHANNEL  iec.BYTE
+	DAY      iec.BYTE
+	START    iec.TOD
+	DURATION iec.TIME
+	LAND     iec.BYTE
+	LOR      iec.BYTE
+	LAST     iec.DT
 }
 
-// VECTOR_3 corresponds to the VECTOR_3 struct in OSCAT.
+// VECTOR_3 is a vector in three dimensional space.
 type VECTOR_3 struct {
-	X float32
-	Y float32
-	Z float32
+	X iec.REAL
+	Y iec.REAL
+	Z iec.REAL
 }

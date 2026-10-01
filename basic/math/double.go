@@ -2,7 +2,7 @@
  * Copyright (C) 2026 Franklin D. Amador
  *
  * This software is dual-licensed under:
- * - GPL v2.0
+ * - EPL v2.0
  * - Commercial
  *
  * You may choose to use this software under the terms of either license.
@@ -12,50 +12,39 @@
 package math
 
 import (
-	"math"
-
-	. "beebread/basic"
+	. "github.com/apiarytech/beebread/basic"
+	"github.com/apiarytech/royaljelly/iec"
 )
 
-// R2_ABS calculates the absolute value of a double-precision real number.
+// R2_ABS returns the absolute value of a double precision real.
 func R2_ABS(x REAL2) REAL2 {
-	return REAL2{
-		Rx: float32(math.Abs(float64(x.Rx))),
-		R1: float32(math.Abs(float64(x.R1))),
+	if x.RX >= 0.0 {
+		return REAL2{RX: x.RX, R1: x.R1}
 	}
+	return REAL2{RX: -x.RX, R1: -x.R1}
 }
 
-// R2_ADD adds a real to a double-precision real, maintaining higher precision.
-// This implements the TwoSum algorithm.
-func R2_ADD(x1 REAL2, x2 float32) REAL2 {
-	var res REAL2
-	t1 := x1.Rx + x2
-	t2 := t1 - x1.Rx
-	res.R1 = (x1.Rx - (t1 - t2)) + (x2 - t2) + x1.R1
-	res.Rx = t1 + res.R1
-	res.R1 = (t1 - res.Rx) + res.R1
-	return res
+// R2_ADD adds a real to a double precision real, which extends the accuracy
+// of a real to twice as many digits.
+func R2_ADD(x REAL2, y iec.REAL) REAL2 {
+	var out REAL2
+	temp := x.RX
+	out.RX = y + x.R1 + x.RX
+	out.R1 = temp - out.RX + y + x.R1
+	return out
 }
 
-// R2_ADD2 adds two double-precision real numbers.
-func R2_ADD2(x1, x2 REAL2) REAL2 {
-	res := R2_ADD(x1, x2.Rx)
-	res = R2_ADD(res, x2.R1)
-	return res
+// R2_ADD2 adds two double precision reals.
+func R2_ADD2(x, y REAL2) REAL2 {
+	return REAL2{R1: x.R1 + y.R1, RX: x.RX + y.RX}
 }
 
-// R2_MUL multiplies a double-precision real with a standard real.
-func R2_MUL(x1 REAL2, x2 float32) REAL2 {
-	return REAL2{
-		Rx: x1.Rx * x2,
-		R1: x1.R1 * x2,
-	}
+// R2_MUL multiplies a double precision real with a real.
+func R2_MUL(x REAL2, y iec.REAL) REAL2 {
+	return REAL2{RX: x.RX * y, R1: x.R1 * y}
 }
 
-// R2_SET converts a standard real (float32) to a double-precision real.
-func R2_SET(x float32) REAL2 {
-	return REAL2{
-		Rx: x,
-		R1: 0.0,
-	}
+// R2_SET sets a double precision real to a real value.
+func R2_SET(x iec.REAL) REAL2 {
+	return REAL2{RX: x, R1: 0.0}
 }

@@ -2,886 +2,1205 @@
  * Copyright (C) 2026 Franklin D. Amador
  *
  * This software is dual-licensed under:
- * - GPL v2.0
+ * - EPL v2.0
  * - Commercial
  *
  * You may choose to use this software under the terms of either license.
  * See the LICENSE files in the project root for full license text.
  */
 
-package str
+// Package string is the port of the OSCAT BASIC string functions. A
+// character's code is its ISO 8859-1 code; see the package basic.
+package string
 
 import (
-	"fmt"
-	"math"
-	"strconv"
-	"strings"
 	"time"
 
-	. "beebread/basic"
-	"beebread/basic/logic"
-	beeMath "beebread/basic/math"
-	. "beebread/basic/time_date"
+	. "github.com/apiarytech/beebread/basic"
+	"github.com/apiarytech/beebread/basic/math"
+	td "github.com/apiarytech/beebread/basic/time_date"
+	"github.com/apiarytech/royaljelly/fb/timers"
+	"github.com/apiarytech/royaljelly/iec"
 )
 
-// BIN_TO_BYTE converts a binary string into a byte.
-func BIN_TO_BYTE(str string) byte {
-	val, err := strconv.ParseUint(str, 2, 8)
-	if err != nil {
+// mapChars returns str with each character of a single byte code replaced
+// by f of its code. Other characters are kept.
+func mapChars(str iec.STRING, f func(iec.BYTE) iec.BYTE) iec.STRING {
+	r := []rune(string(str))
+	for i, c := range r {
+		if c <= 255 {
+			r[i] = rune(f(iec.BYTE(c)))
+		}
+	}
+	return iec.STRING(r)
+}
+
+// all reports whether str is not empty and each of its characters is f.
+func all(str iec.STRING, f func(iec.BYTE) iec.BOOL) iec.BOOL {
+	c := CHARS(str)
+	for _, x := range c {
+		if !f(x) {
+			return false
+		}
+	}
+	return len(c) > 0
+}
+
+func hexChar(v iec.BYTE) iec.BYTE {
+	if v <= 9 {
+		return v + 48
+	}
+	return v + 55
+}
+
+// BIN_TO_BYTE converts a binary string to a byte. Characters other than 0
+// and 1 are ignored.
+func BIN_TO_BYTE(bin iec.STRING) iec.BYTE {
+	var out iec.BYTE
+	for _, x := range CHARS(bin) {
+		switch x {
+		case '0':
+			out <<= 1
+		case '1':
+			out = out<<1 | 1
+		}
+	}
+	return out
+}
+
+// BIN_TO_DWORD converts a binary string to a DWORD. Characters other than 0
+// and 1 are ignored.
+func BIN_TO_DWORD(bin iec.STRING) iec.DWORD {
+	var out iec.DWORD
+	for _, x := range CHARS(bin) {
+		switch x {
+		case '0':
+			out <<= 1
+		case '1':
+			out = out<<1 | 1
+		}
+	}
+	return out
+}
+
+// BYTE_TO_STRB converts a byte to a string of 8 bits, the highest first.
+func BYTE_TO_STRB(in iec.BYTE) iec.STRING {
+	b := make([]iec.BYTE, 8)
+	for i := range b {
+		b[i] = in>>(7-i)&1 + 48
+	}
+	return STR(b)
+}
+
+// BYTE_TO_STRH converts a byte to a string of 2 hexadecimal digits.
+func BYTE_TO_STRH(in iec.BYTE) iec.STRING {
+	return STR([]iec.BYTE{hexChar(in >> 4), hexChar(in & 0x0F)})
+}
+
+// CAPITALIZE returns str with each first letter after a blank, and at the
+// start, in upper case.
+func CAPITALIZE(str iec.STRING) iec.STRING {
+	first := true
+	return mapChars(str, func(c iec.BYTE) iec.BYTE {
+		if first {
+			c = TO_UPPER(c)
+		}
+		first = c == 32
+		return c
+	})
+}
+
+// CHARCODE returns the code of the character whose HTML name is str, such as
+// "euro". A string of one character gives that character's code. It is 0
+// for an unknown name.
+func CHARCODE(str iec.STRING) iec.BYTE {
+	if LEN(str) == 1 {
+		return CODE(str, 1)
+	}
+	if str == "" {
 		return 0
 	}
-	return byte(val)
-}
-
-// BIN_TO_DWORD converts a binary string into a dword.
-func BIN_TO_DWORD(str string) uint32 {
-	val, err := strconv.ParseUint(str, 2, 32)
-	if err != nil {
-		return 0
+	search := "&" + str + ";"
+	for _, names := range SETUP.CHARNAMES {
+		if pos := FIND(names, search); pos > 0 {
+			return CODE(MID(names, 1, pos-1), 1)
+		}
 	}
-	return uint32(val)
+	return 0
 }
 
-// BYTE_TO_STRB converts a byte into a binary string.
-func BYTE_TO_STRB(in byte) string {
-	return fmt.Sprintf("%08b", in)
-}
-
-// BYTE_TO_STRH converts a byte into a hex string.
-func BYTE_TO_STRH(in byte) string {
-	return fmt.Sprintf("%02X", in)
-}
-
-// CAPITALIZE capitalizes the first letter of each word in a string.
-func CAPITALIZE(str string) string {
-	return strings.Title(strings.ToLower(str))
-}
-
-// CHARCODE returns the HTML character name for a given byte code.
-// This is a simplified placeholder. A full implementation would require the charname data.
-func CHARCODE(c byte) string {
-	if c > 159 {
-		// Placeholder for a complex lookup in beebread.Setup.Charnames
+// CHARNAME returns the HTML name of the character with the code c, such as
+// "euro", or the character itself if it has no name.
+func CHARNAME(c iec.BYTE) iec.STRING {
+	if c == 0 {
 		return ""
 	}
-	return ""
-}
-
-// CHARNAME returns the byte code for a given HTML character name.
-// This is a simplified placeholder. A full implementation would require the charname data.
-func CHARNAME(str string) byte {
-	// Placeholder for a complex lookup in beebread.Setup.Charnames
-	return 0
-}
-
-// CHR_TO_STRING converts a byte into a string of length 1.
-func CHR_TO_STRING(c byte) string {
-	return string(c)
-}
-
-// CLEAN deletes all characters from a string except the ones specified in cx.
-func CLEAN(in, cx string) string {
-	var result strings.Builder
-	result.Grow(len(in))
-	for _, r := range in {
-		if strings.ContainsRune(cx, r) {
-			result.WriteRune(r)
+	search := ";" + CHR_TO_STRING(c) + "&"
+	for _, names := range SETUP.CHARNAMES {
+		if pos := FIND(names, search); pos > 0 {
+			name := MID(names, 10, pos+3)
+			return LEFT(name, FIND(name, ";")-1)
 		}
 	}
-	return result.String()
+	return CHR_TO_STRING(c)
 }
 
-// DEL_CHARS deletes all characters specified in cx from a string str.
-func DEL_CHARS(str, cx string) string {
-	// This is a more idiomatic way to implement the original DEL_CHARS
-	return strings.Map(func(r rune) rune {
-		if strings.ContainsRune(cx, r) {
-			return -1
+// CHR_TO_STRING returns the string of the one character with the code c.
+func CHR_TO_STRING(c iec.BYTE) iec.STRING {
+	return iec.STRING(rune(c))
+}
+
+// CLEAN returns in without the characters that are not in cx.
+func CLEAN(in, cx iec.STRING) iec.STRING {
+	var out []rune
+	for _, c := range string(in) {
+		if FIND(cx, iec.STRING(c)) > 0 {
+			out = append(out, c)
 		}
-		return r
-	}, str)
-}
-
-// CODE returns the ASCII code of a character in a string at a given position (1-based).
-func CODE(str string, pos int) byte {
-	if pos > 0 && pos <= len(str) {
-		return str[pos-1]
 	}
-	return 0
+	return iec.STRING(out)
 }
 
-// COUNT_CHAR counts the number of characters c in a string str.
-func COUNT_CHAR(str string, c byte) int {
-	return strings.Count(str, string(c))
-}
-
-// COUNT_SUBSTRING counts the number of substrings sub in a string str.
-func COUNT_SUBSTRING(str, sub string) int {
-	return strings.Count(str, sub)
-}
-
-// DEC_TO_BYTE converts a decimal string into a byte.
-func DEC_TO_BYTE(str string) byte {
-	val, err := strconv.ParseInt(str, 10, 8)
-	if err != nil {
+// CODE returns the code of the character at position pos of str, or 0 if
+// there is none.
+func CODE(str iec.STRING, pos iec.INT) iec.BYTE {
+	c := CHARS(str)
+	if pos < 1 || int(pos) > len(c) {
 		return 0
 	}
-	return byte(val)
+	return c[pos-1]
 }
 
-// DEC_TO_DWORD converts a decimal string into a dword.
-func DEC_TO_DWORD(str string) uint32 {
-	val, err := strconv.ParseUint(str, 10, 32)
-	if err != nil {
-		return 0
+// COUNT_CHAR counts the characters with the code chr in str.
+func COUNT_CHAR(str iec.STRING, chr iec.BYTE) iec.INT {
+	var n iec.INT
+	for _, c := range CHARS(str) {
+		if c == chr {
+			n++
+		}
 	}
-	return uint32(val)
+	return n
 }
 
-// DEC_TO_INT converts a decimal string into an integer.
-func DEC_TO_INT(str string) int {
-	val, err := strconv.Atoi(str)
-	if err != nil {
-		return 0
+// COUNT_SUBSTRING counts the occurrences of search in str.
+func COUNT_SUBSTRING(search, str iec.STRING) iec.INT {
+	var n iec.INT
+	size := LEN(search)
+	for {
+		pos := FIND(str, search)
+		if pos == 0 {
+			return n
+		}
+		str = REPLACE(str, "", size, pos)
+		n++
 	}
-	return val
 }
 
-// DT_TO_STRF converts a DT into a string with a given format.
-func DT_TO_STRF(dtIn time.Time, format string) string {
-	// This is a complex format string parser. A full implementation would be extensive.
-	// Here's a simplified version using Go's standard time formatting as a base.
-	// The OSCAT format codes don't map directly to Go's layout string.
-	// Example: %Y-%m-%d %H:%M:%S
-	replacer := strings.NewReplacer(
-		"%d", fmt.Sprintf("%02d", dtIn.Day()),
-		"%H", fmt.Sprintf("%02d", dtIn.Hour()),
-		"%j", fmt.Sprintf("%03d", dtIn.YearDay()),
-		"%m", fmt.Sprintf("%02d", dtIn.Month()),
-		"%M", fmt.Sprintf("%02d", dtIn.Minute()),
-		"%S", fmt.Sprintf("%02d", dtIn.Second()),
-		"%w", strconv.Itoa(DAY_OF_WEEK(dtIn)-1), // OSCAT is 1-7, Go is 0-6 for some uses
-		"%W", fmt.Sprintf("%02d", WORK_WEEK(dtIn)),
-		"%y", dtIn.Format("06"),
-		"%Y", dtIn.Format("2006"),
-		"%%", "%",
-	)
-	return replacer.Replace(format)
+// DEC_TO_BYTE converts a decimal string to a byte. Characters other than
+// digits are ignored.
+func DEC_TO_BYTE(dec iec.STRING) iec.BYTE {
+	var out iec.BYTE
+	for _, x := range CHARS(dec) {
+		if x > 47 && x < 58 {
+			out = out*10 + x - 48
+		}
+	}
+	return out
 }
 
-// DWORD_TO_STRB converts a dword into a binary string.
-func DWORD_TO_STRB(in uint32) string {
-	return fmt.Sprintf("%032b", in)
+// DEC_TO_DWORD converts a decimal string to a DWORD. Characters other than
+// digits are ignored.
+func DEC_TO_DWORD(dec iec.STRING) iec.DWORD {
+	var out iec.DWORD
+	for _, x := range CHARS(dec) {
+		if x > 47 && x < 58 {
+			out = out*10 + iec.DWORD(x) - 48
+		}
+	}
+	return out
 }
 
-// DWORD_TO_STRF converts a DWORD into a string with a given format.
-func DWORD_TO_STRF(in uint32, format string) string {
-	// This is a complex format string parser. A full implementation would be extensive.
-	// Simplified version:
-	replacer := strings.NewReplacer(
-		"%b", DWORD_TO_STRB(in),
-		"%d", strconv.FormatUint(uint64(in), 10),
-		"%h", DWORD_TO_STRH(in),
-		"%%", "%",
-	)
-	return replacer.Replace(format)
+// DEC_TO_INT converts a decimal string to an INT. A minus before the first
+// digit makes it negative; other characters are ignored.
+func DEC_TO_INT(dec iec.STRING) iec.INT {
+	var out iec.INT
+	sign := false
+	for _, x := range CHARS(dec) {
+		if x > 47 && x < 58 {
+			out = out*10 + iec.INT(x) - 48
+		} else if x == 45 && out == 0 {
+			sign = true
+		}
+	}
+	if sign {
+		return -out
+	}
+	return out
 }
 
-// DWORD_TO_STRH converts a dword into a hex string.
-func DWORD_TO_STRH(in uint32) string {
-	return fmt.Sprintf("%08X", in)
+// DEL_CHARS returns in without the characters that are in cx.
+func DEL_CHARS(in, cx iec.STRING) iec.STRING {
+	var out []rune
+	for _, c := range string(in) {
+		if FIND(cx, iec.STRING(c)) == 0 {
+			out = append(out, c)
+		}
+	}
+	return iec.STRING(out)
 }
 
-// EXEC executes a simple mathematical term.
-// This is a placeholder for a very complex and unsafe function.
-// A proper implementation would require a full expression parser.
-func EXEC(str string) string {
-	// Placeholder - a real implementation is a major task.
-	return "ERROR"
+// DT_TO_STRF formats a date and time with the milliseconds ms. Each #X in
+// fmt is replaced:
+//
+//	#A year, 4 digits          #M hour 0..23, 1 or 2 digits
+//	#B year, 2 digits          #N hour 0..23, 2 digits
+//	#C month, 1 or 2 digits    #O hour 1..12, 1 or 2 digits
+//	#D month, 2 digits         #P hour 1..12, 2 digits
+//	#E month, 3 letters        #Q minute, 1 or 2 digits
+//	#F month, full name        #R minute, 2 digits
+//	#G day, 1 or 2 digits      #S second, 1 or 2 digits
+//	#H day, 2 digits           #T second, 2 digits
+//	#I weekday 1..7            #U milliseconds, 1 to 3 digits
+//	#J weekday, 2 letters      #V milliseconds, 3 digits
+//	#K weekday, full name      #W day, 2 characters, blank first
+//	#L AM or PM                #X month, 2 characters, blank first
+//
+// Names are in the language lang, or the default language if lang < 1.
+func DT_TO_STRF(dti iec.DT, ms iec.INT, fmt iec.STRING, lang iec.INT) iec.STRING {
+	ly := LANGUAGE.DEFAULT
+	if lang >= 1 {
+		ly = min(LANGUAGE.LMAX, lang)
+	}
+	dx := DT_TO_DATE(dti)
+	tod := DT_TO_TOD(dti)
+	pad := func(s, fill iec.STRING) iec.STRING {
+		if LEN(s) < 2 {
+			return fill + s
+		}
+		return s
+	}
+	hour12 := func() iec.INT {
+		h := td.HOUR(tod) % 12
+		if h == 0 {
+			h = 12
+		}
+		return h
+	}
+	out := fmt
+	pos := FIND(out, "#")
+	for pos > 0 {
+		var fs iec.STRING
+		switch CODE(out, pos+1) {
+		case 'A':
+			fs = INT_TO_STRING(td.YEAR_OF_DATE(dx))
+		case 'B':
+			fs = RIGHT(INT_TO_STRING(td.YEAR_OF_DATE(dx)), 2)
+		case 'C':
+			fs = INT_TO_STRING(td.MONTH_OF_DATE(dx))
+		case 'D':
+			fs = pad(INT_TO_STRING(td.MONTH_OF_DATE(dx)), "0")
+		case 'E':
+			fs = MONTH_TO_STRING(td.MONTH_OF_DATE(dx), ly, 3)
+		case 'F':
+			fs = MONTH_TO_STRING(td.MONTH_OF_DATE(dx), ly, 0)
+		case 'G':
+			fs = INT_TO_STRING(td.DAY_OF_MONTH(dx))
+		case 'H':
+			fs = pad(INT_TO_STRING(td.DAY_OF_MONTH(dx)), "0")
+		case 'I':
+			fs = INT_TO_STRING(td.DAY_OF_WEEK(dx))
+		case 'J':
+			fs = WEEKDAY_TO_STRING(td.DAY_OF_WEEK(dx), ly, 2)
+		case 'K':
+			fs = WEEKDAY_TO_STRING(td.DAY_OF_WEEK(dx), ly, 0)
+		case 'L':
+			fs = SEL[iec.STRING](TOD_TO_DWORD(tod) >= 12*3600000, "AM", "PM")
+		case 'M':
+			fs = INT_TO_STRING(td.HOUR(tod))
+		case 'N':
+			fs = pad(INT_TO_STRING(td.HOUR(tod)), "0")
+		case 'O':
+			fs = INT_TO_STRING(hour12())
+		case 'P':
+			fs = pad(INT_TO_STRING(hour12()), "0")
+		case 'Q':
+			fs = INT_TO_STRING(td.MINUTE(tod))
+		case 'R':
+			fs = pad(INT_TO_STRING(td.MINUTE(tod)), "0")
+		case 'S':
+			fs = INT_TO_STRING(REAL_TO_INT(td.SECOND(tod)))
+		case 'T':
+			fs = pad(INT_TO_STRING(REAL_TO_INT(td.SECOND(tod))), "0")
+		case 'U':
+			fs = INT_TO_STRING(ms)
+		case 'V':
+			fs = RIGHT("00"+INT_TO_STRING(ms), 3)
+		case 'W':
+			fs = pad(INT_TO_STRING(td.DAY_OF_MONTH(dx)), " ")
+		case 'X':
+			fs = pad(INT_TO_STRING(td.MONTH_OF_DATE(dx)), " ")
+		}
+		out = REPLACE(out, fs, 2, pos)
+		pos = FIND(out, "#")
+	}
+	return out
 }
 
-// FILL creates a string of length L with character C.
-func FILL(c byte, l int) string {
-	if l <= 0 {
+// DWORD_TO_STRB converts a DWORD to a string of 32 bits, the highest first.
+func DWORD_TO_STRB(in iec.DWORD) iec.STRING {
+	b := make([]iec.BYTE, 32)
+	for i := range b {
+		b[i] = iec.BYTE(in>>(31-i)&1) + 48
+	}
+	return STR(b)
+}
+
+// DWORD_TO_STRF converts a DWORD to a string of n digits, 0..20, filled
+// with leading zeros or cut to its lowest digits: DWORD_TO_STRF(123, 4) is
+// "0123" and DWORD_TO_STRF(123, 2) is "23".
+func DWORD_TO_STRF(in iec.DWORD, n iec.INT) iec.STRING {
+	return FIX(DWORD_TO_STRING(in), LIMIT(0, n, 20), 48, 1)
+}
+
+// DWORD_TO_STRH converts a DWORD to a string of 8 hexadecimal digits.
+func DWORD_TO_STRH(in iec.DWORD) iec.STRING {
+	b := make([]iec.BYTE, 8)
+	for i := range b {
+		b[i] = hexChar(iec.BYTE(in >> (28 - 4*i) & 0xF))
+	}
+	return STR(b)
+}
+
+// EXEC calculates a simple term of two numbers and one operator, +, -, *, /
+// or ^, or a function sqrt, sin, cos or tan of a number, and returns the
+// result, or "ERROR".
+func EXEC(str iec.STRING) iec.STRING {
+	var r1, r2 iec.REAL
+	exec := UPPERCASE(TRIM(str))
+	pos := FINDB_NONUM(exec)
+	if pos > 1 {
+		r1 = STRING_TO_REAL(LEFT(exec, pos-1))
+	}
+	r2 = STRING_TO_REAL(RIGHT(exec, LEN(exec)-pos))
+	exec = LEFT(exec, pos)
+	pos = FINDB_NUM(exec)
+	operator := RIGHT(exec, LEN(exec)-pos)
+	switch {
+	case operator == "" && LEN(str) == 0:
 		return ""
+	case operator == "":
+		return str
 	}
-	if l > StringLength {
-		l = StringLength
+	switch operator {
+	case "^":
+		exec = REAL_TO_STRING(EXPT(r1, r2))
+	case "SQRT":
+		exec = REAL_TO_STRING(SQRT(r2))
+	case "SIN":
+		exec = REAL_TO_STRING(SIN(r2))
+	case "COS":
+		exec = REAL_TO_STRING(COS(r2))
+	case "TAN":
+		exec = REAL_TO_STRING(TAN(r2))
+	case "*":
+		exec = REAL_TO_STRING(r1 * r2)
+	case "/":
+		if r2 != 0 {
+			exec = REAL_TO_STRING(r1 / r2)
+		} else {
+			exec = "ERROR"
+		}
+	case "+":
+		exec = REAL_TO_STRING(r1 + r2)
+	case "-":
+		exec = REAL_TO_STRING(r1 - r2)
+	default:
+		exec = "ERROR"
 	}
-	return strings.Repeat(string(c), l)
+	switch {
+	case exec == "ERROR":
+	case FIND(exec, ".") == 0:
+		// Some systems give an integer instead of a real.
+		exec += ".0"
+	case RIGHT(exec, 1) == ".":
+		exec += "0"
+	}
+	return exec
 }
 
-// FIND_CHAR finds the first character that is not a control character.
-func FIND_CHAR(str string, pos int) int {
-	if pos < 1 {
-		pos = 1
+// FILL returns a string of l characters with the code c, up to
+// STRING_LENGTH.
+func FILL(c iec.BYTE, l iec.INT) iec.STRING {
+	l = LIMIT(0, l, STRING_LENGTH)
+	r := make([]rune, l)
+	for i := range r {
+		r[i] = rune(c)
 	}
-	for i := pos - 1; i < len(str); i++ {
-		if !ISC_CTRL(str[i]) {
-			return i + 1
+	return iec.STRING(r)
+}
+
+// FIND_CHAR returns the position of the first character of str, from pos
+// on, that is not a control character, or 0 if there is none.
+func FIND_CHAR(str iec.STRING, pos iec.INT) iec.INT {
+	c := CHARS(str)
+	for i := max(pos, 1); int(i) <= len(c); i++ {
+		x := c[i-1]
+		if x > 31 && ((SETUP.EXTENDED_ASCII && x != 127) || (!SETUP.EXTENDED_ASCII && x < 127)) {
+			return i
 		}
 	}
 	return 0
 }
 
-// FIND_CTRL finds the first control character in a string.
-func FIND_CTRL(str string, pos int) int {
-	if pos < 1 {
-		pos = 1
-	}
-	for i := pos - 1; i < len(str); i++ {
-		if ISC_CTRL(str[i]) {
-			return i + 1
+// FIND_CTRL returns the position of the first control character of str,
+// from pos on, or 0 if there is none.
+func FIND_CTRL(str iec.STRING, pos iec.INT) iec.INT {
+	c := CHARS(str)
+	for i := max(pos, 1); int(i) <= len(c); i++ {
+		if x := c[i-1]; x < 32 || x == 127 {
+			return i
 		}
 	}
 	return 0
 }
 
-// FIND_NONUM finds the first character that is not a number or a dot.
-func FIND_NONUM(str string, pos int) int {
-	if pos < 1 {
-		pos = 1
-	}
-	for i := pos - 1; i < len(str); i++ {
-		if !((str[i] >= '0' && str[i] <= '9') || str[i] == '.') {
-			return i + 1
+// isNum reports whether a character belongs to a number: 0..9 or ".".
+func isNum(x iec.BYTE) bool { return x > 47 && x < 58 || x == 46 }
+
+// FIND_NONUM returns the position of the first character of str, from pos
+// on, that is not 0..9 or ".", or 0 if there is none.
+func FIND_NONUM(str iec.STRING, pos iec.INT) iec.INT {
+	c := CHARS(str)
+	for i := max(pos, 1); int(i) <= len(c); i++ {
+		if !isNum(c[i-1]) {
+			return i
 		}
 	}
 	return 0
 }
 
-// FIND_NUM finds the first character that is a number or a dot.
-func FIND_NUM(str string, pos int) int {
-	if pos < 1 {
-		pos = 1
-	}
-	for i := pos - 1; i < len(str); i++ {
-		if (str[i] >= '0' && str[i] <= '9') || str[i] == '.' {
-			return i + 1
+// FIND_NUM returns the position of the first character of str, from pos
+// on, that is 0..9 or ".", or 0 if there is none.
+func FIND_NUM(str iec.STRING, pos iec.INT) iec.INT {
+	c := CHARS(str)
+	for i := max(pos, 1); int(i) <= len(c); i++ {
+		if isNum(c[i-1]) {
+			return i
 		}
 	}
 	return 0
 }
 
-// FINDB finds the last occurrence of str2 in str1.
-func FINDB(str1, str2 string) int {
-	pos := strings.LastIndex(str1, str2)
-	if pos == -1 {
+// FINDB returns the position of the last str2 in str1, or 0 if there is
+// none.
+func FINDB(str1, str2 iec.STRING) iec.INT {
+	length := LEN(str2)
+	for pos := LEN(str1) - length + 1; pos >= 1; pos-- {
+		if MID(str1, length, pos) == str2 {
+			return pos
+		}
+	}
+	return 0
+}
+
+// FINDB_NONUM returns the position of the last character of str that is not
+// 0..9 or ".", or 0 if there is none.
+func FINDB_NONUM(str iec.STRING) iec.INT {
+	c := CHARS(str)
+	for pos := len(c); pos >= 1; pos-- {
+		if !isNum(c[pos-1]) {
+			return iec.INT(pos)
+		}
+	}
+	return 0
+}
+
+// FINDB_NUM returns the position of the last character of str that is 0..9
+// or ".", or 0 if there is none.
+func FINDB_NUM(str iec.STRING) iec.INT {
+	c := CHARS(str)
+	for pos := len(c); pos >= 1; pos-- {
+		if isNum(c[pos-1]) {
+			return iec.INT(pos)
+		}
+	}
+	return 0
+}
+
+// FINDP returns the position of the first src in str from the position pos
+// on, or 0 if there is none.
+func FINDP(str, src iec.STRING, pos iec.INT) iec.INT {
+	ls := LEN(str)
+	lx := LEN(src)
+	if ls < lx || lx == 0 {
 		return 0
 	}
-	return pos + 1 // 1-based index
-}
-
-// FINDB_NONUM finds the last character that is not a number or a dot.
-func FINDB_NONUM(str string) int {
-	for i := len(str) - 1; i >= 0; i-- {
-		if !((str[i] >= '0' && str[i] <= '9') || str[i] == '.') {
-			return i + 1
+	for i := max(pos, 1); i <= ls-lx+1; i++ {
+		if MID(str, lx, i) == src {
+			return i
 		}
 	}
 	return 0
 }
 
-// FINDB_NUM finds the last character that is a number or a dot.
-func FINDB_NUM(str string) int {
-	for i := len(str) - 1; i >= 0; i-- {
-		if (str[i] >= '0' && str[i] <= '9') || str[i] == '.' {
-			return i + 1
+// FIX returns str cut or filled with the character c to the length l: m = 1
+// cuts or fills at the start, m = 2 fills on both sides, with one more at
+// the end for an odd number, and any other m cuts or fills at the end.
+func FIX(str iec.STRING, l iec.INT, c iec.BYTE, m iec.INT) iec.STRING {
+	n := LIMIT(0, l, STRING_LENGTH) - LEN(str)
+	switch {
+	case n <= 0:
+		if m == 1 {
+			return RIGHT(str, l)
 		}
+		return LEFT(str, l)
+	case m == 1:
+		return FILL(c, n) + str
+	case m == 2:
+		sx := FILL(c, (n+1)>>1)
+		return LEFT(sx, n>>1) + str + sx
 	}
-	return 0
+	return str + FILL(c, n)
 }
 
-// FINDP finds the first occurrence of src in str, starting from pos (1-based).
-func FINDP(str, src string, pos int) int {
-	if pos < 1 {
-		pos = 1
-	}
-	if len(str) < pos-1 {
-		return 0
-	}
-	foundPos := strings.Index(str[pos-1:], src)
-	if foundPos == -1 {
-		return 0
-	}
-	return foundPos + pos
-}
-
-// FIX adjusts a string to a fixed length L, padding or truncating as needed.
-func FIX(str string, l int, c byte, m int) string {
-	currentLen := len(str)
-	if l <= currentLen {
-		if m == 1 { // Right align (take from right)
-			return str[currentLen-l:]
-		}
-		return str[:l] // Left align (take from left)
-	}
-
-	padding := strings.Repeat(string(c), l-currentLen)
-	switch m {
-	case 1: // Pad left
-		return padding + str
-	case 2: // Pad center
-		padLen := l - currentLen
-		leftPad := padLen / 2
-		rightPad := padLen - leftPad
-		return strings.Repeat(string(c), leftPad) + str + strings.Repeat(string(c), rightPad)
-	default: // Pad right
-		return str + padding
-	}
-}
-
-// FLOAT_TO_REAL converts a string to a float64.
-func FLOAT_TO_REAL(flt string) float64 {
-	// A simplified version. The original is very complex and tries to parse manually.
-	// Go's strconv is more robust.
-	f, err := strconv.ParseFloat(strings.TrimSpace(flt), 64)
-	if err != nil {
-		return 0.0
-	}
-	return f
-}
-
-// FSTRING_TO_BYTE converts a formatted string (e.g., "16#FF", "2#1010") to a byte.
-func FSTRING_TO_BYTE(in string) byte {
-	if strings.HasPrefix(in, "16#") {
-		return HEX_TO_BYTE(in[3:])
-	} else if strings.HasPrefix(in, "8#") {
-		return OCT_TO_BYTE(in[2:])
-	} else if strings.HasPrefix(in, "2#") {
-		return BIN_TO_BYTE(in[2:])
-	}
-	return DEC_TO_BYTE(in)
-}
-
-// FSTRING_TO_DWORD converts a formatted string to a dword.
-func FSTRING_TO_DWORD(in string) uint32 {
-	if strings.HasPrefix(in, "16#") {
-		return HEX_TO_DWORD(in[3:])
-	} else if strings.HasPrefix(in, "8#") {
-		return OCT_TO_DWORD(in[2:])
-	} else if strings.HasPrefix(in, "2#") {
-		return BIN_TO_DWORD(in[2:])
-	}
-	return DEC_TO_DWORD(in)
-}
-
-// FstringToDt converts a formatted string into a DT (time.Time) value.
-func FstringToDt(sdt, fmtStr string) time.Time {
-	const (
-		ignore = '*'
-		fchar  = '#'
-	)
-
-	var (
-		dy = 1970
-		dm = 1
-		dd = 1
-		th = 0
-		tm = 0
-		ts = 0
-	)
-
-	sdtRunes := []rune(sdt)
-	fmtRunes := []rune(fmtStr)
-
-	sdtPos, fmtPos := 0, 0
-
-	for fmtPos < len(fmtRunes) {
-		if sdtPos >= len(sdtRunes) {
+// FLOAT_TO_REAL converts a string to a REAL. The decimal separator can be
+// "," or ".", the exponent starts with "E" or "e", and other characters are
+// ignored.
+func FLOAT_TO_REAL(flt iec.STRING) iec.REAL {
+	pt := CHARS(flt)
+	stop := len(pt)
+	at := func(i int) iec.BYTE { return pt[i-1] }
+	var sign iec.DINT = 1
+	var tmp iec.DINT
+	var d iec.INT
+	var x iec.BYTE
+	// The sign, up to the first digit or dot.
+	i := 1
+	for ; i <= stop; i++ {
+		x = at(i)
+		if x > 47 && x < 58 || x == 46 {
 			break
+		} else if x == 45 {
+			sign = -1
 		}
-
-		switch fmtRunes[fmtPos] {
-		case ignore:
-			fmtPos++
-			sdtPos++
-		case fchar:
-			fmtPos++ // Move past '#'
-			if fmtPos >= len(fmtRunes) {
+	}
+	// The digits up to a separator or the exponent.
+	for ; i <= stop; i++ {
+		x = at(i)
+		if x == 44 || x == 46 || x == 69 || x == 101 {
+			break
+		} else if x > 47 && x < 58 {
+			tmp = tmp*10 + iec.DINT(x) - 48
+		}
+	}
+	// The digits after the separator.
+	if x == 44 || x == 46 {
+		for i = i + 1; i <= stop; i++ {
+			x = at(i)
+			if x == 69 || x == 101 {
 				break
+			} else if x > 47 && x < 58 {
+				tmp = tmp*10 + iec.DINT(x) - 48
+				d--
 			}
-			formatCode := fmtRunes[fmtPos]
-			fmtPos++
+		}
+	}
+	if x == 69 || x == 101 {
+		d += DEC_TO_INT(RIGHT(flt, iec.INT(stop-i)))
+	}
+	return math.EXPN(10, d) * iec.REAL(tmp*sign)
+}
 
-			end := sdtPos
-			for end < len(sdtRunes) && (fmtPos >= len(fmtRunes) || sdtRunes[end] != fmtRunes[fmtPos]) {
-				end++
+// FSTRING_TO_BYTE converts a string of the form 2#0101, 8#17, 16#2A or 123
+// to a byte.
+func FSTRING_TO_BYTE(in iec.STRING) iec.BYTE {
+	switch {
+	case LEFT(in, 2) == "2#":
+		return BIN_TO_BYTE(RIGHT(in, LEN(in)-2))
+	case LEFT(in, 2) == "8#":
+		return OCT_TO_BYTE(RIGHT(in, LEN(in)-2))
+	case LEFT(in, 3) == "16#":
+		return HEX_TO_BYTE(RIGHT(in, LEN(in)-3))
+	}
+	return DEC_TO_BYTE(CLEAN(in, "0123456789"))
+}
+
+// FSTRING_TO_DT reads a date and time from sdt with the format fmt: #Y is
+// the year, #M the month, #N the month's name, #D the day, #h the hour, #m
+// the minute and #s the second; * skips a character, and other characters
+// must match.
+func FSTRING_TO_DT(sdt, fmt iec.STRING) iec.DT {
+	var dy, dm, dd iec.INT = 1970, 1, 1
+	var th, tm, ts iec.INT
+	for fmt != "" {
+		c := LEFT(fmt, 1)
+		switch {
+		case c == "*":
+			fmt = DELETE(fmt, 1, 1)
+			sdt = DELETE(sdt, 1, 1)
+		case c == "#":
+			c = MID(fmt, 1, 2)
+			fmt = DELETE(fmt, 2, 1)
+			var tmp iec.STRING
+			if fmt == "" {
+				tmp = sdt
+			} else {
+				end := FIND(sdt, LEFT(fmt, 1)) - 1
+				tmp = LEFT(sdt, end)
+				sdt = DELETE(sdt, end, 1)
 			}
-
-			val := string(sdtRunes[sdtPos:end])
-			sdtPos = end
-
-			switch formatCode {
-			case 'Y':
-				dy, _ = strconv.Atoi(val)
+			switch c {
+			case "Y":
+				dy = STRING_TO_INT(tmp)
 				if dy < 100 {
 					dy += 2000
 				}
-			case 'M':
-				dm, _ = strconv.Atoi(val)
-			case 'N':
-				dm = FSTRING_TO_MONTH(val, 0)
-			case 'D':
-				dd, _ = strconv.Atoi(val)
-			case 'h':
-				th, _ = strconv.Atoi(val)
-			case 'm':
-				tm, _ = strconv.Atoi(val)
-			case 's':
-				ts, _ = strconv.Atoi(val)
+			case "M":
+				dm = STRING_TO_INT(tmp)
+			case "N":
+				dm = FSTRING_TO_MONTH(tmp, 0)
+			case "D":
+				dd = STRING_TO_INT(tmp)
+			case "h":
+				th = STRING_TO_INT(tmp)
+			case "m":
+				tm = STRING_TO_INT(tmp)
+			case "s":
+				ts = STRING_TO_INT(tmp)
 			}
+		case c == LEFT(sdt, 1):
+			fmt = DELETE(fmt, 1, 1)
+			sdt = DELETE(sdt, 1, 1)
 		default:
-			if fmtRunes[fmtPos] == sdtRunes[sdtPos] {
-				fmtPos++
-				sdtPos++
-			} else {
-				// Mismatch, stop parsing
-				return time.Date(dy, time.Month(dm), dd, th, tm, ts, 0, time.UTC)
-			}
+			return iec.DT{}
 		}
 	}
-
-	return time.Date(dy, time.Month(dm), dd, th, tm, ts, 0, time.UTC)
+	return td.SET_DT(dy, dm, dd, th, tm, ts)
 }
 
-// FSTRING_TO_MONTH converts a month string (name or number) to an integer (1-12).
-func FSTRING_TO_MONTH(mth string, lang int) int {
-	// Placeholder for a complex lookup.
-	if i, err := strconv.Atoi(mth); err == nil {
-		return i
+// FSTRING_TO_DWORD converts a string of the form 2#0101, 8#17, 16#2A or 123
+// to a DWORD.
+func FSTRING_TO_DWORD(in iec.STRING) iec.DWORD {
+	switch {
+	case LEFT(in, 2) == "2#":
+		return BIN_TO_DWORD(RIGHT(in, LEN(in)-2))
+	case LEFT(in, 2) == "8#":
+		return OCT_TO_DWORD(RIGHT(in, LEN(in)-2))
+	case LEFT(in, 3) == "16#":
+		return HEX_TO_DWORD(RIGHT(in, LEN(in)-3))
 	}
-	return 0
+	return DEC_TO_DWORD(CLEAN(in, "0123456789"))
 }
 
-// FSTRING_TO_WEEK converts a comma-separated list of weekdays to a bitmask byte.
-func FSTRING_TO_WEEK(week string, lang int) byte {
-	// Placeholder for a complex lookup.
-	return 0
-}
-
-// FSTRING_TO_WEEKDAY converts a weekday string to an integer (1-7).
-func FSTRING_TO_WEEKDAY(wday string, lang int) int {
-	// Placeholder for a complex lookup.
-	if i, err := strconv.Atoi(wday); err == nil {
-		return i
+// FSTRING_TO_MONTH converts a month's name or number to its number 1..12,
+// in the language lang, or the default language if lang is 0.
+func FSTRING_TO_MONTH(mth iec.STRING, lang iec.INT) iec.INT {
+	lx := LANGUAGE.DEFAULT
+	if lang != 0 {
+		lx = min(lang, LANGUAGE.LMAX)
 	}
-	return 0
+	mth = CAPITALIZE(LOWERCASE(TRIM(mth)))
+	for m := iec.INT(1); m <= 12; m++ {
+		if mth == LANGUAGE.MONTHS[lx-1][m-1] || mth == LANGUAGE.MONTHS3[lx-1][m-1] {
+			return m
+		}
+	}
+	return STRING_TO_INT(mth)
 }
 
-// HEX_TO_BYTE converts a hexadecimal string to a byte.
-func HEX_TO_BYTE(hex string) byte {
-	val, err := strconv.ParseUint(hex, 16, 8)
-	if err != nil {
-		return 0
+// FSTRING_TO_WEEK converts a comma separated list of weekdays to a byte with
+// bit 6 for monday ... bit 0 for sunday.
+func FSTRING_TO_WEEK(week iec.STRING, lang iec.INT) iec.BYTE {
+	var out iec.BYTE
+	pos := FIND(week, ",")
+	for pos > 0 {
+		out |= SHR(iec.BYTE(128), FSTRING_TO_WEEKDAY(MID(week, pos-1, 1), lang))
+		week = RIGHT(week, LEN(week)-pos)
+		pos = FIND(week, ",")
 	}
-	return byte(val)
+	return (out | SHR(iec.BYTE(128), FSTRING_TO_WEEKDAY(week, lang))) & 127
 }
 
-// HEX_TO_DWORD converts a hexadecimal string to a dword.
-func HEX_TO_DWORD(hex string) uint32 {
-	val, err := strconv.ParseUint(hex, 16, 32)
-	if err != nil {
-		return 0
+// FSTRING_TO_WEEKDAY converts a weekday's two letter name or number to its
+// number 1..7, in the language lang, or the default language if lang is 0.
+func FSTRING_TO_WEEKDAY(wday iec.STRING, lang iec.INT) iec.INT {
+	ly := LANGUAGE.DEFAULT
+	if lang != 0 {
+		ly = min(lang, LANGUAGE.LMAX)
 	}
-	return uint32(val)
+	tmp := LEFT(CAPITALIZE(LOWERCASE(TRIM(wday))), 2)
+	for i := iec.INT(1); i <= 7; i++ {
+		if LANGUAGE.WEEKDAYS2[ly-1][i-1] == tmp {
+			return i
+		}
+	}
+	return STRING_TO_INT(wday)
 }
 
-// IS_ALNUM checks if a string contains only alphanumeric characters.
-func IS_ALNUM(str string) bool {
-	if len(str) == 0 {
-		return false
+// hexDigit returns the value of a hexadecimal digit and whether it is one.
+func hexDigit(x iec.BYTE) (iec.BYTE, bool) {
+	switch {
+	case x > 47 && x < 58:
+		return x - 48, true
+	case x > 64 && x < 71:
+		return x - 55, true
+	case x > 96 && x < 103:
+		return x - 87, true
 	}
-	for _, r := range str {
-		if !ISC_ALPHA(byte(r)) && !ISC_NUM(byte(r)) {
+	return 0, false
+}
+
+// HEX_TO_BYTE converts a hexadecimal string to a byte. Other characters are
+// ignored.
+func HEX_TO_BYTE(hex iec.STRING) iec.BYTE {
+	var out iec.BYTE
+	for _, x := range CHARS(hex) {
+		if v, ok := hexDigit(x); ok {
+			out = out<<4 + v
+		}
+	}
+	return out
+}
+
+// HEX_TO_DWORD converts a hexadecimal string to a DWORD. Other characters
+// are ignored.
+func HEX_TO_DWORD(hex iec.STRING) iec.DWORD {
+	var out iec.DWORD
+	for _, x := range CHARS(hex) {
+		if v, ok := hexDigit(x); ok {
+			out = out<<4 + iec.DWORD(v)
+		}
+	}
+	return out
+}
+
+// IS_ALNUM reports whether str has only letters and digits.
+func IS_ALNUM(str iec.STRING) iec.BOOL {
+	return all(str, func(c iec.BYTE) iec.BOOL { return ISC_ALPHA(c) || ISC_NUM(c) })
+}
+
+// IS_ALPHA reports whether str has only letters.
+func IS_ALPHA(str iec.STRING) iec.BOOL { return all(str, ISC_ALPHA) }
+
+// IS_CC reports whether str has only characters of cmp.
+func IS_CC(str, cmp iec.STRING) iec.BOOL {
+	for _, c := range string(str) {
+		if FIND(cmp, iec.STRING(c)) == 0 {
+			return false
+		}
+	}
+	return str != ""
+}
+
+// IS_CTRL reports whether str has only control characters.
+func IS_CTRL(str iec.STRING) iec.BOOL { return all(str, ISC_CTRL) }
+
+// IS_HEX reports whether str has only hexadecimal digits.
+func IS_HEX(str iec.STRING) iec.BOOL { return all(str, ISC_HEX) }
+
+// IS_LOWER reports whether str has only lower case letters.
+func IS_LOWER(str iec.STRING) iec.BOOL { return all(str, ISC_LOWER) }
+
+// IS_NCC reports whether str has none of the characters of cmp.
+func IS_NCC(str, cmp iec.STRING) iec.BOOL {
+	for _, c := range string(str) {
+		if FIND(cmp, iec.STRING(c)) > 0 {
 			return false
 		}
 	}
 	return true
 }
 
-// IsAlpha checks if a string contains only alphabetic characters.
-func IS_ALPHA(str string) bool {
-	if len(str) == 0 {
-		return false
+// IS_NUM reports whether str has only digits.
+func IS_NUM(str iec.STRING) iec.BOOL { return all(str, ISC_NUM) }
+
+// IS_UPPER reports whether str has only upper case letters.
+func IS_UPPER(str iec.STRING) iec.BOOL { return all(str, ISC_UPPER) }
+
+// ISC_ALPHA reports whether a character is a letter, with the ISO 8859-1
+// letters if SETUP.EXTENDED_ASCII is true.
+func ISC_ALPHA(in iec.BYTE) iec.BOOL {
+	if SETUP.EXTENDED_ASCII {
+		return in > 64 && in < 91 || in > 191 && in != 215 && in != 247 || in > 96 && in < 123
 	}
-	for _, r := range str {
-		if !ISC_ALPHA(byte(r)) {
-			return false
-		}
+	return in > 64 && in < 91 || in > 96 && in < 123
+}
+
+// ISC_CTRL reports whether a character is a control character.
+func ISC_CTRL(in iec.BYTE) iec.BOOL { return in < 32 || in == 127 }
+
+// ISC_HEX reports whether a character is a hexadecimal digit.
+func ISC_HEX(in iec.BYTE) iec.BOOL {
+	_, ok := hexDigit(in)
+	return iec.BOOL(ok)
+}
+
+// ISC_LOWER reports whether a character is a lower case letter.
+func ISC_LOWER(in iec.BYTE) iec.BOOL {
+	if SETUP.EXTENDED_ASCII {
+		return in > 96 && in < 123 || in > 222 && in != 247
 	}
-	return true
+	return in > 96 && in < 123
 }
 
-// IsCc checks if a string contains only characters from the cmp string.
-func IS_CC(str, cmp string) bool {
-	if len(str) == 0 {
-		return false
+// ISC_NUM reports whether a character is a digit.
+func ISC_NUM(in iec.BYTE) iec.BOOL { return in > 47 && in < 58 }
+
+// ISC_UPPER reports whether a character is an upper case letter.
+func ISC_UPPER(in iec.BYTE) iec.BOOL {
+	if SETUP.EXTENDED_ASCII {
+		return in > 64 && in < 91 || in > 191 && in < 223 && in != 215
 	}
-	for _, r := range str {
-		if !strings.ContainsRune(cmp, r) {
-			return false
-		}
-	}
-	return true
+	return in > 64 && in < 91
 }
 
-func IS_CTRL(str string) bool {
-	if len(str) == 0 {
-		return false
-	}
-	for _, r := range str {
-		if !ISC_CTRL(byte(r)) {
-			return false
-		}
-	}
-	return true
-}
+// LOWERCASE returns str in lower case.
+func LOWERCASE(str iec.STRING) iec.STRING { return mapChars(str, TO_LOWER) }
 
-// IsHex checks if a string contains only hexadecimal characters.
-func IS_HEX(str string) bool {
-	if len(str) == 0 {
-		return false
-	}
-	for _, r := range str {
-		if !ISC_HEX(byte(r)) {
-			return false
-		}
-	}
-	return true
-}
-
-// IsLower checks if a string contains only lowercase characters.
-func IS_LOWER(str string) bool {
-	if len(str) == 0 {
-		return false
-	}
-	for _, r := range str {
-		if !ISC_LOWER(byte(r)) {
-			return false
-		}
-	}
-	return true
-}
-
-// IsNcc checks if a string contains no characters from the cmp string.
-func IS_NCC(str, cmp string) bool {
-	return !strings.ContainsAny(str, cmp)
-}
-
-// IsNum checks if a string contains only numeric characters.
-func IS_NUM(str string) bool {
-	if len(str) == 0 {
-		return false
-	}
-	for _, r := range str {
-		if !ISC_NUM(byte(r)) {
-			return false
-		}
-	}
-	return true
-}
-
-// IsUpper checks if a string contains only uppercase characters.
-func IS_UPPER(str string) bool {
-	if len(str) == 0 {
-		return false
-	}
-	for _, r := range str {
-		if !ISC_UPPER(byte(r)) {
-			return false
-		}
-	}
-	return true
-}
-
-// IscAlpha checks if a character is a..z or A..Z.
-func ISC_ALPHA(in byte) bool {
-	return (in >= 'a' && in <= 'z') || (in >= 'A' && in <= 'Z')
-}
-
-// IscCtrl checks if a character is a control character.
-func ISC_CTRL(in byte) bool {
-	return in < 32 || in == 127
-}
-
-// IscHex checks if a character is 0..9, A..F, or a..f.
-func ISC_HEX(in byte) bool {
-	return (in >= '0' && in <= '9') || (in >= 'A' && in <= 'F') || (in >= 'a' && in <= 'f')
-}
-
-// IscLower checks if a character is lowercase.
-func ISC_LOWER(in byte) bool {
-	return in >= 'a' && in <= 'z'
-}
-
-// IscNum checks if a character is 0..9.
-func ISC_NUM(in byte) bool {
-	return in >= '0' && in <= '9'
-}
-
-// IscUpper checks if a character is uppercase.
-func ISC_UPPER(in byte) bool {
-	return in >= 'A' && in <= 'Z'
-}
-
-// Lowercase converts a string to lowercase.
-func LOWERCASE(str string) string {
-	return strings.ToLower(str)
-}
-
-// Message4R is a rotating message display.
+// MESSAGE_4R shows the messages M0..MM in turn on MX, the next one on each
+// rising edge of CLK or after T1 while CLK stays true. MN is the number of
+// the message and TR is true for one scan when it changes. MX is empty
+// while ENQ is false.
 type MESSAGE_4R struct {
-	Mx string
-	Mn int
-	Tr bool
+	M0, M1, M2, M3 iec.STRING
+	MM             iec.INT  // default 3
+	ENQ            iec.BOOL // default TRUE
+	CLK            iec.BOOL // default TRUE
+	T1             iec.TIME // default T#3s
+	MX             iec.STRING
+	MN             iec.INT
+	TR             iec.BOOL
 
-	// internal state
-	timer logic.TON
-	edge  bool
+	timer timers.TON
+	edge  iec.BOOL
 }
 
-// Update executes the message rotation logic.
-func (m *MESSAGE_4R) Update(m0, m1, m2, m3 string, mm int, enq, clk bool, t1 time.Duration) {
-	m.Tr = false
-	if enq {
-		m.timer.Update(clk, t1)
-		if (clk && !m.edge) || m.timer.Q {
-			if mm > 0 {
-				m.Mn = (m.Mn + 1) % (mm + 1)
-			}
-			m.Tr = true
-			m.timer.IN = false // Reset timer
-			switch m.Mn {
-			case 0:
-				m.Mx = m0
-			case 1:
-				m.Mx = m1
-			case 2:
-				m.Mx = m2
-			case 3:
-				m.Mx = m3
-			}
+// INIT resets the block and sets MM, ENQ, CLK and T1 to their initial
+// values.
+func (m *MESSAGE_4R) INIT() {
+	*m = MESSAGE_4R{MM: 3, ENQ: true, CLK: true, T1: iec.TIME(3 * time.Second)}
+}
+
+// Execute runs the block once.
+func (m *MESSAGE_4R) Execute(now time.Time) {
+	m.TR = false
+	if !m.ENQ {
+		m.MX = ""
+		m.MN = 0
+		return
+	}
+	if (!m.edge && m.CLK) || m.timer.Q {
+		m.MN = math.INC1(m.MN, m.MM)
+		m.TR = true
+		m.timer.IN = false
+		m.timer.Execute(now)
+		switch m.MN {
+		case 0:
+			m.MX = m.M0
+		case 1:
+			m.MX = m.M1
+		case 2:
+			m.MX = m.M2
+		case 3:
+			m.MX = m.M3
 		}
-		m.edge = clk
-	} else {
-		m.Mx = ""
-		m.Mn = 0
+	}
+	m.edge = m.CLK
+	m.timer.IN = m.CLK
+	m.timer.PT = m.T1
+	m.timer.Execute(now)
+}
+
+// MESSAGE_8 shows on M the message S1..S8 of the first input IN1..IN8 that
+// is true, or an empty string.
+type MESSAGE_8 struct {
+	IN1, IN2, IN3, IN4, IN5, IN6, IN7, IN8 iec.BOOL
+	S1, S2, S3, S4, S5, S6, S7, S8         iec.STRING
+	M                                      iec.STRING
+}
+
+// INIT resets the block.
+func (m *MESSAGE_8) INIT() { *m = MESSAGE_8{} }
+
+// Execute runs the block once.
+func (m *MESSAGE_8) Execute(now time.Time) {
+	in := [8]iec.BOOL{m.IN1, m.IN2, m.IN3, m.IN4, m.IN5, m.IN6, m.IN7, m.IN8}
+	s := [8]iec.STRING{m.S1, m.S2, m.S3, m.S4, m.S5, m.S6, m.S7, m.S8}
+	m.M = ""
+	for i, b := range in {
+		if b {
+			m.M = s[i]
+			return
+		}
 	}
 }
 
-// MESSAGE_8 selects one of 8 messages based on prioritized inputs.
-func MESSAGE_8(in [8]bool, s [8]string) string {
-	for i := 0; i < 8; i++ {
-		if in[i] {
-			return s[i]
-		}
+// MIRROR returns str reversed.
+func MIRROR(str iec.STRING) iec.STRING {
+	r := []rune(string(str))
+	for i, j := 0, len(r)-1; i < j; i, j = i+1, j-1 {
+		r[i], r[j] = r[j], r[i]
+	}
+	return iec.STRING(r)
+}
+
+// MONTH_TO_STRING returns the name of the month mth, 1..12, in the language
+// lang, or the default language if lang <= 0: the full name if lx is 0 and
+// three letters if lx is 3.
+func MONTH_TO_STRING(mth, lang, lx iec.INT) iec.STRING {
+	ly := LANGUAGE.DEFAULT
+	if lang > 0 {
+		ly = min(lang, LANGUAGE.LMAX)
+	}
+	switch {
+	case mth < 1 || mth > 12:
+		return ""
+	case lx == 0:
+		return LANGUAGE.MONTHS[ly-1][mth-1]
+	case lx == 3:
+		return LANGUAGE.MONTHS3[ly-1][mth-1]
 	}
 	return ""
 }
 
-// MIRROR reverses an input string.
-func MIRROR(str string) string {
-	runes := []rune(str)
-	for i, j := 0, len(runes)-1; i < j; i, j = i+1, j-1 {
-		runes[i], runes[j] = runes[j], runes[i]
+// OCT_TO_BYTE converts an octal string to a byte. Other characters are
+// ignored.
+func OCT_TO_BYTE(oct iec.STRING) iec.BYTE {
+	var out iec.BYTE
+	for _, x := range CHARS(oct) {
+		if x > 47 && x < 56 {
+			out = out<<3 + x - 48
+		}
 	}
-	return string(runes)
+	return out
 }
 
-// MONTH_TO_STRING converts an integer (1-12) to a month name.
-func MONTH_TO_STRING(mth, lang, lx int) string {
-	// Placeholder for a complex lookup.
-	if mth >= 1 && mth <= 12 {
-		return time.Month(mth).String()
+// OCT_TO_DWORD converts an octal string to a DWORD. Other characters are
+// ignored.
+func OCT_TO_DWORD(oct iec.STRING) iec.DWORD {
+	var out iec.DWORD
+	for _, x := range CHARS(oct) {
+		if x > 47 && x < 56 {
+			out = out<<3 + iec.DWORD(x) - 48
+		}
 	}
-	return ""
+	return out
 }
 
-// OCT_TO_BYTE converts an octal string to a byte.
-func OCT_TO_BYTE(oct string) byte {
-	val, err := strconv.ParseUint(oct, 8, 8)
-	if err != nil {
-		return 0
+// REAL_TO_STRF converts a REAL to a string with n, 0..7, digits after the
+// decimal separator d.
+func REAL_TO_STRF(in iec.REAL, n iec.INT, d iec.STRING) iec.STRING {
+	n = LIMIT(0, n, 7)
+	o := ABS(in) * math.EXP10(iec.REAL(n))
+	out := DINT_TO_STRING(REAL_TO_DINT(o))
+	for i := LEN(out); i <= n; i++ {
+		out = "0" + out
 	}
-	return byte(val)
-}
-
-// OCT_TO_DWORD converts an octal string to a dword.
-func OCT_TO_DWORD(oct string) uint32 {
-	val, err := strconv.ParseUint(oct, 8, 32)
-	if err != nil {
-		return 0
-	}
-	return uint32(val)
-}
-
-// REAL_TO_STRF converts a float to a string with N decimal places.
-func REAL_TO_STRF(in float64, n int, d string) string {
-	n = int(beeMath.LIMIT(0, float64(n), 7))
-
-	// Scale and round
-	multiplier := beeMath.EXP10(float64(n)) // ST: O := ABS(in) * EXP10(N);
-	val := beeMath.D_TRUNC(math.Abs(in)*multiplier + 0.5)
-
-	res := strconv.FormatInt(val, 10)
-
-	// Pad with leading zeros if necessary
-	for len(res) <= n {
-		res = "0" + res
-	}
-
-	// Insert decimal separator
 	if n > 0 {
-		res = res[:len(res)-n] + d + res[len(res)-n:]
+		out = INSERT(out, d, LEN(out)-n)
 	}
-
-	// Add sign for negative numbers
-	if in < 0.0 {
-		res = "-" + res
+	if in < 0 {
+		out = "-" + out
 	}
-	return res
+	return out
 }
 
-// REPLACE_ALL replaces all occurrences of src in str with rep.
-func REPLACE_ALL(str, src, rep string) string {
-	return strings.ReplaceAll(str, src, rep)
-}
-
-// REPLACE_CHARS replaces characters in str based on a mapping from src to rep.
-func REPLACE_CHARS(str, src, rep string) string {
-	if len(src) == 0 || len(rep) == 0 {
-		return str
-	}
-	// This is a simplified interpretation. The original ST code is complex.
-	// A more robust Go version would use a map or a replacer.
-	minLen := len(src)
-	if len(rep) < minLen {
-		minLen = len(rep)
-	}
-	for i := 0; i < minLen; i++ {
-		str = strings.ReplaceAll(str, string(src[i]), string(rep[i]))
+// REPLACE_ALL returns str with each src replaced by rep.
+func REPLACE_ALL(str, src, rep iec.STRING) iec.STRING {
+	lx := LEN(src)
+	lp := LEN(rep)
+	pos := FINDP(str, src, 1)
+	for pos > 0 {
+		str = REPLACE(str, rep, lx, pos)
+		pos = FINDP(str, src, pos+lp)
 	}
 	return str
 }
 
-// REPLACE_UML replaces German umlauts with their two-letter equivalents.
-func REPLACE_UML(str string) string {
-	r := strings.NewReplacer(
-		"Ä", "Ae", "Ö", "Oe", "Ü", "Ue", "ß", "ss",
-		"ä", "ae", "ö", "oe", "ü", "ue",
-	)
-	return r.Replace(str)
-}
-
-// Ticker creates a scrolling text effect.
-type TICKER struct {
-	Display string
-	// internal state
-	delay logic.TP
-	step  int
-}
-
-// Update executes the ticker logic.
-func (t *TICKER) Update(text string, n int, pt time.Duration) {
-	if n <= 0 || n >= len(text) {
-		t.Display = text
-		return
+// REPLACE_CHARS returns str with each character of src replaced by the
+// character at the same position of rep.
+func REPLACE_CHARS(str, src, rep iec.STRING) iec.STRING {
+	a, b := LEN(src), LEN(rep)
+	if a < b {
+		rep = LEFT(rep, a)
+	} else if b < a {
+		src = LEFT(src, b)
 	}
-
-	// The TP timer will output Q=true for the duration of PT after a rising edge.
-	// We can simulate a one-shot trigger for it.
-	t.delay.Update(!t.delay.Q, pt)
-	if !t.delay.Q { // When the timer is done (or on the first run)
-		t.step++
-		if t.step >= len(text) {
-			t.step = 0
+	r := []rune(string(str))
+	for i, c := range r {
+		if p := FIND(src, iec.STRING(c)); p > 0 {
+			r[i] = []rune(string(rep))[p-1]
 		}
 	}
-
-	// Create a circular view of the text
-	circularText := text + text
-	if t.step+n > len(circularText) {
-		t.Display = circularText[t.step:]
-	} else {
-		t.Display = circularText[t.step : t.step+n]
-	}
+	return iec.STRING(r)
 }
 
-// TO_LOWER converts a character from uppercase to lowercase.
-func TO_LOWER(in byte) byte {
-	if in >= 'A' && in <= 'Z' {
-		return in + ('a' - 'A')
+// REPLACE_UML returns str with the umlauts Ä, ä, Ö, ö, Ü, ü and ß replaced
+// by Ae, ae, Oe, oe, Ue, ue and ss, up to STRING_LENGTH characters.
+func REPLACE_UML(str iec.STRING) iec.STRING {
+	out := make([]rune, 0, len(str))
+	for i, c := range []rune(string(str)) {
+		if i >= int(STRING_LENGTH) {
+			break
+		}
+		if c < 127 {
+			out = append(out, c)
+			continue
+		}
+		su := []rune(string(TO_UML(charCode(c))))
+		if c > 255 {
+			su = []rune{c}
+		}
+		out = append(out, su[0])
+		if len(out) < int(STRING_LENGTH) && len(su) > 1 {
+			out = append(out, su[1])
+		}
 	}
-	// Placeholder for extended ASCII
+	return iec.STRING(out)
+}
+
+// charCode returns a character's code, or ? for a character outside
+// ISO 8859-1.
+func charCode(c rune) iec.BYTE {
+	if c > 255 {
+		return '?'
+	}
+	return iec.BYTE(c)
+}
+
+// TICKER shows N characters of TEXT on DISPLAY, one character further every
+// PT, so that the text moves across. A text of N characters or less is shown
+// whole.
+type TICKER struct {
+	N       iec.INT
+	PT      iec.TIME
+	TEXT    *iec.STRING
+	DISPLAY iec.STRING
+
+	delay timers.TP
+	step  iec.INT
+}
+
+// INIT resets the block.
+func (t *TICKER) INIT() { *t = TICKER{TEXT: t.TEXT} }
+
+// Execute runs the block once.
+func (t *TICKER) Execute(now time.Time) {
+	if t.TEXT == nil {
+		return
+	}
+	text := *t.TEXT
+	if t.N >= LEN(text) {
+		t.DISPLAY = text
+		return
+	}
+	if !t.delay.Q {
+		t.step++
+		if t.step > LEN(text) {
+			t.step = 1
+		}
+		t.DISPLAY = MID(text, t.N, t.step)
+		t.delay.IN = true
+		t.delay.PT = t.PT
+	} else {
+		t.delay.IN = false
+	}
+	t.delay.Execute(now)
+}
+
+// TO_LOWER returns the lower case of a character.
+func TO_LOWER(in iec.BYTE) iec.BYTE {
+	switch {
+	case in > 64 && in < 91:
+		return in | 0x20
+	case in > 191 && in < 223 && in != 215 && bool(SETUP.EXTENDED_ASCII):
+		return in | 0x20
+	}
 	return in
 }
 
-// TO_UML converts a character to its two-letter Umlaut representation.
-func TO_UML(in byte) string {
+// TO_UML returns the two letters of an umlaut, Ä is "Ae", or the character
+// itself.
+func TO_UML(in iec.BYTE) iec.STRING {
 	switch in {
 	case 196:
-		return "Ae" // Ä
+		return "Ae"
 	case 214:
-		return "Oe" // Ö
+		return "Oe"
 	case 220:
-		return "Ue" // Ü
+		return "Ue"
 	case 223:
-		return "ss" // ß
+		return "ss"
 	case 228:
-		return "ae" // ä
+		return "ae"
 	case 246:
-		return "oe" // ö
+		return "oe"
 	case 252:
-		return "ue" // ü
-	default:
-		return string(in)
+		return "ue"
 	}
+	return CHR_TO_STRING(in)
 }
 
-// TO_UPPER converts a character from lowercase to uppercase.
-func TO_UPPER(in byte) byte {
-	if in >= 'a' && in <= 'z' {
-		return in - ('a' - 'A')
+// TO_UPPER returns the upper case of a character.
+func TO_UPPER(in iec.BYTE) iec.BYTE {
+	switch {
+	case in > 96 && in < 123:
+		return in & 0xDF
+	case in > 223 && in != 247 && in != 255 && bool(SETUP.EXTENDED_ASCII):
+		return in & 0xDF
 	}
-	// Placeholder for extended ASCII
 	return in
 }
 
-// TRIM removes all space characters from a string.
-func TRIM(str string) string {
-	return strings.ReplaceAll(str, " ", "")
+// TRIM returns str without any blanks.
+func TRIM(str iec.STRING) iec.STRING {
+	return DEL_CHARS(str, " ")
 }
 
-// TRIM1 replaces multiple spaces with a single space and trims leading/trailing spaces.
-func TRIM1(str string) string {
-	// Use Fields to split by whitespace and Join to put it back with single spaces.
-	return strings.Join(strings.Fields(str), " ")
+// TRIM1 returns str with each run of blanks replaced by one blank and
+// without leading and trailing blanks.
+func TRIM1(str iec.STRING) iec.STRING {
+	for pos := FIND(str, "  "); pos > 0; pos = FIND(str, "  ") {
+		str = REPLACE(str, " ", 2, pos)
+	}
+	if LEFT(str, 1) == " " {
+		str = DELETE(str, 1, 1)
+	}
+	if RIGHT(str, 1) == " " {
+		str = DELETE(str, 1, LEN(str))
+	}
+	return str
 }
 
-// TRIME removes leading and trailing space characters from a string.
-func TRIME(str string) string {
-	return strings.TrimSpace(str)
+// TRIME returns str without leading and trailing blanks.
+func TRIME(str iec.STRING) iec.STRING {
+	for LEFT(str, 1) == " " {
+		str = DELETE(str, 1, 1)
+	}
+	for RIGHT(str, 1) == " " {
+		str = DELETE(str, 1, LEN(str))
+	}
+	return str
 }
 
-// UPPERCASE converts a string to uppercase.
-func UPPERCASE(str string) string {
-	return strings.ToUpper(str)
-}
+// UPPERCASE returns str in upper case.
+func UPPERCASE(str iec.STRING) iec.STRING { return mapChars(str, TO_UPPER) }
 
-// WEEKDAY_TO_STRING converts an integer (1-7) to a weekday name.
-func WEEKDAY_TO_STRING(wday, lang, lx int) string {
-	// Placeholder for a complex lookup.
-	if wday < 1 || wday > 7 {
+// WEEKDAY_TO_STRING returns the name of the weekday wday, 1..7, in the
+// language lang, or the default language if lang is 0: the full name if lx
+// is 0 and two letters if lx is 2.
+func WEEKDAY_TO_STRING(wday, lang, lx iec.INT) iec.STRING {
+	ly := LANGUAGE.DEFAULT
+	if lang != 0 {
+		ly = min(lang, LANGUAGE.LMAX)
+	}
+	switch {
+	case wday < 1 || wday > 7:
 		return ""
+	case lx == 0:
+		return LANGUAGE.WEEKDAYS[ly-1][wday-1]
+	case lx == 2:
+		return LANGUAGE.WEEKDAYS2[ly-1][wday-1]
 	}
-	if lang <= 0 {
-		lang = int(Language.Default)
-	}
-	return Language.Weekdays[lang-1][wday-1]
-}
-
-// INT_TO_STRF converts an integer to a string of a fixed length N.
-func INT_TO_STRF(in, n int) string {
-	return FIX(strconv.Itoa(in), n, '0', 1)
+	return ""
 }

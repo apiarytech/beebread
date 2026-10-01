@@ -2,771 +2,894 @@
  * Copyright (C) 2026 Franklin D. Amador
  *
  * This software is dual-licensed under:
- * - GPL v2.0
+ * - EPL v2.0
  * - Commercial
  *
  * You may choose to use this software under the terms of either license.
  * See the LICENSE files in the project root for full license text.
  */
 
+// Package engineering is the port of the OSCAT BASIC engineering functions:
+// automation, control, conversion, measurements, sensors, signal generators
+// and signal processing.
 package engineering
 
 import (
-	"math"
 	"time"
 
-	"beebread/basic/logic"
-	beeMath "beebread/basic/math"
+	. "github.com/apiarytech/beebread/basic"
+	"github.com/apiarytech/beebread/basic/logic"
+	"github.com/apiarytech/beebread/basic/math"
+	td "github.com/apiarytech/beebread/basic/time_date"
+	"github.com/apiarytech/royaljelly/fb/timers"
+	"github.com/apiarytech/royaljelly/iec"
 )
 
-// DRIVER_1 is a multi-purpose driver.
-// A rising edge on IN sets the output high if ToggleMode is false.
-// If ToggleMode is true, a rising edge on IN toggles the output Q.
-// If a Timeout is specified, the output Q will be reset to false automatically after the timeout has elapsed.
-// An asynchronous reset and set will force the output high or low respectively.
-type DRIVER_1 struct {
-	ToggleMode bool
-	Timeout    time.Duration
+// ms returns a TIME in milliseconds, as the PLC timer counts.
+func ms(t iec.TIME) iec.DWORD { return TIME_TO_DWORD(t) }
 
-	// internal state
-	q        bool
-	edge     bool
-	offTimer logic.TON
+// DRIVER_1 is a driver for an output: a rising edge of IN sets Q, or
+// toggles it if TOGGLE_MODE is true. SET and RST set and clear Q, and if
+// TIMEOUT is not 0 Q goes off after TIMEOUT.
+type DRIVER_1 struct {
+	TOGGLE_MODE iec.BOOL
+	TIMEOUT     iec.TIME
+	SET         iec.BOOL
+	IN          iec.BOOL
+	RST         iec.BOOL
+	Q           iec.BOOL
+
+	off  timers.TON
+	edge iec.BOOL
 }
 
-// Update executes the driver logic for one cycle.
-func (d *DRIVER_1) Update(set, in, rst bool) bool {
-	// Update the timer first to ensure its state is current for this cycle.
-	if d.Timeout > 0 {
-		d.offTimer.Update(d.q, d.Timeout)
-	}
+// INIT resets the block.
+func (d *DRIVER_1) INIT() { *d = DRIVER_1{} }
 
-	if d.offTimer.Q {
-		d.q = false
+// Execute runs the block once.
+func (d *DRIVER_1) Execute(now time.Time) {
+	if d.off.Q {
+		d.Q = false
 	}
-
-	if rst {
-		d.q = false
-	} else if set {
-		d.q = true
-	} else if in && !d.edge {
-		if d.ToggleMode {
-			d.q = !d.q
+	switch {
+	case bool(d.RST):
+		d.Q = false
+	case bool(d.SET):
+		d.Q = true
+	case bool(d.IN && !d.edge):
+		if d.TOGGLE_MODE {
+			d.Q = !d.Q
 		} else {
-			d.q = true
+			d.Q = true
 		}
 	}
-	d.edge = in
-	// Re-trigger the timer on a new rising edge in normal mode.
-	if d.Timeout > 0 {
-		d.offTimer.Update(d.q, d.Timeout)
+	d.edge = d.IN
+	if d.TIMEOUT > 0 {
+		d.off.IN = d.Q
+		d.off.PT = d.TIMEOUT
+		d.off.Execute(now)
 	}
-	return d.q
 }
 
-// DRIVER_4 is a 4-channel multi-purpose driver.
+// DRIVER_4 is 4 DRIVER_1 with common SET, RST, TOGGLE_MODE and TIMEOUT.
 type DRIVER_4 struct {
-	d0, d1, d2, d3 DRIVER_1
+	TOGGLE_MODE        iec.BOOL
+	TIMEOUT            iec.TIME
+	SET                iec.BOOL
+	IN0, IN1, IN2, IN3 iec.BOOL
+	RST                iec.BOOL
+	Q0, Q1, Q2, Q3     iec.BOOL
+
+	d [4]DRIVER_1
 }
 
-// Update executes the logic for all four drivers.
-func (d *DRIVER_4) Update(set, rst bool, in [4]bool, toggleMode bool, timeout time.Duration) [4]bool {
-	d.d0.ToggleMode = toggleMode
-	d.d0.Timeout = timeout
-	d.d1.ToggleMode = toggleMode
-	d.d1.Timeout = timeout
-	d.d2.ToggleMode = toggleMode
-	d.d2.Timeout = timeout
-	d.d3.ToggleMode = toggleMode
-	d.d3.Timeout = timeout
+// INIT resets the block.
+func (d *DRIVER_4) INIT() { *d = DRIVER_4{} }
 
-	var q [4]bool
-	q[0] = d.d0.Update(set, in[0], rst)
-	q[1] = d.d1.Update(set, in[1], rst)
-	q[2] = d.d2.Update(set, in[2], rst)
-	q[3] = d.d3.Update(set, in[3], rst)
-
-	return q
+// Execute runs the block once.
+func (d *DRIVER_4) Execute(now time.Time) {
+	in := [4]iec.BOOL{d.IN0, d.IN1, d.IN2, d.IN3}
+	q := [4]*iec.BOOL{&d.Q0, &d.Q1, &d.Q2, &d.Q3}
+	for i := range d.d {
+		x := &d.d[i]
+		x.SET, x.IN, x.RST = d.SET, in[i], d.RST
+		x.TOGGLE_MODE, x.TIMEOUT = d.TOGGLE_MODE, d.TIMEOUT
+		x.Execute(now)
+		*q[i] = x.Q
+	}
 }
 
-// DRIVER_4C is a multi-purpose cycling driver.
-// A rising edge on IN switches from one state to the next.
-// The state of the outputs in any state is configurable with SX.
+// DRIVER_4C steps through the states SX on rising edges of IN: state 0 has
+// all outputs off, and in state n the bits 0..3 of SX[n] are Q0..Q3. The
+// sequence ends at the first SX that is 0, or after 7 states. RST, or
+// TIMEOUT if it is not 0, return to state 0.
 type DRIVER_4C struct {
-	Timeout time.Duration
-	SX      [7]byte
+	IN             iec.BOOL
+	RST            iec.BOOL
+	TIMEOUT        iec.TIME
+	SX             [7]iec.BYTE // ARRAY[1..7], default 1, 3, 7, 15
+	SN             iec.INT
+	Q0, Q1, Q2, Q3 iec.BOOL
 
-	// internal state
-	SN       int
-	edge     bool
-	offTimer logic.TON
+	off  timers.TON
+	edge iec.BOOL
 }
 
-// Update executes the driver logic for one cycle.
-func (d *DRIVER_4C) Update(in, rst bool) (int, [4]bool) {
-	var q [4]bool
+// INIT resets the block and sets SX to its initial value.
+func (d *DRIVER_4C) INIT() { *d = DRIVER_4C{SX: [7]iec.BYTE{1, 3, 7, 15}} }
 
-	d.offTimer.Update(d.SN > 0, d.Timeout)
-
-	if rst || d.offTimer.Q {
+// Execute runs the block once.
+func (d *DRIVER_4C) Execute(now time.Time) {
+	if d.RST || d.off.Q {
 		d.SN = 0
-	} else if in && !d.edge {
+	} else if d.IN && !d.edge {
 		d.SN++
-		if d.SN > 7 || (d.SN > 0 && d.SN <= 7 && d.SX[d.SN-1] == 0) {
+		if d.SN > 7 || d.SX[d.SN-1] == 0 {
 			d.SN = 0
 		}
 	}
-	d.edge = in
-
-	if d.SN > 0 && d.SN <= 7 {
-		sxVal := d.SX[d.SN-1]
-		q[0] = (sxVal & 0x01) != 0
-		q[1] = (sxVal & 0x02) != 0
-		q[2] = (sxVal & 0x04) != 0
-		q[3] = (sxVal & 0x08) != 0
+	d.edge = d.IN
+	var s iec.BYTE
+	if d.SN > 0 {
+		s = d.SX[d.SN-1]
 	}
-
-	return d.SN, q
+	d.Q0, d.Q1, d.Q2, d.Q3 = s&1 != 0, s&2 != 0, s&4 != 0, s&8 != 0
+	if d.TIMEOUT > 0 {
+		d.off.IN = d.SN > 0
+		d.off.PT = d.TIMEOUT
+		d.off.Execute(now)
+	}
 }
 
-// FLOW_CONTROL switches a valve depending on the input IN.
-// It also limits the maximum on-time of the valve and controls pressure on the output side.
+// FLOW_CONTROL switches a valve Q: on while IN and ENQ are true, and for
+// T_AUTO after a request REQ, after which requests wait for T_DELAY. STATUS
+// is 100 idle, 101 on by IN, 102 on by request and 103 reset.
 type FLOW_CONTROL struct {
-	TAuto  time.Duration
-	TDelay time.Duration
+	IN      iec.BOOL
+	REQ     iec.BOOL
+	ENQ     iec.BOOL
+	RST     iec.BOOL
+	T_AUTO  iec.TIME // default T#1h
+	T_DELAY iec.TIME // default T#23h
+	Q       iec.BOOL
+	STATUS  iec.BYTE
 
-	// internal state
-	q      bool
-	status byte
-	timer  logic.TP1D
+	timer logic.TP_1D
 }
 
-// Update executes the flow control logic for one cycle.
-func (fc *FLOW_CONTROL) Update(in, req, enq, rst bool) (bool, byte) {
-	fc.status = 100
-	if rst {
-		fc.q = false
-		fc.timer.RST = true
-		fc.status = 103
-	} else if enq {
-		if in {
-			fc.status = 101
+// INIT resets the block and sets T_AUTO and T_DELAY to their initial values.
+func (f *FLOW_CONTROL) INIT() {
+	*f = FLOW_CONTROL{T_AUTO: iec.TIME(time.Hour), T_DELAY: iec.TIME(23 * time.Hour)}
+}
+
+// Execute runs the block once.
+func (f *FLOW_CONTROL) Execute(now time.Time) {
+	f.STATUS = 100
+	if f.RST {
+		f.Q = false
+		f.timer.RST = true
+		f.timer.Execute(now)
+		f.timer.RST = false
+		f.STATUS = 103
+	} else if f.ENQ {
+		if f.IN {
+			f.STATUS = 101
 		}
-		if req {
-			fc.timer.PT1 = fc.TAuto
-			fc.timer.PTD = fc.TDelay
-			fc.timer.IN = true
-			fc.status = 102
+		if f.REQ {
+			f.timer.PT1 = f.T_AUTO
+			f.timer.PTD = f.T_DELAY
+			f.timer.IN = true
+			f.STATUS = 102
 		}
 	}
-
-	fc.timer.Update()
-	fc.timer.IN = false // Pulse behavior
-	fc.timer.RST = false
-
-	fc.q = (in && enq) || fc.timer.Q
-	return fc.q, fc.status
+	f.timer.Execute(now)
+	f.timer.IN = false
+	f.Q = f.IN && f.ENQ || f.timer.Q
 }
 
-// FT_PROFILE generates an output signal defined by values over a time scale.
+// FT_PROFILE generates a profile over time: from VALUE_0 it ramps to
+// VALUE_1 at TIME_1, to VALUE_2 at TIME_2 and VALUE_3 at TIME_3, then to
+// VALUE_10 at TIME_10; while E stays true the profile holds there, and
+// then it ramps to VALUE_11, VALUE_12 and VALUE_13 over the times from
+// TIME_10 to TIME_11, TIME_12 and TIME_13. A rising edge of E starts it. M
+// scales the times, and the output Y is the profile * K + O. RUN is true
+// while it runs and ET is the time since the start.
 type FT_PROFILE struct {
-	// Configuration
-	Value0  float32
-	Time1   time.Duration
-	Value1  float32
-	Time2   time.Duration
-	Value2  float32
-	Time3   time.Duration
-	Value3  float32
-	Time10  time.Duration
-	Value10 float32
-	Time11  time.Duration
-	Value11 float32
-	Time12  time.Duration
-	Value12 float32
-	Time13  time.Duration
-	Value13 float32
+	K        iec.REAL // default 1.0
+	O        iec.REAL
+	M        iec.REAL // default 1.0
+	E        iec.BOOL
+	VALUE_0  iec.REAL
+	TIME_1   iec.TIME
+	VALUE_1  iec.REAL
+	TIME_2   iec.TIME
+	VALUE_2  iec.REAL
+	TIME_3   iec.TIME
+	VALUE_3  iec.REAL
+	TIME_10  iec.TIME
+	VALUE_10 iec.REAL
+	TIME_11  iec.TIME
+	VALUE_11 iec.REAL
+	TIME_12  iec.TIME
+	VALUE_12 iec.REAL
+	TIME_13  iec.TIME
+	VALUE_13 iec.REAL
+	Y        iec.REAL
+	RUN      iec.BOOL
+	ET       iec.TIME
 
-	// Internal State
-	Y     float32
-	Run   bool
-	ET    time.Duration
-	edge  bool
-	state byte
-	ta    time.Time
-	tb    time.Duration
-	t0    time.Time
-	temp  float32
-	va    float32
-	vb    float32
+	edge       iec.BOOL
+	state      iec.BYTE
+	ta, tb, t0 iec.DWORD
+	temp       iec.REAL
+	va, vb     iec.REAL
 }
 
-// Update executes the profile generation logic.
-func (p *FT_PROFILE) Update(k, o, m float32, e bool) {
-	tx := time.Now()
+// INIT resets the block and sets K and M to their initial values.
+func (p *FT_PROFILE) INIT() { *p = FT_PROFILE{K: 1, M: 1} }
 
-	if e && !p.edge {
-		p.Run = true
+// Execute runs the block once.
+func (p *FT_PROFILE) Execute(now time.Time) {
+	tx := PLC_MS(now)
+	span := func(t iec.TIME) iec.DWORD { return ms(td.MULTIME(t, p.M)) }
+	if p.E && !p.edge {
+		p.RUN = true
 		p.ET = 0
 		p.t0 = tx
 		p.ta = tx
-		p.tb = time.Duration(float64(p.Time1) * float64(m))
-		p.va = p.Value0
-		p.vb = p.Value1
-		p.temp = p.Value0
+		p.tb = span(p.TIME_1)
+		p.va = p.VALUE_0
+		p.vb = p.VALUE_1
+		p.temp = p.VALUE_0
 		p.state = 1
 	}
-	p.edge = e
-
-	if p.Run {
-		updateState := func(nextState byte, nextTime, prevTime time.Duration, nextVal, prevVal float32) {
-			p.ta = p.ta.Add(p.tb)
-			p.tb = time.Duration(float64(nextTime-prevTime) * float64(m))
-			p.va = prevVal
-			p.vb = nextVal
-			p.temp = prevVal
-			p.state = nextState
-		}
-
-		interpolate := func() {
-			if p.tb > 0 {
-				elapsed := float32(tx.Sub(p.ta))
-				duration := float32(p.tb)
-				p.temp = (p.vb-p.va)*elapsed/duration + p.va
-			}
-		}
-
-		switch p.state {
-		case 1:
-			if tx.Sub(p.ta) >= p.tb {
-				updateState(2, p.Time2, p.Time1, p.Value2, p.Value1)
-			} else {
-				interpolate()
-			}
-		case 2:
-			if tx.Sub(p.ta) >= p.tb {
-				updateState(3, p.Time3, p.Time2, p.Value3, p.Value2)
-				interpolate()
-			} else {
-				interpolate()
-			}
-		case 3:
-			if tx.Sub(p.ta) >= p.tb {
-				updateState(4, p.Time10, p.Time3, p.Value10, p.Value3)
-				interpolate()
-			} else {
-				interpolate()
-			}
-		case 4:
-			if tx.Sub(p.ta) >= p.tb {
-				updateState(5, p.Time11, p.Time10, p.Value11, p.Value10)
-				if !e {
-					interpolate()
-					p.state = 6
-				}
-			} else {
-				interpolate()
-			}
-		case 5: // Extend while E is true
-			if e {
-				p.ta = tx
-			} else {
-				p.state = 6
-			}
-		case 6:
-			if tx.Sub(p.ta) >= p.tb {
-				updateState(7, p.Time12, p.Time11, p.Value12, p.Value11)
-				interpolate()
-			} else {
-				interpolate()
-			}
-		case 7:
-			if tx.Sub(p.ta) >= p.tb {
-				updateState(8, p.Time13, p.Time12, p.Value13, p.Value12)
-				interpolate()
-			} else {
-				interpolate()
-			}
-		case 8:
-			if tx.Sub(p.ta) >= p.tb {
-				p.temp = p.Value13
-				p.Y = p.temp*k + o
-				p.Run = false
-			} else {
-				interpolate()
-			}
-		}
-		p.Y = p.temp*k + o
-		p.ET = tx.Sub(p.t0)
+	p.edge = p.E
+	if !p.RUN {
+		return
 	}
+	// next moves on to the ramp to vb over the time t when the current
+	// ramp has ended, and otherwise follows the current ramp.
+	next := func(t iec.TIME, vb iec.REAL, state iec.BYTE) {
+		if tx-p.ta >= p.tb {
+			p.ta = p.ta + p.tb
+			p.tb = span(t)
+			p.va = p.vb
+			p.temp = p.vb
+			p.vb = vb
+			p.state = state
+		} else {
+			p.temp = (p.vb-p.va)*iec.REAL(tx-p.ta)/iec.REAL(p.tb) + p.va
+		}
+	}
+	switch p.state {
+	case 1:
+		next(p.TIME_2-p.TIME_1, p.VALUE_2, 2)
+	case 2:
+		next(p.TIME_3-p.TIME_2, p.VALUE_3, 3)
+	case 3:
+		next(p.TIME_10-p.TIME_3, p.VALUE_10, 4)
+	case 4:
+		next(p.TIME_11-p.TIME_10, p.VALUE_11, SEL[iec.BYTE](p.E, 6, 5))
+	case 5:
+		// Hold while E is true.
+		if p.E {
+			p.ta = tx
+		} else {
+			p.state = 6
+		}
+	case 6:
+		next(p.TIME_12-p.TIME_11, p.VALUE_12, 7)
+	case 7:
+		next(p.TIME_13-p.TIME_12, p.VALUE_13, 8)
+	case 8:
+		if tx-p.ta >= p.tb {
+			p.temp = p.VALUE_13
+			p.RUN = false
+		} else {
+			p.temp = (p.vb-p.va)*iec.REAL(tx-p.ta)/iec.REAL(p.tb) + p.va
+		}
+	}
+	p.Y = p.temp*p.K + p.O
+	p.ET = DWORD_TO_TIME(tx - p.t0)
 }
 
-// INC_DEC is an incremental decoder with quadruple accuracy.
+// INC_DEC decodes an incremental encoder with the channels CHA and CHB, with
+// four counts per pulse. DIR is true when it turns up.
 type INC_DEC struct {
-	Dir bool
-	Cnt int
-	// internal state
-	edgeA, edgeB bool
+	CHA, CHB iec.BOOL
+	RST      iec.BOOL
+	DIR      iec.BOOL
+	CNT      iec.INT
+
+	edgea, edgeb iec.BOOL
 }
 
-// Update executes the decoder logic.
-func (id *INC_DEC) Update(cha, chb, rst bool) {
-	axb := cha != chb
-	clka := cha != id.edgeA
-	id.edgeA = cha
-	clkb := chb != id.edgeB
-	id.edgeB = chb
-	clk := clka || clkb
+// INIT resets the block.
+func (i *INC_DEC) INIT() { *i = INC_DEC{} }
 
+// Execute runs the block once.
+func (i *INC_DEC) Execute(now time.Time) {
+	axb := i.CHA != i.CHB
+	clka := i.CHA != i.edgea
+	i.edgea = i.CHA
+	clkb := i.CHB != i.edgeb
+	i.edgeb = i.CHB
+	clk := clka || clkb
 	if axb && clka {
-		id.Dir = true
+		i.DIR = true
 	}
 	if axb && clkb {
-		id.Dir = false
+		i.DIR = false
 	}
-
-	if clk {
-		if id.Dir {
-			id.Cnt++
-		} else {
-			id.Cnt--
-		}
+	if clk && bool(i.DIR) {
+		i.CNT++
 	}
-
-	if rst {
-		id.Cnt = 0
+	if clk && !bool(i.DIR) {
+		i.CNT--
+	}
+	if i.RST {
+		i.CNT = 0
 	}
 }
 
-// INTERLOCK has two inputs I1 and I2 which drive the corresponding outputs Q1 and Q2.
-// The input signals lock each other out.
+// INTERLOCK switches Q1 with I1 and Q2 with I2, but an output only while
+// the other input has been off for TL.
 type INTERLOCK struct {
-	t1, t2 logic.TOF
+	I1, I2 iec.BOOL
+	TL     iec.TIME
+	Q1, Q2 iec.BOOL
+
+	t1, t2 timers.TOF
 }
 
-// Update executes the interlock logic.
-func (il *INTERLOCK) Update(i1, i2 bool, tl time.Duration) (bool, bool) {
-	// The state of each timer is determined by its own corresponding input.
-	// This creates the off-delay required for the dead time.
-	il.t1.Update(i1, tl)
-	il.t2.Update(i2, tl)
+// INIT resets the block.
+func (i *INTERLOCK) INIT() { *i = INTERLOCK{} }
 
-	// An output can only be active if its input is active AND the opposing timer's output is false (i.e., not in its dead-time).
-	q1 := i1 && !il.t2.Q
-	q2 := i2 && !il.t1.Q
-	return q1, q2
+// Execute runs the block once.
+func (i *INTERLOCK) Execute(now time.Time) {
+	i.t1.IN, i.t1.PT = i.I1, i.TL
+	i.t1.Execute(now)
+	i.t2.IN, i.t2.PT = i.I2, i.TL
+	i.t2.Execute(now)
+	i.Q1 = i.I1 && !i.t2.Q
+	i.Q2 = i.I2 && !i.t1.Q
 }
 
-// Interlock4 detects one of 4 switches and delivers the number of the switch pressed.
+// INTERLOCK_4 reports which of 4 switches I0..I3 is pressed on OUT, as the
+// bit of the switch, while E is true. TP is true for one scan when OUT
+// changes. MODE 0 shows the inputs as they are, 1 the highest input, 2 the
+// input pressed last and 3 the first input pressed, which locks the others
+// out.
 type INTERLOCK_4 struct {
-	Out byte
-	TP  bool
-	// internal state
-	last, old, in byte
-	lmode         int
+	I0, I1, I2, I3 iec.BOOL
+	E              iec.BOOL
+	MODE           iec.INT
+	OUT            iec.BYTE
+	TP             iec.BOOL
+
+	last, old iec.BYTE
+	lmode     iec.INT
 }
 
-// Update executes the interlock logic.
-func (il *INTERLOCK_4) Update(i0, i1, i2, i3, e bool, mode int) {
-	if e {
-		if mode != il.lmode {
-			il.Out, il.last, il.old, il.lmode = 0, 0, 0, mode
-		}
+// INIT resets the block.
+func (l *INTERLOCK_4) INIT() { *l = INTERLOCK_4{} }
 
-		il.in = 0
-		if i0 {
-			il.in |= 1
-		}
-		if i1 {
-			il.in |= 2
-		}
-		if i2 {
-			il.in |= 4
-		}
-		if i3 {
-			il.in |= 8
-		}
-
-		if il.in != il.last {
-			switch mode {
-			case 0:
-				il.Out = il.in
-			case 1:
-				if (il.in & 8) != 0 {
-					il.Out = 8
-				} else if (il.in & 4) != 0 {
-					il.Out = 4
-				} else if (il.in & 2) != 0 {
-					il.Out = 2
-				} else {
-					il.Out = il.in
-				}
-			case 2:
-				il.last = (il.in ^ il.last) & il.in
-				if (il.last & 8) != 0 {
-					il.Out = 8
-				} else if (il.last & 4) != 0 {
-					il.Out = 4
-				} else if (il.last & 2) != 0 {
-					il.Out = 2
-				} else {
-					il.Out = il.last
-				}
-			case 3:
-				if (il.Out & il.in) == 0 {
-					if (il.in & 8) != 0 {
-						il.Out = 8
-					} else if (il.in & 4) != 0 {
-						il.Out = 4
-					} else if (il.in & 2) != 0 {
-						il.Out = 2
-					} else {
-						il.Out = il.in
-					}
-				}
-			}
-			il.last = il.in
-		}
-		il.TP = il.Out != il.old
-		il.old = il.Out
-	} else {
-		il.Out, il.last, il.old, il.lmode, il.TP = 0, 0, 0, 0, false
+// highest returns the highest bit of in, or in if it is bit 0 or none.
+func highest(in iec.BYTE) iec.BYTE {
+	switch {
+	case in&8 != 0:
+		return 8
+	case in&4 != 0:
+		return 4
+	case in&2 != 0:
+		return 2
 	}
+	return in
 }
 
-// MANUAL is a manual override for digital signals.
-func MANUAL(in, on, off bool) bool {
+// Execute runs the block once.
+func (l *INTERLOCK_4) Execute(now time.Time) {
+	if !l.E {
+		l.OUT, l.last, l.old, l.lmode = 0, 0, 0, 0
+		l.TP = false
+		return
+	}
+	if l.MODE != l.lmode {
+		l.OUT, l.last, l.old = 0, 0, 0
+		l.lmode = l.MODE
+	}
+	in := logic.BYTE_OF_BIT(l.I0, l.I1, l.I2, l.I3, false, false, false, false)
+	if in != l.last {
+		switch l.MODE {
+		case 0:
+			l.OUT = in
+		case 1:
+			l.OUT = highest(in)
+		case 2:
+			l.last = (in ^ l.last) & in
+			l.OUT = highest(l.last)
+		case 3:
+			if l.OUT&in == 0 {
+				l.OUT = highest(in)
+			}
+		}
+		l.last = in
+	}
+	l.TP = l.OUT != l.old
+	l.old = l.OUT
+}
+
+// MANUAL overrides a digital signal: ON forces it on and OFF forces it off;
+// otherwise it is IN.
+func MANUAL(in, on, off iec.BOOL) iec.BOOL {
 	return !off && (in || on)
 }
 
-// MANUAL_1 is a manual override for digital signals.
+// MANUAL_1 overrides a digital signal: while MAN is false Q is IN, and while
+// MAN is true Q is M_I, or set by a rising edge of SET or cleared by a
+// rising edge of RST. STATUS is 100 automatic, 101 set, 102 reset and 103
+// manual.
 type MANUAL_1 struct {
-	Q      bool
-	Status byte
-	// internal state
-	sEdge, rEdge, edge bool
+	IN, MAN, M_I, SET, RST iec.BOOL
+	Q                      iec.BOOL
+	STATUS                 iec.BYTE
+
+	sEdge, rEdge, edge iec.BOOL
 }
 
-// Update executes the manual override logic.
-func (m *MANUAL_1) Update(in, man, mI, set, rst bool) {
-	if !man {
-		m.Q = in
-		m.Status = 100
+// INIT resets the block.
+func (m *MANUAL_1) INIT() { *m = MANUAL_1{} }
+
+// Execute runs the block once.
+func (m *MANUAL_1) Execute(now time.Time) {
+	switch {
+	case !bool(m.MAN):
+		m.Q = m.IN
+		m.STATUS = 100
 		m.edge = false
-	} else if !m.sEdge && set {
+	case bool(!m.sEdge && m.SET):
 		m.Q = true
 		m.edge = true
-		m.Status = 101
-	} else if !m.rEdge && rst {
+		m.STATUS = 101
+	case bool(!m.rEdge && m.RST):
 		m.Q = false
 		m.edge = true
-		m.Status = 102
-	} else if !m.edge {
-		m.Q = mI
-		m.Status = 103
-	} else if m.edge && !set && !rst {
-		m.edge = false
+		m.STATUS = 102
+	case !bool(m.edge):
+		m.Q = m.M_I
+		m.STATUS = 103
 	}
-	m.sEdge = set
-	m.rEdge = rst
+	m.sEdge = m.SET
+	m.rEdge = m.RST
 }
 
-// MANUAL_2 is a manual override for boolean signals.
-func MANUAL_2(in, ena, on, off, man bool) (bool, byte) {
-	if ena {
-		if !on && !off {
-			return in, 100
-		} else if on && !off {
-			return true, 101
-		} else if !on && off {
-			return false, 102
-		} else {
-			return man, 103
-		}
-	}
-	return false, 104
+// MANUAL_2 overrides a digital signal while ENA is true: Q is IN, forced on
+// by ON, forced off by OFF, or MAN if both ON and OFF are true. STATUS is
+// 100, 101, 102 and 103 for those, and 104 while ENA is false and Q is off.
+type MANUAL_2 struct {
+	IN, ENA, ON, OFF, MAN iec.BOOL
+	Q                     iec.BOOL
+	STATUS                iec.BYTE
 }
 
-// MANUAL_4 is a manual override for 4 digital signals.
+// INIT resets the block.
+func (m *MANUAL_2) INIT() { *m = MANUAL_2{} }
+
+// Execute runs the block once.
+func (m *MANUAL_2) Execute(now time.Time) {
+	switch {
+	case !bool(m.ENA):
+		m.Q, m.STATUS = false, 104
+	case !bool(m.ON) && !bool(m.OFF):
+		m.Q, m.STATUS = m.IN, 100
+	case bool(m.ON) && !bool(m.OFF):
+		m.Q, m.STATUS = true, 101
+	case !bool(m.ON) && bool(m.OFF):
+		m.Q, m.STATUS = false, 102
+	default:
+		m.Q, m.STATUS = m.MAN, 103
+	}
+}
+
+// MANUAL_4 overrides 4 digital signals: while MAN is false Q0..Q3 are
+// I0..I3, and while MAN is true they are M0..M3, until a rising edge of STP
+// steps through the outputs one at a time. STATUS is 100 automatic, 101
+// manual and 110..113 for the step.
 type MANUAL_4 struct {
-	Q      [4]bool
-	Status byte
-	// internal state
-	edge bool
-	pos  int
-	tog  bool
+	I0, I1, I2, I3 iec.BOOL
+	MAN, STP       iec.BOOL
+	M0, M1, M2, M3 iec.BOOL
+	Q0, Q1, Q2, Q3 iec.BOOL
+	STATUS         iec.BYTE
+
+	edge iec.BOOL
+	pos  iec.INT
+	tog  iec.BOOL
 }
 
-// Update executes the logic.
-func (m *MANUAL_4) Update(i [4]bool, man, stp bool, mIn [4]bool) {
-	if man {
+// INIT resets the block.
+func (m *MANUAL_4) INIT() { *m = MANUAL_4{} }
+
+// Execute runs the block once.
+func (m *MANUAL_4) Execute(now time.Time) {
+	if m.MAN {
 		if !m.tog {
-			m.Q = mIn
-			m.Status = 101
+			m.Q0, m.Q1, m.Q2, m.Q3 = m.M0, m.M1, m.M2, m.M3
+			m.STATUS = 101
 		}
-		if stp && !m.edge {
+		if m.STP && !m.edge {
 			m.tog = true
-			m.Q = [4]bool{} // Reset all
-			m.Q[m.pos] = true
-			m.Status = 110 + byte(m.pos)
-			m.pos = (m.pos + 1) % 4
+			m.Q0, m.Q1, m.Q2, m.Q3 = m.pos == 0, m.pos == 1, m.pos == 2, m.pos == 3
+			m.STATUS = 110 + iec.BYTE(m.pos)
+			m.pos = math.INC(m.pos, 1, 3)
 		}
 	} else {
-		m.Q = i
-		m.Status = 100
+		m.Q0, m.Q1, m.Q2, m.Q3 = m.I0, m.I1, m.I2, m.I3
+		m.STATUS = 100
 		m.tog = false
 		m.pos = 0
 	}
+	m.edge = m.STP
 }
 
-// PARSET selects one of 4 parameter sets addressed by A0 and A1.
-// If TC is specified, the change of the outputs is ramped by the time TC.
+// PARSET selects one of 4 parameter sets, Xn1..Xn4 for the set n that A1,
+// A0 address, on P1..P4. If TC is not 0, the outputs ramp to a new set over
+// TC.
 type PARSET struct {
-	P1, P2, P3, P4 float64
+	A0, A1             iec.BOOL
+	X01, X02, X03, X04 iec.REAL
+	X11, X12, X13, X14 iec.REAL
+	X21, X22, X23, X24 iec.REAL
+	X31, X32, X33, X34 iec.REAL
+	TC                 iec.TIME
+	P1, P2, P3, P4     iec.REAL
 
-	// internal state
-	x     [4][4]float64
-	s     [4]float64
-	last  time.Time
-	start bool
-	set   byte
-	init  bool
+	x     [4][4]iec.REAL
+	s     [4]iec.REAL
+	last  iec.DWORD
+	start iec.BOOL
+	set   iec.BYTE
+	init  iec.BOOL
 }
 
-// Update executes the parameter set selection logic.
-func (p *PARSET) Update(a0, a1 bool, tc time.Duration, params [4][4]float64) {
-	tx := time.Now()
+// INIT resets the block.
+func (p *PARSET) INIT() { *p = PARSET{} }
 
+// Execute runs the block once.
+func (p *PARSET) Execute(now time.Time) {
+	tx := PLC_MS(now)
+	out := [4]*iec.REAL{&p.P1, &p.P2, &p.P3, &p.P4}
 	if !p.init {
+		p.set = iec.BYTE(BOOL_TO_INT(!p.A0))
 		p.init = true
-		p.x = params
-		p.set = 0
-		if a0 {
-			p.set |= 1
+		p.x = [4][4]iec.REAL{
+			{p.X01, p.X02, p.X03, p.X04},
+			{p.X11, p.X12, p.X13, p.X14},
+			{p.X21, p.X22, p.X23, p.X24},
+			{p.X31, p.X32, p.X33, p.X34},
 		}
-		if a1 {
-			p.set |= 2
-		}
-		p.P1 = p.x[p.set][0]
-		p.P2 = p.x[p.set][1]
-		p.P3 = p.x[p.set][2]
-		p.P4 = p.x[p.set][3]
+		p.P1, p.P2, p.P3, p.P4 = p.X01, p.X02, p.X03, p.X04
 	}
-
-	newSet := byte(0)
-	if a0 {
-		newSet |= 1
-	}
-	if a1 {
-		newSet |= 2
-	}
-
-	if newSet != p.set {
-		p.set = newSet
-		if tc > 0 {
+	a0, a1 := iec.BYTE(BOOL_TO_INT(p.A0)), iec.BYTE(BOOL_TO_INT(p.A1))
+	tc := ms(p.TC)
+	switch {
+	case a0 != p.set&1 || a1 != p.set>>1&1:
+		p.set = a0 | a1<<1
+		if p.TC > 0 {
 			p.start = true
 			p.last = tx
-			tcSec := tc.Seconds()
-			if tcSec > 0 {
-				p.s[0] = (p.x[p.set][0] - p.P1) / tcSec
-				p.s[1] = (p.x[p.set][1] - p.P2) / tcSec
-				p.s[2] = (p.x[p.set][2] - p.P3) / tcSec
-				p.s[3] = (p.x[p.set][3] - p.P4) / tcSec
+			for i, o := range out {
+				p.s[i] = (p.x[p.set][i] - *o) / iec.REAL(tc)
 			}
 		}
-	}
-
-	if p.start && time.Since(p.last) < tc {
-		// Ramp the outputs to the new value
-		remaining := tc - time.Since(p.last)
-		p.P1 = p.x[p.set][0] - p.s[0]*remaining.Seconds()
-		p.P2 = p.x[p.set][1] - p.s[1]*remaining.Seconds()
-		p.P3 = p.x[p.set][2] - p.s[2]*remaining.Seconds()
-		p.P4 = p.x[p.set][3] - p.s[3]*remaining.Seconds()
-	} else {
-		// Make sure outputs match the correct set values
+	case bool(p.start) && tx-p.last < tc:
+		for i, o := range out {
+			*o = p.x[p.set][i] - p.s[i]*iec.REAL(tc-tx+p.last)
+		}
+	default:
 		p.start = false
-		p.P1 = p.x[p.set][0]
-		p.P2 = p.x[p.set][1]
-		p.P3 = p.x[p.set][2]
-		p.P4 = p.x[p.set][3]
+		for i, o := range out {
+			*o = p.x[p.set][i]
+		}
 	}
 }
 
-// PARSET2 selects one of 4 parameter sets depending on the value of X.
+// PARSET2 selects one of 4 parameter sets by the value of X: set 0 while
+// |X| < L1, set 1 while |X| < L2, set 2 while |X| < L3 and set 3 above; see
+// PARSET.
 type PARSET2 struct {
-	P1, P2, P3, P4 float64
-	pset           PARSET
-	init           bool
+	X                  iec.REAL
+	X01, X02, X03, X04 iec.REAL
+	X11, X12, X13, X14 iec.REAL
+	X21, X22, X23, X24 iec.REAL
+	X31, X32, X33, X34 iec.REAL
+	L1, L2, L3         iec.REAL
+	TC                 iec.TIME
+	P1, P2, P3, P4     iec.REAL
+
+	pset PARSET
+	init iec.BOOL
 }
 
-// Update executes the logic.
-func (p *PARSET2) Update(x, l1, l2, l3 float64, tc time.Duration, params [4][4]float64) {
+// INIT resets the block.
+func (p *PARSET2) INIT() { *p = PARSET2{} }
+
+// Execute runs the block once.
+func (p *PARSET2) Execute(now time.Time) {
+	s := &p.pset
 	if !p.init {
 		p.init = true
-		p.pset.x = params // Initialize the internal PARSET
+		s.TC = p.TC
+		s.X01, s.X02, s.X03, s.X04 = p.X01, p.X02, p.X03, p.X04
+		s.X11, s.X12, s.X13, s.X14 = p.X11, p.X12, p.X13, p.X14
+		s.X21, s.X22, s.X23, s.X24 = p.X21, p.X22, p.X23, p.X24
+		s.X31, s.X32, s.X33, s.X34 = p.X31, p.X32, p.X33, p.X34
+		s.Execute(now)
 	}
-
-	var a0, a1 bool
-	absX := math.Abs(x)
-	if absX < l1 {
-		a0, a1 = false, false
-	} else if absX < l2 {
-		a0, a1 = true, false
-	} else if absX < l3 {
-		a0, a1 = false, true
-	} else {
-		a0, a1 = true, true
+	x := ABS(p.X)
+	switch {
+	case x < p.L1:
+		s.A0, s.A1 = false, false
+	case x < p.L2:
+		s.A0, s.A1 = true, false
+	case x < p.L3:
+		s.A0, s.A1 = false, true
+	default:
+		s.A0, s.A1 = true, true
 	}
-
-	p.pset.Update(a0, a1, tc, params)
-	p.P1 = p.pset.P1
-	p.P2 = p.pset.P2
-	p.P3 = p.pset.P3
-	p.P4 = p.pset.P4
+	s.Execute(now)
+	p.P1, p.P2, p.P3, p.P4 = s.P1, s.P2, s.P3, s.P4
 }
 
-// SIGNAL generates an output signal according to a bit pattern SIG.
+// SIGNAL shows the bit pattern SIG on Q while IN is true, one bit each TS,
+// or each 128 ms if TS is 0.
 type SIGNAL struct {
-	Q bool
+	IN  iec.BOOL
+	SIG iec.BYTE
+	TS  iec.TIME
+	Q   iec.BOOL
 }
 
-// Update executes the signal generation logic.
-func (s *SIGNAL) Update(in bool, sig byte, ts time.Duration) {
-	if in {
-		tx := time.Now().UnixMilli()
-		var step byte
-		if ts > 0 {
-			step = byte(tx/int64(ts.Milliseconds())) & 0x07
-		} else {
-			step = byte(tx>>7) & 0x07
-		}
-		step = 1 << step
-		s.Q = (step & sig) > 0
-	} else {
+// INIT resets the block.
+func (s *SIGNAL) INIT() { *s = SIGNAL{} }
+
+// Execute runs the block once.
+func (s *SIGNAL) Execute(now time.Time) {
+	if !s.IN {
 		s.Q = false
+		return
 	}
+	tx := PLC_MS(now)
+	var step iec.BYTE
+	if s.TS > 0 {
+		step = iec.BYTE(tx / ms(s.TS) & 7)
+	} else {
+		step = iec.BYTE(tx >> 7 & 7)
+	}
+	s.Q = iec.BYTE(1)<<step&s.SIG > 0
 }
 
-// SIGNAL_4 generates one out of 4 signals specified by bit patterns S1..S4.
+// SIGNAL_4 shows the pattern S1..S4 of the first input IN1..IN4 that is
+// true on Q; see SIGNAL.
 type SIGNAL_4 struct {
-	Q   bool
+	IN1, IN2, IN3, IN4 iec.BOOL
+	TS                 iec.TIME
+	S1, S2, S3, S4     iec.BYTE // default 2#1111_1111, 2#1111_0000, 2#1010_1010, 2#1010_0000
+	Q                  iec.BOOL
+
 	sig SIGNAL
 }
 
-// Update executes the logic.
-func (s *SIGNAL_4) Update(in1, in2, in3, in4 bool, ts time.Duration, s1, s2, s3, s4 byte) {
-	var sigIn bool
-	var sigPattern byte
+// INIT resets the block and sets S1..S4 to their initial values.
+func (s *SIGNAL_4) INIT() {
+	*s = SIGNAL_4{S1: 0b1111_1111, S2: 0b1111_0000, S3: 0b1010_1010, S4: 0b1010_0000}
+}
 
-	if in1 {
-		sigIn = true
-		sigPattern = s1
-	} else if in2 {
-		sigIn = true
-		sigPattern = s2
-	} else if in3 {
-		sigIn = true
-		sigPattern = s3
-	} else if in4 {
-		sigIn = true
-		sigPattern = s4
-	} else {
-		sigIn = false
+// Execute runs the block once.
+func (s *SIGNAL_4) Execute(now time.Time) {
+	s.sig.IN = true
+	s.sig.TS = s.TS
+	switch {
+	case bool(s.IN1):
+		s.sig.SIG = s.S1
+	case bool(s.IN2):
+		s.sig.SIG = s.S2
+	case bool(s.IN3):
+		s.sig.SIG = s.S3
+	case bool(s.IN4):
+		s.sig.SIG = s.S4
+	default:
+		s.sig.IN = false
 	}
-
-	s.sig.Update(sigIn, sigPattern, ts)
+	s.sig.Execute(now)
 	s.Q = s.sig.Q
 }
 
-// SRAMP generates an output signal that is slew rate and acceleration controlled.
+// SRAMP follows X with Y with a speed V limited to VU_MAX up and VD_MAX
+// down and an acceleration limited to A_UP and A_DN, within LIMIT_LOW and
+// LIMIT_HIGH.
 type SRAMP struct {
-	Y float64
-	V float64
+	X          iec.REAL
+	A_UP       iec.REAL
+	A_DN       iec.REAL
+	VU_MAX     iec.REAL
+	VD_MAX     iec.REAL
+	LIMIT_HIGH iec.REAL
+	LIMIT_LOW  iec.REAL
+	RST        iec.BOOL
+	Y          iec.REAL
+	V          iec.REAL
 
-	// internal state
-	cycleTime logic.TC_S
-	init      bool
+	cycleTime TC_S
+	init      iec.BOOL
 }
 
-// Update executes the S-Ramp logic.
-func (s *SRAMP) Update(x, aUp, aDn, vuMax, vdMax, limitHigh, limitLow float64, rst bool) {
-	s.cycleTime.Update()
+// INIT resets the block.
+func (s *SRAMP) INIT() { *s = SRAMP{} }
+
+// Execute runs the block once.
+func (s *SRAMP) Execute(now time.Time) {
+	s.cycleTime.Execute(now)
 	tc := s.cycleTime.TC
-
-	aUp = math.Max(0.0, aUp)
-	aDn = math.Min(0.0, aDn)
-	vuMax = math.Max(0.0, vuMax)
-	vdMax = math.Min(0.0, vdMax)
-
-	if rst || !s.init {
+	s.A_UP = max(0.0, s.A_UP)
+	s.A_DN = min(0.0, s.A_DN)
+	s.VU_MAX = max(0.0, s.VU_MAX)
+	s.VD_MAX = min(0.0, s.VD_MAX)
+	switch {
+	case bool(s.RST || !s.init):
 		s.init = true
 		s.Y = 0.0
 		s.V = 0.0
-	} else if x == s.Y {
+	case s.X == s.Y:
 		s.V = 0.0
-	} else if x > s.Y { // Ramp up
-		s.V = math.Min(s.V+aUp*tc, vuMax)
-		s.V = math.Min(math.Sqrt((s.Y-x)*2.0*aDn), s.V)
-		s.Y = beeMath.LIMIT(limitLow, s.Y+math.Min(s.V*tc, x-s.Y), limitHigh)
-	} else { // Ramp down
-		s.V = math.Max(s.V+aDn*tc, vdMax)
-		s.V = math.Max(-math.Sqrt((s.Y-x)*2.0*aUp), s.V)
-		s.Y = beeMath.LIMIT(limitLow, s.Y+math.Max(s.V*tc, x-s.Y), limitHigh)
+	case s.X > s.Y:
+		s.V = min(s.V+s.A_UP*tc, s.VU_MAX)
+		s.V = min(SQRT((s.Y-s.X)*2.0*s.A_DN), s.V)
+		s.Y = LIMIT(s.LIMIT_LOW, s.Y+min(s.V*tc, s.X-s.Y), s.LIMIT_HIGH)
+	case s.X < s.Y:
+		s.V = max(s.V+s.A_DN*tc, s.VD_MAX)
+		s.V = max(-SQRT((s.Y-s.X)*2.0*s.A_UP), s.V)
+		s.Y = LIMIT(s.LIMIT_LOW, s.Y+max(s.V*tc, s.X-s.Y), s.LIMIT_HIGH)
 	}
 }
 
-// TUNE generates an output signal which is set by input switches.
+// TUNE sets Y with the keys SU and SD: a short press steps Y by SS, a press
+// longer than T1 ramps it by S1 per second, and longer than T2 by S2 per
+// second. SET sets Y to SET_VAL and RST to RST_VAL. Y stays within LIMIT_L
+// and LIMIT_H.
 type TUNE struct {
-	Y float64
+	SET     iec.BOOL
+	SU, SD  iec.BOOL
+	RST     iec.BOOL
+	SS      iec.REAL // default 0.1
+	LIMIT_L iec.REAL
+	LIMIT_H iec.REAL // default 100.0
+	RST_VAL iec.REAL
+	SET_VAL iec.REAL // default 100.0
+	T1      iec.TIME // default T#500ms
+	T2      iec.TIME // default T#2s
+	S1      iec.REAL // default 2.0
+	S2      iec.REAL // default 10.0
+	Y       iec.REAL
 
-	// internal state
-	start, start2 time.Time
-	state         int
-	step          float64
-	speed         float64
-	yStart        float64
-	yStart2       float64
+	start, start2   iec.DWORD
+	state           iec.INT
+	step, speed     iec.REAL
+	yStart, yStart2 iec.REAL
 }
 
-// Update executes the tuning logic.
-func (t *TUNE) Update(set, su, sd, rst bool, ss, limitL, limitH, rstVal, setVal, s1, s2 float64, t1, t2 time.Duration) {
-	tx := time.Now()
+// INIT resets the block and sets its inputs to their initial values.
+func (t *TUNE) INIT() {
+	*t = TUNE{SS: 0.1, LIMIT_H: 100, SET_VAL: 100, T1: iec.TIME(500 * time.Millisecond),
+		T2: iec.TIME(2 * time.Second), S1: 2, S2: 10}
+}
 
-	if rst {
-		t.Y = rstVal
+// Execute runs the block once.
+func (t *TUNE) Execute(now time.Time) {
+	tx := PLC_MS(now)
+	switch {
+	case bool(t.RST):
+		t.Y = t.RST_VAL
 		t.state = 0
-	} else if set {
-		t.Y = setVal
+	case bool(t.SET):
+		t.Y = t.SET_VAL
 		t.state = 0
-	} else if t.state > 0 {
-		in := (t.state == 1 && su) || (t.state == 2 && sd)
-
-		if !in && tx.Sub(t.start) <= t1 {
+	case t.state > 0:
+		in := SEL(t.state == 1, t.SD, t.SU)
+		switch {
+		case !bool(in) && tx-t.start <= ms(t.T1):
 			t.Y = t.yStart + t.step
 			t.state = 0
-		} else if in && tx.Sub(t.start) >= t2 {
-			t.Y = t.yStart2 + tx.Sub(t.start2).Seconds()*s2/t.speed
-		} else if in && tx.Sub(t.start) >= t1 {
-			t.Y = t.yStart + (tx.Sub(t.start)-t1).Seconds()*s1/t.speed
+		case bool(in) && tx-t.start >= ms(t.T2):
+			t.Y = t.yStart2 + iec.REAL(tx-t.start2)*t.S2/t.speed
+		case bool(in) && tx-t.start >= ms(t.T1):
+			t.Y = t.yStart + iec.REAL(tx-t.start-ms(t.T1))*t.S1/t.speed
 			t.start2 = tx
 			t.yStart2 = t.Y
-		} else if !in {
+		case !bool(in):
 			t.state = 0
 		}
-	} else if su {
-		t.state = 1
-		t.start = tx
-		t.step = ss
-		t.speed = 1.0
-		t.yStart = t.Y
-	} else if sd {
-		t.state = 2
-		t.start = tx
-		t.step = -ss
-		t.speed = -1.0
-		t.yStart = t.Y
+	case bool(t.SU):
+		t.state, t.start, t.step, t.speed, t.yStart = 1, tx, t.SS, 1000.0, t.Y
+	case bool(t.SD):
+		t.state, t.start, t.step, t.speed, t.yStart = 2, tx, -t.SS, -1000.0, t.Y
 	}
+	t.Y = LIMIT(t.LIMIT_L, t.Y, t.LIMIT_H)
+}
 
-	t.Y = beeMath.LIMIT(limitL, t.Y, limitH)
+// TUNE2 sets Y with the keys SU and SD, slow, and FU and FD, fast: a short
+// press steps Y by SS or FS, and a press longer than TR ramps it by S1 or S2
+// per second. SET sets Y to SET_VAL and RST to RST_VAL. Y stays within
+// LIMIT_L and LIMIT_H.
+type TUNE2 struct {
+	SET     iec.BOOL
+	SU, SD  iec.BOOL
+	FU, FD  iec.BOOL
+	RST     iec.BOOL
+	SS      iec.REAL // default 0.1
+	FS      iec.REAL // default 5.0
+	LIMIT_L iec.REAL
+	LIMIT_H iec.REAL // default 100.0
+	RST_VAL iec.REAL
+	SET_VAL iec.REAL // default 100.0
+	TR      iec.TIME // default T#500ms
+	S1      iec.REAL // default 2.0
+	S2      iec.REAL // default 10.0
+	Y       iec.REAL
+
+	start       iec.DWORD
+	state       iec.INT
+	in          iec.BOOL
+	step, speed iec.REAL
+	yStart      iec.REAL
+}
+
+// INIT resets the block and sets its inputs to their initial values.
+func (t *TUNE2) INIT() {
+	*t = TUNE2{SS: 0.1, FS: 5, LIMIT_H: 100, SET_VAL: 100, TR: iec.TIME(500 * time.Millisecond), S1: 2, S2: 10}
+}
+
+// Execute runs the block once.
+func (t *TUNE2) Execute(now time.Time) {
+	tx := PLC_MS(now)
+	begin := func(state iec.INT, step, speed iec.REAL) {
+		t.state, t.start, t.step, t.speed, t.yStart = state, tx, step, speed, t.Y
+	}
+	switch {
+	case bool(t.RST):
+		t.Y = t.RST_VAL
+		t.state = 0
+	case bool(t.SET):
+		t.Y = t.SET_VAL
+		t.state = 0
+	case t.state > 0:
+		switch t.state {
+		case 1:
+			t.in = t.SU
+		case 2:
+			t.in = t.SD
+		case 3:
+			t.in = t.FU
+		case 4:
+			t.in = t.FD
+		}
+		switch {
+		case !bool(t.in) && tx-t.start <= ms(t.TR):
+			t.Y = t.yStart + t.step
+			t.state = 0
+		case bool(t.in) && tx-t.start >= ms(t.TR):
+			t.Y = t.yStart + iec.REAL(tx-t.start-ms(t.TR))*t.speed
+		case !bool(t.in):
+			t.state = 0
+		}
+	case bool(t.SU):
+		begin(1, t.SS, t.S1*1.0e-3)
+	case bool(t.SD):
+		begin(2, -t.SS, -t.S1*1.0e-3)
+	case bool(t.FU):
+		begin(3, t.FS, t.S2*1.0e-3)
+	case bool(t.FD):
+		begin(4, -t.FS, -t.S2*1.0e-3)
+	}
+	t.Y = LIMIT(t.LIMIT_L, t.Y, t.LIMIT_H)
 }

@@ -2,7 +2,7 @@
  * Copyright (C) 2026 Franklin D. Amador
  *
  * This software is dual-licensed under:
- * - GPL v2.0
+ * - EPL v2.0
  * - Commercial
  *
  * You may choose to use this software under the terms of either license.
@@ -12,765 +12,1083 @@
 package engineering
 
 import (
-	"math"
 	"time"
 
-	"beebread/basic"
-	"beebread/basic/logic"
-	beeMath "beebread/basic/math"
+	. "github.com/apiarytech/beebread/basic"
+	"github.com/apiarytech/beebread/basic/math"
+	td "github.com/apiarytech/beebread/basic/time_date"
+	"github.com/apiarytech/royaljelly/iec"
 )
 
-// BAND_B limits a byte value X to a band B.
-// If X < B, the result is 0. If X > 255-B, the result is 255. Otherwise, it's X.
-func BAND_B(x, b byte) byte {
-	if x < b {
+// A block that holds blocks with initial input values runs their INIT the
+// first time it runs, as OSCAT's instances start with those values.
+
+// BAND_B returns 0 for X below B, 255 for X above 255-B and X otherwise.
+func BAND_B(x, b iec.BYTE) iec.BYTE {
+	switch {
+	case x < b:
 		return 0
-	}
-	if x > 255-b {
+	case x > 255-b:
 		return 255
 	}
 	return x
 }
 
-// CONTROL_SET1 calculates controller parameters for P, PI, and PID controllers
-// based on the Ziegler-Nichols method using Kt and Tt.
+// controlSet sets the parameters of CONTROL_SET1 and CONTROL_SET2.
+func controlSet(pi, pid iec.BOOL, k, t, pK, piK, piTn, pidK, pidTn, pidTv iec.REAL, kp, tn, tv, ki, kd *iec.REAL) {
+	switch {
+	case bool(pi && pid):
+		*kp, *tn, *tv = 0, 0, 0
+	case bool(pid):
+		*kp, *tn, *tv = pidK*k, pidTn*t, pidTv*t
+	case bool(pi):
+		*kp, *tn = piK*k, piTn*t
+	default:
+		*kp = pK * k
+	}
+	if *tn > 0.0 {
+		*ki = *kp / *tn
+	} else {
+		*ki = 0
+	}
+	*kd = *kp * *tv
+}
+
+// CONTROL_SET1 calculates the parameters of a P, PI or PID controller with
+// the Ziegler-Nichols method from the critical gain KT and period TT.
 type CONTROL_SET1 struct {
-	// Constants
-	PK    float64
-	PIK   float64
-	PITN  float64
-	PIDK  float64
-	PIDTN float64
-	PIDTV float64
-
-	// Outputs
-	KP float64
-	TN float64
-	TV float64
-	KI float64
-	KD float64
+	KT, TT                iec.REAL
+	PI, PID               iec.BOOL
+	P_K, PI_K, PI_TN      iec.REAL // default 0.5, 0.45, 0.83
+	PID_K, PID_TN, PID_TV iec.REAL // default 0.6, 0.5, 0.125
+	KP, TN, TV, KI, KD    iec.REAL
 }
 
-// NewCONTROL_SET1 creates a CONTROL_SET1 with default values.
-func NewCONTROL_SET1() *CONTROL_SET1 {
-	return &CONTROL_SET1{
-		PK:    0.5,
-		PIK:   0.45,
-		PITN:  0.83,
-		PIDK:  0.6,
-		PIDTN: 0.5,
-		PIDTV: 0.125,
-	}
+// INIT resets the block and sets its constants to their initial values.
+func (c *CONTROL_SET1) INIT() {
+	*c = CONTROL_SET1{P_K: 0.5, PI_K: 0.45, PI_TN: 0.83, PID_K: 0.6, PID_TN: 0.5, PID_TV: 0.125}
 }
 
-// Update calculates the controller parameters.
-func (c *CONTROL_SET1) Update(kt, tt float64, pi, pid bool) {
-	if pi && pid {
-		c.KP, c.TN, c.TV = 0.0, 0.0, 0.0
-	} else if pid {
-		c.KP = c.PIDK * kt
-		c.TN = c.PIDTN * tt
-		c.TV = c.PIDTV * tt
-	} else if pi {
-		c.KP = c.PIK * kt
-		c.TN = c.PITN * tt
-	} else {
-		c.KP = c.PK * kt
-		c.TV = 0.0 // P controller has no derivative time
-	}
-
-	if c.TN > 0.0 {
-		c.KI = c.KP / c.TN
-	} else {
-		c.KI = 0.0
-	}
-	c.KD = c.KP * c.TV
+// Execute runs the block once.
+func (c *CONTROL_SET1) Execute(now time.Time) {
+	controlSet(c.PI, c.PID, c.KT, c.TT, c.P_K, c.PI_K, c.PI_TN, c.PID_K, c.PID_TN, c.PID_TV,
+		&c.KP, &c.TN, &c.TV, &c.KI, &c.KD)
 }
 
-// CONTROL_SET2 calculates controller parameters for P, PI, and PID controllers
-// based on the Ziegler-Nichols method using KS, TU, and TG.
+// CONTROL_SET2 calculates the parameters of a P, PI or PID controller with
+// the Ziegler-Nichols method from the step response: the gain KS, the
+// delay TU and the rise time TG.
 type CONTROL_SET2 struct {
-	// Constants
-	PK    float64
-	PIK   float64
-	PITN  float64
-	PIDK  float64
-	PIDTN float64
-	PIDTV float64
+	KS, TU, TG            iec.REAL
+	PI, PID               iec.BOOL
+	P_K, PI_K, PI_TN      iec.REAL // default 1.0, 0.9, 3.33
+	PID_K, PID_TN, PID_TV iec.REAL // default 1.2, 2.0, 0.5
+	KP, TN, TV, KI, KD    iec.REAL
 
-	// Outputs
-	KP float64
-	TN float64
-	TV float64
-	KI float64
-	KD float64
+	tx iec.REAL
 }
 
-// NewCONTROL_SET2 creates a CONTROL_SET2 with default values.
-func NewCONTROL_SET2() *CONTROL_SET2 {
-	return &CONTROL_SET2{
-		PK:    1.0,
-		PIK:   0.9,
-		PITN:  3.33,
-		PIDK:  1.2,
-		PIDTN: 2.0,
-		PIDTV: 0.5,
-	}
+// INIT resets the block and sets its constants to their initial values.
+func (c *CONTROL_SET2) INIT() {
+	*c = CONTROL_SET2{P_K: 1.0, PI_K: 0.9, PI_TN: 3.33, PID_K: 1.2, PID_TN: 2.0, PID_TV: 0.5}
 }
 
-// Update calculates the controller parameters.
-func (c *CONTROL_SET2) Update(ks, tu, tg float64, pi, pid bool) {
-	var tx float64
-	if tu > 0.0 && ks > 0.0 {
-		tx = tg / tu / ks
+// Execute runs the block once.
+func (c *CONTROL_SET2) Execute(now time.Time) {
+	if c.TU > 0.0 && c.KS > 0.0 {
+		c.tx = c.TG / c.TU / c.KS
 	}
-
-	if pi && pid {
-		c.KP, c.TN, c.TV = 0.0, 0.0, 0.0
-	} else if pid {
-		c.KP = c.PIDK * tx
-		c.TN = c.PIDTN * tu
-		c.TV = c.PIDTV * tu
-	} else if pi {
-		c.KP = c.PIK * tx
-		c.TN = c.PITN * tu
-	} else {
-		c.KP = c.PK * tx
-		c.TV = 0.0
+	// The times scale with TU.
+	pidTn, pidTv := c.PID_TN, c.PID_TV
+	switch {
+	case bool(c.PI && c.PID):
+		c.KP, c.TN, c.TV = 0, 0, 0
+	case bool(c.PID):
+		c.KP, c.TN, c.TV = c.PID_K*c.tx, pidTn*c.TU, pidTv*c.TU
+	case bool(c.PI):
+		c.KP, c.TN = c.PI_K*c.tx, c.PI_TN*c.TU
+	default:
+		c.KP = c.P_K * c.tx
 	}
-
 	if c.TN > 0.0 {
 		c.KI = c.KP / c.TN
 	} else {
-		c.KI = 0.0
+		c.KI = 0
 	}
 	c.KD = c.KP * c.TV
 }
 
-// CTRL_IN calculates the process error (difference) with a dead zone for noise.
-func CTRL_IN(setPoint, actual, noise float64) float64 {
+// CTRL_IN returns the control error SET_POINT - ACTUAL, 0 within NOISE.
+func CTRL_IN(setPoint, actual, noise iec.REAL) iec.REAL {
 	return DEAD_ZONE(setPoint-actual, noise)
 }
 
-// CTRL_OUT handles manual override and output limiting for a controller.
+// CTRL_OUT is the output stage of a controller: Y is CI, or MAN_IN while
+// MANUAL is true, plus OFFSET, limited to LIM_L..LIM_H. LIM is true at the
+// limits.
 type CTRL_OUT struct {
-	Y   float64
-	Lim bool
+	CI, OFFSET, MAN_IN, LIM_L, LIM_H iec.REAL
+	MANUAL                           iec.BOOL
+	Y                                iec.REAL
+	LIM                              iec.BOOL
 }
 
-// Update executes the logic.
-func (c *CTRL_OUT) Update(ci, offset, manIn, limL, limH float64, manual bool) {
-	if manual {
-		c.Y = manIn + offset
-	} else {
-		c.Y = ci + offset
-	}
+// INIT resets the block.
+func (c *CTRL_OUT) INIT() { *c = CTRL_OUT{} }
 
-	if c.Y > limL && c.Y < limH {
-		c.Lim = false
+// Execute runs the block once.
+func (c *CTRL_OUT) Execute(now time.Time) {
+	c.Y = SEL(c.MANUAL, c.CI, c.MAN_IN) + c.OFFSET
+	if c.Y > c.LIM_L && c.Y < c.LIM_H {
+		c.LIM = false
 	} else {
-		c.Y = beeMath.LIMIT(limL, c.Y, limH)
-		c.Lim = true
+		c.Y = LIMIT(c.LIM_L, c.Y, c.LIM_H)
+		c.LIM = true
 	}
 }
 
-// CTRL_PI is a PI controller with manual functionality.
+// CTRL_PI is a PI controller for the error SET - ACT, ignored within SUP,
+// with the output Y limited to LL..LH, the offset OFS, and M_I while MAN is
+// true.
 type CTRL_PI struct {
-	Y    float64
-	Diff float64
-	Lim  bool
+	ACT, SET, SUP, OFS, M_I iec.REAL
+	MAN                     iec.BOOL
+	RST                     iec.BOOL
+	KP                      iec.REAL // default 1.0
+	KI                      iec.REAL // default 1.0
+	LL                      iec.REAL // default -1000.0
+	LH                      iec.REAL // default 1000.0
+	Y                       iec.REAL
+	DIFF                    iec.REAL
+	LIM                     iec.BOOL
 
-	// internal state
-	pi FT_PIWL
-	co CTRL_OUT
+	pi          FT_PIWL
+	co          CTRL_OUT
+	initialized bool
 }
 
-// Update executes the PI controller logic.
-func (c *CTRL_PI) Update(act, set, sup, ofs, mI, kp, ki, ll, lh float64, man, rst bool) {
-	c.Diff = CTRL_IN(set, act, sup)
-	c.pi.Update(c.Diff, kp, ki, ll, lh, rst)
-	c.co.Update(c.pi.Y, ofs, mI, ll, lh, man)
+// INIT resets the block and sets its inputs to their initial values.
+func (c *CTRL_PI) INIT() {
+	*c = CTRL_PI{KP: 1, KI: 1, LL: -1000, LH: 1000, initialized: true}
+	c.pi.INIT()
+}
+
+// Execute runs the block once.
+func (c *CTRL_PI) Execute(now time.Time) {
+	if !c.initialized {
+		c.initialized = true
+		c.pi.INIT()
+	}
+	c.DIFF = CTRL_IN(c.SET, c.ACT, c.SUP)
+	c.pi.IN, c.pi.KP, c.pi.KI, c.pi.LIM_L, c.pi.LIM_H, c.pi.RST = c.DIFF, c.KP, c.KI, c.LL, c.LH, c.RST
+	c.pi.Execute(now)
+	c.co.CI, c.co.OFFSET, c.co.MAN_IN, c.co.LIM_L, c.co.LIM_H, c.co.MANUAL = c.pi.Y, c.OFS, c.M_I, c.LL, c.LH, c.MAN
+	c.co.Execute(now)
 	c.Y = c.co.Y
-	c.Lim = c.co.Lim
+	c.LIM = c.co.LIM
 }
 
-// CTRL_PID is a PID controller with manual functionality.
+// CTRL_PID is a PID controller for the error SET - ACT, ignored within SUP,
+// with the output Y limited to LL..LH, the offset OFS, and M_I while MAN is
+// true.
 type CTRL_PID struct {
-	Y    float64
-	Diff float64
-	Lim  bool
+	ACT, SET, SUP, OFS, M_I iec.REAL
+	MAN                     iec.BOOL
+	RST                     iec.BOOL
+	KP                      iec.REAL // default 1.0
+	TN                      iec.REAL // default 1.0
+	TV                      iec.REAL // default 1.0
+	LL                      iec.REAL // default -1000.0
+	LH                      iec.REAL // default 1000.0
+	Y                       iec.REAL
+	DIFF                    iec.REAL
+	LIM                     iec.BOOL
 
-	// internal state
-	pid FT_PIDWL
-	co  CTRL_OUT
+	pid         FT_PIDWL
+	co          CTRL_OUT
+	initialized bool
 }
 
-// Update executes the PID controller logic.
-func (c *CTRL_PID) Update(act, set, sup, ofs, mI, kp, tn, tv, ll, lh float64, man, rst bool) {
-	c.Diff = CTRL_IN(set, act, sup)
-	c.pid.Update(c.Diff, kp, tn, tv, ll, lh, rst)
-	c.co.Update(c.pid.Y, ofs, mI, ll, lh, man)
+// INIT resets the block and sets its inputs to their initial values.
+func (c *CTRL_PID) INIT() {
+	*c = CTRL_PID{KP: 1, TN: 1, TV: 1, LL: -1000, LH: 1000, initialized: true}
+	c.pid.INIT()
+}
+
+// Execute runs the block once.
+func (c *CTRL_PID) Execute(now time.Time) {
+	if !c.initialized {
+		c.initialized = true
+		c.pid.INIT()
+	}
+	c.DIFF = CTRL_IN(c.SET, c.ACT, c.SUP)
+	p := &c.pid
+	p.IN, p.KP, p.TN, p.TV, p.LIM_L, p.LIM_H, p.RST = c.DIFF, c.KP, c.TN, c.TV, c.LL, c.LH, c.RST
+	p.Execute(now)
+	c.co.CI, c.co.OFFSET, c.co.MAN_IN, c.co.LIM_L, c.co.LIM_H, c.co.MANUAL = p.Y, c.OFS, c.M_I, c.LL, c.LH, c.MAN
+	c.co.Execute(now)
 	c.Y = c.co.Y
-	c.Lim = c.co.Lim
+	c.LIM = c.co.LIM
 }
 
-// CTRL_PWM converts a controller output to a PWM signal.
+// CTRL_PWM is a PWM output stage of a controller with the frequency F and
+// the duty cycle CI, or MAN_IN while MANUAL is true.
 type CTRL_PWM struct {
-	Q  bool
+	CI, MAN_IN iec.REAL
+	MANUAL     iec.BOOL
+	F          iec.REAL
+	Q          iec.BOOL
+
 	pw PWM_DC
 }
 
-// Update executes the PWM logic.
-func (c *CTRL_PWM) Update(ci, manIn, f float64, manual bool) {
-	var dc float64
-	if manual {
-		dc = manIn
-	} else {
-		dc = ci
-	}
-	c.pw.Update(f, dc)
+// INIT resets the block.
+func (c *CTRL_PWM) INIT() { *c = CTRL_PWM{} }
+
+// Execute runs the block once.
+func (c *CTRL_PWM) Execute(now time.Time) {
+	c.pw.F = c.F
+	c.pw.DC = SEL(c.MANUAL, c.CI, c.MAN_IN)
+	c.pw.Execute(now)
 	c.Q = c.pw.Q
 }
 
-// DEAD_BAND is a linear transfer function with a dead band.
-// Y = X - L for X > L
-// Y = X + L for X < -L
-// Y = 0 for |X| <= L
-func DEAD_BAND(x, l float64) float64 {
-	if x > l {
+// DEAD_BAND is a linear function with a dead band: X - L above L, X + L
+// below -L and 0 between.
+func DEAD_BAND(x, l iec.REAL) iec.REAL {
+	switch {
+	case x > l:
 		return x - l
-	}
-	if x < -l {
+	case x < -l:
 		return x + l
 	}
 	return 0.0
 }
 
-// DEAD_BAND_A is a dead band function with automatic width calculation.
+// DEAD_BAND_A is a DEAD_BAND whose band L is KL times the noise of X,
+// measured with the time T, up to LM.
 type DEAD_BAND_A struct {
-	Y float64
-	L float64
+	X  iec.REAL
+	T  iec.TIME
+	KL iec.REAL // default 1.0
+	LM iec.REAL
+	Y  iec.REAL
+	L  iec.REAL
 
-	// internal state
-	tp1, tp2 FT_PT1
+	tp1, tp2    FT_PT1
+	initialized bool
 }
 
-// Update executes the logic.
-func (d *DEAD_BAND_A) Update(x, kl, lm float64, t time.Duration) {
-	d.tp1.Update(x, t, 1.0)
-	d.tp2.Update(math.Abs(d.tp1.Out-x), t*4, 1.0)
-	d.L = math.Min(kl*d.tp2.Out, lm)
+// INIT resets the block and sets KL to its initial value.
+func (d *DEAD_BAND_A) INIT() {
+	*d = DEAD_BAND_A{KL: 1, initialized: true}
+	d.tp1.INIT()
+	d.tp2.INIT()
+}
 
-	if x > d.L {
-		d.Y = x - d.L
-	} else if x < -d.L {
-		d.Y = x + d.L
-	} else {
-		d.Y = 0.0
+// Execute runs the block once.
+func (d *DEAD_BAND_A) Execute(now time.Time) {
+	if !d.initialized {
+		d.initialized = true
+		d.tp1.INIT()
+		d.tp2.INIT()
 	}
+	d.tp1.IN, d.tp1.T = d.X, d.T
+	d.tp1.Execute(now)
+	d.tp2.IN, d.tp2.T = ABS(d.tp1.OUT-d.X), td.MULTIME(d.T, 4.0)
+	d.tp2.Execute(now)
+	d.L = min(d.KL*d.tp2.OUT, d.LM)
+	d.Y = DEAD_BAND(d.X, d.L)
 }
 
-// DEAD_ZONE is a linear transfer function where Y=X if |X| > L, otherwise Y=0.
-func DEAD_ZONE(x, l float64) float64 {
-	if math.Abs(x) > l {
+// DEAD_ZONE returns X, or 0 while |X| <= L.
+func DEAD_ZONE(x, l iec.REAL) iec.REAL {
+	if ABS(x) > l {
 		return x
 	}
 	return 0.0
 }
 
-// DEAD_ZONE2 is a dead zone with hysteresis.
+// DEAD_ZONE2 follows X with Y while |X| > L, and holds Y at L or -L within
+// it.
 type DEAD_ZONE2 struct {
-	Y float64
+	X, L iec.REAL
+	Y    iec.REAL
 }
 
-// Update executes the logic.
-func (d *DEAD_ZONE2) Update(x, l float64) {
-	if math.Abs(x) > l {
-		d.Y = x
-	} else if d.Y > 0.0 {
-		d.Y = l
-	} else {
-		d.Y = -l
+// INIT resets the block.
+func (d *DEAD_ZONE2) INIT() { *d = DEAD_ZONE2{} }
+
+// Execute runs the block once.
+func (d *DEAD_ZONE2) Execute(now time.Time) {
+	switch {
+	case ABS(d.X) > d.L:
+		d.Y = d.X
+	case d.Y > 0.0:
+		d.Y = d.L
+	default:
+		d.Y = -d.L
 	}
 }
 
-// FT_DERIV calculates the derivative of a signal.
+// FT_DERIV calculates the derivative of IN per second times K while RUN is
+// true.
 type FT_DERIV struct {
-	Out float64
+	IN  iec.REAL
+	K   iec.REAL // default 1.0
+	RUN iec.BOOL // default TRUE
+	OUT iec.REAL
 
-	// internal state
-	old  float64
-	last int64
-	init bool
+	old  iec.REAL
+	last iec.DWORD
+	init iec.BOOL
 }
 
-// Update executes the derivative calculation.
-func (f *FT_DERIV) Update(in, k float64, run bool) {
-	tx := logic.T_PLC_US()
-	tc := float64(tx - f.last)
-	f.last = tx
+// INIT resets the block and sets K and RUN to their initial values.
+func (f *FT_DERIV) INIT() { *f = FT_DERIV{K: 1, RUN: true} }
 
-	if !f.init {
+// Execute runs the block once.
+func (f *FT_DERIV) Execute(now time.Time) {
+	tx := PLC_US(now)
+	tc := iec.REAL(tx - f.last)
+	f.last = tx
+	switch {
+	case !bool(f.init):
 		f.init = true
-		f.old = in
-	} else if run && tc > 0.0 {
-		f.Out = (in - f.old) / tc * 1000000.0 * k
-		f.old = in
-	} else {
-		f.Out = 0.0
+		f.old = f.IN
+	case bool(f.RUN) && tc > 0.0:
+		f.OUT = (f.IN - f.old) / tc * 1000000.0 * f.K
+		f.old = f.IN
+	default:
+		f.OUT = 0.0
 	}
 }
 
-// FT_IMP is an impulse filter (high-pass).
+// FT_IMP is a high pass filter with the time T and the factor K.
 type FT_IMP struct {
-	Out float64
-	t1  FT_PT1
+	IN  iec.REAL
+	T   iec.TIME
+	K   iec.REAL // default 1.0
+	OUT iec.REAL
+
+	t1          FT_PT1
+	initialized bool
 }
 
-// Update executes the filter logic.
-func (f *FT_IMP) Update(in, k float64, t time.Duration) {
-	f.t1.Update(in, t, 1.0)
-	f.Out = (in - f.t1.Out) * k
+// INIT resets the block and sets K to its initial value.
+func (f *FT_IMP) INIT() {
+	*f = FT_IMP{K: 1, initialized: true}
+	f.t1.INIT()
 }
 
-// FT_INT is an integrator with limits.
+// Execute runs the block once.
+func (f *FT_IMP) Execute(now time.Time) {
+	if !f.initialized {
+		f.initialized = true
+		f.t1.INIT()
+	}
+	f.t1.IN, f.t1.T = f.IN, f.T
+	f.t1.Execute(now)
+	f.OUT = (f.IN - f.t1.OUT) * f.K
+}
+
+// FT_INT integrates IN times K per second while RUN is true, within
+// OUT_MIN..OUT_MAX. LIM is true at the limits and RST clears it.
 type FT_INT struct {
-	Out float64
-	Lim bool
+	IN      iec.REAL
+	K       iec.REAL // default 1
+	RUN     iec.BOOL // default TRUE
+	RST     iec.BOOL
+	OUT_MIN iec.REAL // default -1E37
+	OUT_MAX iec.REAL // default 1E37
+	OUT     iec.REAL
+	LIM     iec.BOOL
 
-	// internal state
-	integ Integrate
+	integ INTEGRATE
 }
 
-// Update executes the integration logic.
-func (f *FT_INT) Update(in, k, outMin, outMax float64, run, rst bool) {
-	if rst {
-		f.Out = 0.0
-	} else {
-		// The original uses Y as IN_OUT, so we pass f.Out as the initial value.
-		f.integ.Update(in, k, run, &f.Out)
-	}
+// INIT resets the block and sets its inputs to their initial values.
+func (f *FT_INT) INIT() {
+	*f = FT_INT{K: 1, RUN: true, OUT_MIN: -1e37, OUT_MAX: 1e37}
+	f.integ.INIT()
+}
 
-	if f.Out >= outMax {
-		f.Out = outMax
-		f.Lim = true
-	} else if f.Out <= outMin {
-		f.Out = outMin
-		f.Lim = true
+// Execute runs the block once.
+func (f *FT_INT) Execute(now time.Time) {
+	if f.RST {
+		f.OUT = 0
 	} else {
-		f.Lim = false
+		f.integ.X, f.integ.E, f.integ.K, f.integ.Y = f.IN, f.RUN, f.K, &f.OUT
+		f.integ.Execute(now)
+	}
+	switch {
+	case f.OUT >= f.OUT_MAX:
+		f.OUT = f.OUT_MAX
+		f.LIM = true
+	case f.OUT <= f.OUT_MIN:
+		f.OUT = f.OUT_MIN
+		f.LIM = true
+	default:
+		f.LIM = false
 	}
 }
 
-// FT_INT2 is a double-precision integrator.
+// FT_INT2 is FT_INT with double precision.
 type FT_INT2 struct {
-	Out float64
-	Lim bool
+	IN      iec.REAL
+	K       iec.REAL // default 1.0
+	RUN     iec.BOOL // default TRUE
+	RST     iec.BOOL
+	OUT_MIN iec.REAL // default -1.0E38
+	OUT_MAX iec.REAL // default 1.0E38
+	OUT     iec.REAL
+	LIM     iec.BOOL
 
-	// internal state
-	integ Integrate
-	ix    float64
-	val   basic.REAL2
+	integ INTEGRATE
+	ix    iec.REAL
+	val   REAL2
 }
 
-// Update executes the integration logic.
-func (f *FT_INT2) Update(in, k, outMin, outMax float64, run, rst bool) {
-	if rst {
-		f.val = beeMath.R2_SET(0.0)
-		f.Out = 0.0 // ST: out := 0.0;
-	} else {
-		f.ix = 0.0 // Reset temporary integrator value
-		f.integ.Update(in, k, run, &f.ix)
-		f.val = beeMath.R2_ADD(f.val, float32(f.ix))
-		f.Out = float64(f.val.Rx)
-	}
+// INIT resets the block and sets its inputs to their initial values.
+func (f *FT_INT2) INIT() {
+	*f = FT_INT2{K: 1, RUN: true, OUT_MIN: -1e38, OUT_MAX: 1e38}
+	f.integ.INIT()
+}
 
-	if f.Out > outMin && f.Out < outMax {
-		f.Lim = false
+// Execute runs the block once.
+func (f *FT_INT2) Execute(now time.Time) {
+	if f.RST {
+		f.val = math.R2_SET(0)
+		f.OUT = 0
 	} else {
-		f.Out = beeMath.LIMIT(outMin, f.Out, outMax) // ST: OUT := LIMIT(OUT_MIN, OUT, OUT_MAX);
-		f.val = beeMath.R2_SET(float32(f.Out))
-		f.Lim = true
+		f.integ.X, f.integ.E, f.integ.K, f.integ.Y = f.IN, f.RUN, f.K, &f.ix
+		f.integ.Execute(now)
+		f.val = math.R2_ADD(f.val, f.ix)
+		f.ix = 0
+		f.OUT = f.val.RX
+	}
+	if f.OUT > f.OUT_MIN && f.OUT < f.OUT_MAX {
+		f.LIM = false
+	} else {
+		f.OUT = LIMIT(f.OUT_MIN, f.OUT, f.OUT_MAX)
+		f.val = math.R2_SET(f.OUT)
+		f.LIM = true
 	}
 }
 
-// FT_PD is a PD controller.
+// FT_PD is a PD controller: Y = KP * (IN + TV * d IN / dt).
 type FT_PD struct {
-	Y    float64
-	diff FT_DERIV
+	IN iec.REAL
+	KP iec.REAL // default 1.0
+	TV iec.REAL // default 1.0
+	Y  iec.REAL
+
+	diff        FT_DERIV
+	initialized bool
 }
 
-// Update executes the PD controller logic.
-func (f *FT_PD) Update(in, kp, tv float64) {
-	f.diff.Update(in, tv, true)
-	f.Y = kp * (f.diff.Out + in)
+// INIT resets the block and sets KP and TV to their initial values.
+func (f *FT_PD) INIT() {
+	*f = FT_PD{KP: 1, TV: 1, initialized: true}
+	f.diff.INIT()
 }
 
-// FT_PDT1 is a PD controller with a first-order lag on the derivative part.
+// Execute runs the block once.
+func (f *FT_PD) Execute(now time.Time) {
+	if !f.initialized {
+		f.initialized = true
+		f.diff.INIT()
+	}
+	f.diff.IN, f.diff.K = f.IN, f.TV
+	f.diff.Execute(now)
+	f.Y = f.KP * (f.diff.OUT + f.IN)
+}
+
+// FT_PDT1 is a PD controller whose derivative is filtered with the time T1
+// in seconds.
 type FT_PDT1 struct {
-	Y    float64
-	diff FT_DERIV
-	tp   FT_PT1
+	IN iec.REAL
+	KP iec.REAL // default 1.0
+	TV iec.REAL // default 1.0
+	T1 iec.REAL // default 1.0
+	Y  iec.REAL
+
+	diff        FT_DERIV
+	tp          FT_PT1
+	initialized bool
 }
 
-// Update executes the PDT1 controller logic.
-func (f *FT_PDT1) Update(in, kp, tv, t1 float64) {
-	f.diff.Update(in, tv, true)
-	f.tp.Update(f.diff.Out, time.Duration(t1*float64(time.Millisecond)), 1.0)
-	f.Y = kp * (f.tp.Out + in)
+// INIT resets the block and sets its inputs to their initial values.
+func (f *FT_PDT1) INIT() {
+	*f = FT_PDT1{KP: 1, TV: 1, T1: 1, initialized: true}
+	f.diff.INIT()
+	f.tp.INIT()
 }
 
-// FT_PI is a PI controller.
+// Execute runs the block once.
+func (f *FT_PDT1) Execute(now time.Time) {
+	if !f.initialized {
+		f.initialized = true
+		f.diff.INIT()
+		f.tp.INIT()
+	}
+	f.diff.IN, f.diff.K = f.IN, f.TV
+	f.diff.Execute(now)
+	// OSCAT converts the seconds T1 to a TIME of T1 milliseconds.
+	f.tp.IN, f.tp.T = f.diff.OUT, REAL_TO_TIME(f.T1)
+	f.tp.Execute(now)
+	f.Y = f.KP * (f.tp.OUT + f.IN)
+}
+
+// FT_PI is a PI controller: Y = KP * IN + KI * integral of IN, with the
+// integral limited to ILIM_L..ILIM_H and running while IEN is true.
 type FT_PI struct {
-	Y     float64
-	Lim   bool
+	IN     iec.REAL
+	KP     iec.REAL // default 1.0
+	KI     iec.REAL // default 1.0
+	ILIM_L iec.REAL // default -1E38
+	ILIM_H iec.REAL // default 1E38
+	IEN    iec.BOOL // default TRUE
+	RST    iec.BOOL
+	Y      iec.REAL
+	LIM    iec.BOOL
+
 	integ FT_INT
 }
 
-// Update executes the PI controller logic.
-func (f *FT_PI) Update(in, kp, ki, ilimL, ilimH float64, ien, rst bool) {
-	f.integ.Update(in, ki, ilimL, ilimH, ien, rst)
-	f.Lim = f.integ.Lim
-	f.Y = kp*in + f.integ.Out
+// INIT resets the block and sets its inputs to their initial values.
+func (f *FT_PI) INIT() {
+	*f = FT_PI{KP: 1, KI: 1, ILIM_L: -1e38, ILIM_H: 1e38, IEN: true}
+	f.integ.INIT()
 }
 
-// FT_PID is a PID controller.
+// Execute runs the block once.
+func (f *FT_PI) Execute(now time.Time) {
+	i := &f.integ
+	i.IN, i.K, i.RUN, i.RST, i.OUT_MIN, i.OUT_MAX = f.IN, f.KI, f.IEN, f.RST, f.ILIM_L, f.ILIM_H
+	i.Execute(now)
+	f.LIM = i.LIM
+	f.Y = f.KP*f.IN + i.OUT
+}
+
+// FT_PID is a PID controller: Y = KP * (IN + integral of IN / TN + TV *
+// d IN / dt), with the integral limited to ILIM_L..ILIM_H and running while
+// IEN is true.
 type FT_PID struct {
-	Y     float64
-	Lim   bool
-	integ FT_INT
-	diff  FT_DERIV
+	IN     iec.REAL
+	KP     iec.REAL // default 1.0
+	TN     iec.REAL // default 1.0
+	TV     iec.REAL // default 1.0
+	ILIM_L iec.REAL // default -1.0E38
+	ILIM_H iec.REAL // default 1.0E38
+	IEN    iec.BOOL // default TRUE
+	RST    iec.BOOL
+	Y      iec.REAL
+	LIM    iec.BOOL
+
+	integ       FT_INT
+	diff        FT_DERIV
+	initialized bool
 }
 
-// Update executes the PID controller logic.
-func (f *FT_PID) Update(in, kp, tn, tv, ilimL, ilimH float64, ien, rst bool) {
-	var ki float64
-	if tn > 0.0 {
-		ki = 1.0 / tn
+// INIT resets the block and sets its inputs to their initial values.
+func (f *FT_PID) INIT() {
+	*f = FT_PID{KP: 1, TN: 1, TV: 1, ILIM_L: -1e38, ILIM_H: 1e38, IEN: true, initialized: true}
+	f.integ.INIT()
+	f.diff.INIT()
+}
+
+// Execute runs the block once.
+func (f *FT_PID) Execute(now time.Time) {
+	if !f.initialized {
+		f.initialized = true
+		f.integ.INIT()
+		f.diff.INIT()
 	}
-	f.integ.Update(in, ki, ilimL, ilimH, ien, rst)
-	f.diff.Update(in, tv, true)
-	f.Y = kp * (f.integ.Out + f.diff.Out + in)
-	f.Lim = f.integ.Lim
+	i := &f.integ
+	if f.TN > 0.0 {
+		i.IN, i.K, i.RUN, i.RST, i.OUT_MIN, i.OUT_MAX = f.IN, 1.0/f.TN, f.IEN, f.RST, f.ILIM_L, f.ILIM_H
+	} else {
+		i.RST = false
+	}
+	i.Execute(now)
+	f.diff.IN, f.diff.K = f.IN, f.TV
+	f.diff.Execute(now)
+	f.Y = f.KP * (i.OUT + f.diff.OUT + f.IN)
+	f.LIM = i.LIM
 }
 
-// FT_PIDW is a PID controller with anti-windup.
+// FT_PIDW is a PID controller whose output is limited to LIM_L..LIM_H,
+// where the integral stops.
 type FT_PIDW struct {
-	Y     float64
-	Lim   bool
-	integ Integrate
-	diff  FT_DERIV
-	yi    float64
+	IN    iec.REAL
+	KP    iec.REAL // default 1.0
+	TN    iec.REAL // default 1.0
+	TV    iec.REAL // default 1.0
+	LIM_L iec.REAL // default -1.0E38
+	LIM_H iec.REAL // default 1.0E38
+	RST   iec.BOOL
+	Y     iec.REAL
+	LIM   iec.BOOL
+
+	integ       INTEGRATE
+	diff        FT_DERIV
+	yi          iec.REAL
+	initialized bool
 }
 
-// Update executes the PIDW controller logic.
-func (f *FT_PIDW) Update(in, kp, tn, tv, limL, limH float64, rst bool) {
-	if tn == 0.0 || rst {
-		f.yi = 0.0
-		f.integ.Update(0, 0, false, &f.yi) // Reset integrator
-	} else {
-		f.integ.Update(in, 1.0/tn, !f.Lim, &f.yi)
+// INIT resets the block and sets its inputs to their initial values.
+func (f *FT_PIDW) INIT() {
+	*f = FT_PIDW{KP: 1, TN: 1, TV: 1, LIM_L: -1e38, LIM_H: 1e38, initialized: true}
+	f.integ.INIT()
+	f.diff.INIT()
+}
+
+// Execute runs the block once.
+func (f *FT_PIDW) Execute(now time.Time) {
+	if !f.initialized {
+		f.initialized = true
+		f.integ.INIT()
+		f.diff.INIT()
 	}
-
-	f.Y = kp * (in + f.yi)
-	f.diff.Update(in, tv, true)
-
-	// Set Lim before adding derivative part
-	f.Lim = f.Y <= limL || f.Y >= limH
-
-	f.Y = beeMath.LIMIT(limL, f.Y+kp*f.diff.Out, limH)
+	f.integ.Y = &f.yi
+	if f.TN == 0.0 || f.RST {
+		f.integ.E = false
+		f.integ.Execute(now)
+		f.yi = 0
+	} else {
+		f.integ.X, f.integ.K, f.integ.E = f.IN, 1.0/f.TN, !f.LIM
+		f.integ.Execute(now)
+	}
+	f.Y = f.KP * (f.IN + f.yi)
+	f.diff.IN, f.diff.K = f.IN, f.TV
+	f.diff.Execute(now)
+	f.LIM = !(f.Y > f.LIM_L && f.Y < f.LIM_H)
+	f.Y = LIMIT(f.LIM_L, f.Y+f.KP*f.diff.OUT, f.LIM_H)
 }
 
-// FT_PIDWL is a PID controller with anti-windup and output limiting.
+// FT_PIDWL is a PID controller whose output is limited to LIM_L..LIM_H,
+// with the anti wind-up of FT_PIWL.
 type FT_PIDWL struct {
-	Y    float64
-	Lim  bool
-	piwl FT_PIWL
-	diff FT_DERIV
+	IN    iec.REAL
+	KP    iec.REAL // default 1.0
+	TN    iec.REAL // default 1.0
+	TV    iec.REAL // default 1.0
+	LIM_L iec.REAL // default -1.0E38
+	LIM_H iec.REAL // default 1.0E38
+	RST   iec.BOOL
+	Y     iec.REAL
+	LIM   iec.BOOL
+
+	piwl        FT_PIWL
+	diff        FT_DERIV
+	initialized bool
 }
 
-// Update executes the PIDWL logic.
-func (f *FT_PIDWL) Update(in, kp, tn, tv, limL, limH float64, rst bool) {
-	if rst {
-		f.piwl.Update(0, 0, 0, 0, 0, true)
-		f.Y = 0
-		f.Lim = false
+// INIT resets the block and sets its inputs to their initial values.
+func (f *FT_PIDWL) INIT() {
+	*f = FT_PIDWL{KP: 1, TN: 1, TV: 1, LIM_L: -1e38, LIM_H: 1e38, initialized: true}
+	f.piwl.INIT()
+	f.diff.INIT()
+}
+
+// Execute runs the block once.
+func (f *FT_PIDWL) Execute(now time.Time) {
+	if !f.initialized {
+		f.initialized = true
+		f.piwl.INIT()
+		f.diff.INIT()
+	}
+	p := &f.piwl
+	if f.RST {
+		p.RST = true
+		p.Execute(now)
+		p.RST = false
 		return
 	}
-
-	var ki float64
-	if tn > 0.0 {
-		ki = 1.0 / tn
+	var ki iec.REAL
+	if f.TN != 0.0 {
+		ki = 1.0 / f.TN
 	}
-
-	f.piwl.Update(in*kp, 1.0, ki, limL, limH, false)
-	f.diff.Update(in, kp*tv, true)
-	f.Y = f.piwl.Y + f.diff.Out
-
-	if f.Y < limL {
-		f.Lim = true
-		f.Y = limL
-	} else if f.Y > limH {
-		f.Lim = true
-		f.Y = limH
-	} else {
-		f.Lim = false
+	p.IN, p.KP, p.KI, p.LIM_L, p.LIM_H = f.IN*f.KP, 1.0, ki, f.LIM_L, f.LIM_H
+	p.Execute(now)
+	f.diff.IN, f.diff.K = f.IN, f.KP*f.TV
+	f.diff.Execute(now)
+	f.Y = p.Y + f.diff.OUT
+	switch {
+	case f.Y < f.LIM_L:
+		f.LIM = true
+		f.Y = f.LIM_L
+	case f.Y > f.LIM_H:
+		f.LIM = true
+		f.Y = f.LIM_H
+	default:
+		f.LIM = false
 	}
 }
 
-// FT_PIW is a PI controller with anti-windup.
+// FT_PIW is a PI controller whose output is limited to LIM_L..LIM_H, where
+// the integral stops.
 type FT_PIW struct {
-	Y     float64
-	Lim   bool
-	integ FT_INT
+	IN    iec.REAL
+	KP    iec.REAL // default 1.0
+	KI    iec.REAL // default 1.0
+	LIM_L iec.REAL // default -1E38
+	LIM_H iec.REAL // default 1E38
+	RST   iec.BOOL
+	Y     iec.REAL
+	LIM   iec.BOOL
+
+	integ       FT_INT
+	initialized bool
 }
 
-// Update executes the PIW logic.
-func (f *FT_PIW) Update(in, kp, ki, limL, limH float64, rst bool) {
-	f.integ.Update(in, ki, -1e38, 1e38, !f.Lim, rst) // Integrator limits are not used here
-	f.Y = kp*in + f.integ.Out
+// INIT resets the block and sets its inputs to their initial values.
+func (f *FT_PIW) INIT() {
+	*f = FT_PIW{KP: 1, KI: 1, LIM_L: -1e38, LIM_H: 1e38, initialized: true}
+	f.integ.INIT()
+}
 
-	if f.Y < limL {
-		f.Y = limL
-		f.Lim = true
-	} else if f.Y > limH {
-		f.Y = limH
-		f.Lim = true
-	} else {
-		f.Lim = false
+// Execute runs the block once.
+func (f *FT_PIW) Execute(now time.Time) {
+	if !f.initialized {
+		f.initialized = true
+		f.integ.INIT()
+	}
+	f.integ.IN, f.integ.K, f.integ.RUN, f.integ.RST = f.IN, f.KI, !f.LIM, f.RST
+	f.integ.Execute(now)
+	f.Y = f.KP*f.IN + f.integ.OUT
+	switch {
+	case f.Y < f.LIM_L:
+		f.Y = f.LIM_L
+		f.LIM = true
+	case f.Y > f.LIM_H:
+		f.Y = f.LIM_H
+		f.LIM = true
+	default:
+		f.LIM = false
 	}
 }
 
-// FT_PIWL is a PI controller with anti-windup and output limiting.
+// FT_PIWL is a PI controller whose output is limited to LIM_L..LIM_H, where
+// the integral is set so the output stays at the limit.
 type FT_PIWL struct {
-	Y   float64
-	Lim bool
+	IN    iec.REAL
+	KP    iec.REAL // default 1.0
+	KI    iec.REAL // default 1.0
+	LIM_L iec.REAL // default -1.0E38
+	LIM_H iec.REAL // default 1.0E38
+	RST   iec.BOOL
+	Y     iec.REAL
+	LIM   iec.BOOL
 
-	// internal state
-	init   bool
-	tLast  int64
-	inLast float64
-	i      float64
+	init         iec.BOOL
+	tLast        iec.DWORD
+	inLast, i, p iec.REAL
 }
 
-// Update executes the PIWL logic.
-func (f *FT_PIWL) Update(in, kp, ki, limL, limH float64, rst bool) {
-	if !f.init || rst {
+// INIT resets the block and sets its inputs to their initial values.
+func (f *FT_PIWL) INIT() { *f = FT_PIWL{KP: 1, KI: 1, LIM_L: -1e38, LIM_H: 1e38} }
+
+// Execute runs the block once.
+func (f *FT_PIWL) Execute(now time.Time) {
+	if !f.init || f.RST {
 		f.init = true
-		f.inLast = in
-		f.tLast = logic.T_PLC_US()
-		f.i = 0.0
-		f.Y = 0.0
-		f.Lim = false
+		f.inLast = f.IN
+		f.tLast = PLC_US(now)
+		f.i = 0
 		return
 	}
-
-	tx := logic.T_PLC_US()
-	tc := float64(tx - f.tLast)
+	tx := PLC_US(now)
+	tc := iec.REAL(tx - f.tLast)
 	f.tLast = tx
-
-	p := kp * in
-	f.i += (in + f.inLast) * 5.0e-7 * ki * tc
-	f.inLast = in
-
-	f.Y = p + f.i
-
-	if f.Y >= limH {
-		f.Y = limH
-		if ki != 0.0 {
-			f.i = limH - p
-		} else {
-			f.i = 0.0
-		}
-		f.Lim = true
-	} else if f.Y <= limL {
-		f.Y = limL
-		if ki != 0.0 {
-			f.i = limL - p
-		} else {
-			f.i = 0.0
-		}
-		f.Lim = true
-	} else {
-		f.Lim = false
+	f.p = f.KP * f.IN
+	f.i = (f.IN+f.inLast)*5.0e-7*f.KI*tc + f.i
+	f.inLast = f.IN
+	f.Y = f.p + f.i
+	switch {
+	case f.Y >= f.LIM_H:
+		f.Y = f.LIM_H
+		f.i = SEL[iec.REAL](f.KI != 0, 0, f.LIM_H-f.p)
+		f.LIM = true
+	case f.Y <= f.LIM_L:
+		f.Y = f.LIM_L
+		f.i = SEL[iec.REAL](f.KI != 0, 0, f.LIM_L-f.p)
+		f.LIM = true
+	default:
+		f.LIM = false
 	}
 }
 
-// FT_PT1 is a first-order low-pass filter.
+// FT_PT1 is a low pass filter of first order with the time T and the factor
+// K.
 type FT_PT1 struct {
-	Out float64
+	IN  iec.REAL
+	T   iec.TIME
+	K   iec.REAL // default 1.0
+	OUT iec.REAL
 
-	// internal state
-	last int64
-	init bool
+	last iec.DWORD
+	init iec.BOOL
 }
 
-// Update executes the filter logic.
-func (f *FT_PT1) Update(in float64, t time.Duration, k float64) {
-	tx := logic.T_PLC_US()
+// INIT resets the block and sets K to its initial value.
+func (f *FT_PT1) INIT() { *f = FT_PT1{K: 1} }
 
-	if !f.init || t == 0 {
+// Execute runs the block once.
+func (f *FT_PT1) Execute(now time.Time) {
+	tx := PLC_US(now)
+	if !f.init || f.T == 0 {
 		f.init = true
-		f.Out = k * in
+		f.OUT = f.K * f.IN
 	} else {
-		tReal := float64(t.Microseconds())
-		f.Out += (in*k - f.Out) * float64(tx-f.last) / tReal
-		if math.Abs(f.Out) < 1.0e-20 {
-			f.Out = 0.0
+		f.OUT = f.OUT + (f.IN*f.K-f.OUT)*iec.REAL(tx-f.last)/TIME_TO_REAL(f.T)*1.0e-3
+		if ABS(f.OUT) < 1.0e-20 {
+			f.OUT = 0
 		}
 	}
 	f.last = tx
 }
 
-// FT_PT2 is a second-order low-pass filter.
+// FT_PT2 is a low pass filter of second order with the time T, the damping
+// D and the factor K.
 type FT_PT2 struct {
-	Out float64
+	IN  iec.REAL
+	T   iec.TIME
+	D   iec.REAL
+	K   iec.REAL // default 1.0
+	OUT iec.REAL
 
-	// internal state
-	init   bool
-	int1   Integrate
-	int2   Integrate
-	i1, i2 float64
+	init        iec.BOOL
+	int1, int2  INTEGRATE
+	i1, i2      iec.REAL
+	initialized bool
 }
 
-// Update executes the filter logic.
-func (f *FT_PT2) Update(in float64, t time.Duration, d, k float64) {
-	if !f.init || t == 0 {
+// INIT resets the block and sets K to its initial value.
+func (f *FT_PT2) INIT() {
+	*f = FT_PT2{K: 1, initialized: true}
+	f.int1.INIT()
+	f.int2.INIT()
+}
+
+// Execute runs the block once.
+func (f *FT_PT2) Execute(now time.Time) {
+	if !f.initialized {
+		f.initialized = true
+		f.int1.INIT()
+		f.int2.INIT()
+	}
+	if !f.init || f.T == 0 {
 		f.init = true
-		f.Out = k * in
-		f.i2 = f.Out
+		f.OUT = f.K * f.IN
+		f.i2 = f.OUT
 		return
 	}
-
-	tn := t.Seconds()
+	tn := TIME_TO_REAL(f.T) * 1.0e-3
 	tn2 := tn * tn
-
-	// The original uses Y as IN_OUT, so we pass pointers.
-	f.int1.Update(in*k/tn2-f.i1*0.5*d/tn-f.i2/tn2, 1.0, true, &f.i1)
-	f.int2.Update(f.i1, 1.0, true, &f.i2)
-	f.Out = f.i2
+	f.int1.X, f.int1.Y = f.IN*f.K/tn2-f.i1*0.5*f.D/tn-f.i2/tn2, &f.i1
+	f.int1.Execute(now)
+	f.int2.X, f.int2.Y = f.i1, &f.i2
+	f.int2.Execute(now)
+	f.OUT = f.i2
 }
 
-// Integrate is a plain integrator with an IN_OUT parameter for the output.
-type Integrate struct {
-	// internal state
-	xLast float64
-	init  bool
-	last  int64
+// ftTn delays IN by T with a buffer of len(x) values; see FT_TN8.
+type ftTn struct {
+	IN   iec.REAL
+	T    iec.TIME
+	OUT  iec.REAL
+	TRIG iec.BOOL
+
+	cnt  int
+	last iec.DWORD
+	init iec.BOOL
 }
 
-// Update executes the integration logic. Y is a pointer to the integrated value.
-func (i *Integrate) Update(x, k float64, e bool, y *float64) {
-	tx := logic.T_PLC_US()
+func (f *ftTn) run(now time.Time, x []iec.REAL) {
+	tx := PLC_MS(now)
+	f.TRIG = false
+	if !f.init {
+		x[f.cnt] = f.IN
+		f.init = true
+		f.last = tx
+	} else if tx-f.last >= ms(f.T)/iec.DWORD(len(x)) {
+		f.cnt = (f.cnt + 1) % len(x)
+		f.OUT = x[f.cnt]
+		x[f.cnt] = f.IN
+		f.last = tx
+		f.TRIG = true
+	}
+}
 
+// FT_TN8 delays IN by the time T, storing 8 values in the time. TRIG is
+// true for one scan when a value is stored.
+type FT_TN8 struct {
+	ftTn
+	x [8]iec.REAL
+}
+
+// INIT resets the block.
+func (f *FT_TN8) INIT() { *f = FT_TN8{} }
+
+// Execute runs the block once.
+func (f *FT_TN8) Execute(now time.Time) { f.run(now, f.x[:]) }
+
+// FT_TN16 delays IN by the time T, storing 16 values in the time; see
+// FT_TN8.
+type FT_TN16 struct {
+	ftTn
+	x [16]iec.REAL
+}
+
+// INIT resets the block.
+func (f *FT_TN16) INIT() { *f = FT_TN16{} }
+
+// Execute runs the block once.
+func (f *FT_TN16) Execute(now time.Time) { f.run(now, f.x[:]) }
+
+// FT_TN64 delays IN by the time T, storing 64 values in the time; see
+// FT_TN8.
+type FT_TN64 struct {
+	ftTn
+	x [64]iec.REAL
+}
+
+// INIT resets the block.
+func (f *FT_TN64) INIT() { *f = FT_TN64{} }
+
+// Execute runs the block once.
+func (f *FT_TN64) Execute(now time.Time) { f.run(now, f.x[:]) }
+
+// HYST is a hysteresis: if ON >= OFF, Q switches on above ON and off below
+// OFF; if ON < OFF, Q switches on below ON and off above OFF. WIN is true
+// between the two.
+type HYST struct {
+	IN, ON, OFF iec.REAL
+	Q, WIN      iec.BOOL
+}
+
+// INIT resets the block.
+func (h *HYST) INIT() { *h = HYST{} }
+
+// Execute runs the block once.
+func (h *HYST) Execute(now time.Time) {
+	if h.ON >= h.OFF {
+		switch {
+		case h.IN < h.OFF:
+			h.Q, h.WIN = false, false
+		case h.IN > h.ON:
+			h.Q, h.WIN = true, false
+		default:
+			h.WIN = true
+		}
+		return
+	}
+	switch {
+	case h.IN > h.OFF:
+		h.Q, h.WIN = false, false
+	case h.IN < h.ON:
+		h.Q, h.WIN = true, false
+	default:
+		h.WIN = true
+	}
+}
+
+// HYST_1 is a hysteresis: Q switches on above HIGH and off below LOW. WIN
+// is true between the two.
+type HYST_1 struct {
+	IN, HIGH, LOW iec.REAL
+	Q, WIN        iec.BOOL
+}
+
+// INIT resets the block.
+func (h *HYST_1) INIT() { *h = HYST_1{} }
+
+// Execute runs the block once.
+func (h *HYST_1) Execute(now time.Time) {
+	switch {
+	case h.IN < h.LOW:
+		h.Q, h.WIN = false, false
+	case h.IN > h.HIGH:
+		h.Q, h.WIN = true, false
+	default:
+		h.WIN = true
+	}
+}
+
+// HYST_2 is a hysteresis around VAL: Q switches on above VAL + HYS/2 and
+// off below VAL - HYS/2. WIN is true between the two.
+type HYST_2 struct {
+	IN, VAL, HYS iec.REAL
+	Q, WIN       iec.BOOL
+}
+
+// INIT resets the block.
+func (h *HYST_2) INIT() { *h = HYST_2{} }
+
+// Execute runs the block once.
+func (h *HYST_2) Execute(now time.Time) {
+	tmp := h.VAL - h.HYS*0.5
+	switch {
+	case h.IN < tmp:
+		h.Q, h.WIN = false, false
+	case h.IN > tmp+h.HYS:
+		h.Q, h.WIN = true, false
+	default:
+		h.WIN = true
+	}
+}
+
+// HYST_3 is a double hysteresis: Q1 switches on below VAL1 and Q2 on above
+// VAL2, each with the hysteresis HYST.
+type HYST_3 struct {
+	IN, HYST, VAL1, VAL2 iec.REAL
+	Q1, Q2               iec.BOOL
+}
+
+// INIT resets the block.
+func (h *HYST_3) INIT() { *h = HYST_3{} }
+
+// Execute runs the block once.
+func (h *HYST_3) Execute(now time.Time) {
+	x := h.HYST * 0.5
+	if h.IN < h.VAL1-x {
+		h.Q1 = true
+	} else if h.IN > h.VAL1+x {
+		h.Q1 = false
+	}
+	if h.IN < h.VAL2-x {
+		h.Q2 = false
+	} else if h.IN > h.VAL2+x {
+		h.Q2 = true
+	}
+}
+
+// INTEGRATE integrates X times K per second into Y while E is true.
+type INTEGRATE struct {
+	E iec.BOOL // default TRUE
+	X iec.REAL
+	K iec.REAL // default 1.0
+	Y *iec.REAL
+
+	xLast iec.REAL
+	init  iec.BOOL
+	last  iec.DWORD
+}
+
+// INIT resets the block and sets E and K to their initial values.
+func (i *INTEGRATE) INIT() { *i = INTEGRATE{Y: i.Y, E: true, K: 1} }
+
+// Execute runs the block once.
+func (i *INTEGRATE) Execute(now time.Time) {
+	tx := PLC_MS(now)
 	if !i.init {
 		i.init = true
-		i.xLast = x
-	} else if e {
-		*y += (x + i.xLast) * 0.5e-6 * float64(tx-i.last) * k
-		i.xLast = x
+		i.xLast = i.X
+	} else if i.E && i.Y != nil {
+		*i.Y = (i.X+i.xLast)*0.5e-3*iec.REAL(tx-i.last)*i.K + *i.Y
+		i.xLast = i.X
 	}
 	i.last = tx
-}
-
-// FT_TN8 is an 8-sample signal delay line.
-// It samples the input IN at intervals of T/8.
-type FT_TN8 struct {
-	Out  float64
-	Trig bool
-
-	// internal state
-	x    [8]float64
-	cnt  int
-	last time.Time
-	init bool
-}
-
-// Update executes the delay logic.
-func (d *FT_TN8) Update(in float64, t time.Duration) {
-	tx := time.Now()
-	d.Trig = false
-
-	if !d.init {
-		d.init = true
-		d.x[d.cnt] = in
-		d.last = tx
-		return
-	}
-
-	if t > 0 && tx.Sub(d.last) >= t/8 {
-		d.cnt = (d.cnt + 1) % 8
-		d.Out = d.x[d.cnt]
-		d.x[d.cnt] = in
-		d.last = tx
-		d.Trig = true
-	}
-}
-
-// FT_TN16 is a 16-sample signal delay line.
-// It samples the input IN at intervals of T/16.
-type FT_TN16 struct {
-	Out  float64
-	Trig bool
-
-	// internal state
-	x    [16]float64
-	cnt  int
-	last time.Time
-	init bool
-}
-
-// Update executes the delay logic.
-func (d *FT_TN16) Update(in float64, t time.Duration) {
-	tx := time.Now()
-	d.Trig = false
-
-	if !d.init {
-		d.init = true
-		d.x[d.cnt] = in
-		d.last = tx
-		return
-	}
-
-	if t > 0 && tx.Sub(d.last) >= t/16 {
-		d.cnt = (d.cnt + 1) % 16
-		d.Out = d.x[d.cnt]
-		d.x[d.cnt] = in
-		d.last = tx
-		d.Trig = true
-	}
-}
-
-// FT_TN64 is a 64-sample signal delay line.
-// It samples the input IN at intervals of T/64.
-type FT_TN64 struct {
-	Out  float64
-	Trig bool
-
-	// internal state
-	x    [64]float64
-	cnt  int
-	last time.Time
-	init bool
-}
-
-// Update executes the delay logic.
-func (d *FT_TN64) Update(in float64, t time.Duration) {
-	tx := time.Now()
-	d.Trig = false
-
-	if !d.init {
-		d.init = true
-		d.x[d.cnt] = in
-		d.last = tx
-		return
-	}
-
-	if t > 0 && tx.Sub(d.last) >= t/64 {
-		d.cnt = (d.cnt + 1) % 64
-		d.Out = d.x[d.cnt]
-		d.x[d.cnt] = in
-		d.last = tx
-		d.Trig = true
-	}
 }
