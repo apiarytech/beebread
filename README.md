@@ -1,6 +1,6 @@
 # BeeBread: Industrial-Grade Automation Logic in Go
 
-`beebread` is a comprehensive Go library that ports the highly-regarded OSCAT (Open Source Community for Automation Technology) `basic` and `building` libraries from their original IEC 61131-3 Structured Text (ST) to idiomatic Go.
+`beebread` is a comprehensive Go library that ports the highly-regarded OSCAT (Open Source Community for Automation Technology) `basic`, `building` and `network` libraries from their original IEC 61131-3 Structured Text (ST) to idiomatic Go.
 
 ## Purpose
 
@@ -38,7 +38,48 @@ The port follows the conventions of [royaljelly](https://github.com/apiarytech/r
 
 See the package documentation of `basic` for the details.
 
-`go run ./tools/oscatcov` reports what is ported by subject; its test fails if anything of the OSCAT source is not.
+The OSCAT sources, cleaned for beedance, are in `doc/`: `beedance_basic.st`, `beedance_building.st` and `beedance_network.st`. Pointers are written as beedance's references (`REF_TO`, `REF()`); a POU beedance cannot run, such as one that reads the bytes of a STRING through a pointer, is commented out with the reason, and still has a Go port.
+
+`go run ./tools/oscatcov` reports what of `doc/beedance_basic.st` is ported, by kind; its test fails if anything is not.
+
+All of OSCAT BUILDING 1.00, 57 functions and function blocks, is ported too, built on the BASIC port. Its source, cleaned for IEC 61131-3 by `go run ./tools/stclean` (see its documentation), is `doc/beedance_building.st`, which beedance reads; the Go port follows the cleaned source:
+
+| Package | OSCAT subject |
+|---|---|
+| `building` | the library version |
+| `building/actuators` | valves, coils, pumps and up/down drives |
+| `building/electrical` | switches, push buttons, dimmers, lamps and timers |
+| `building/hlk` | heating, ventilation and air conditioning: the physics of air and water, boilers, burners, heat meters and tanks |
+| `building/jalousie` | blinds and roller shutters |
+
+The test of `building` fails if a POU of the cleaned source has no port.
+
+All of OSCAT NETWORK 1.35 for TwinCAT, 127 functions and function blocks and 34 types, is ported too, built on the BASIC port. Its source was the binary CODESYS 2.3 library `.lib`, not an ST export; `tools/stclean` read its records and cleaned them into `doc/beedance_network.st`. A cleaned source can be cleaned again, for instance to write its pointers as references:
+
+```
+go run ./tools/stclean -refs -exclude tools/stclean/testdata/network.exclude -uses doc/beedance_basic.st -in doc/beedance_network.st -out doc/beedance_network.st
+```
+
+| Package | OSCAT subject |
+|---|---|
+| `network` | the library version, the types and the global variables |
+| `network/tcpip` | TwinCAT's `Tc2_TcpIp` sockets, emulated with Go's `net` |
+| `network/ads` | TwinCAT's ADS file service `FW_AdsRdWrt`, emulated with Go's `os` |
+| `network/ip` | `IP_CONTROL`, `IP_CONTROL2` and `IP_FIFO`: shared TCP and UDP connections |
+| `network/inet` | DNS, HTTP, SNTP, syslog, telnet log, FTP, SMTP and MySQL clients and servers |
+| `network/modbus` | Modbus TCP and UDP client and servers |
+| `network/netvar` | network variables between PLCs |
+| `network/file` | the file server and reading files by block |
+| `network/parser` | CSV, INI and XML parsers |
+| `network/encoding` | Base64, HTML, URL, IP4 and element strings |
+| `network/crypto` | MD5, SHA1, RC4 and CRAM-MD5 |
+| `network/logging` | the log and its viewport |
+| `network/dlog` | the data logger: values to CSV, HTML and XML files, MySQL and RRD, files on to FTP and SMTP, and a cron table |
+| `network/telnet` | a telnet user interface: screen, input elements and menus |
+| `network/irtrans` | IRTrans infrared transceivers |
+| `network/weather` | weather services and the phase of the moon |
+
+The blocks run on a real network: their tests talk to loopback servers. SSL is not supported, as TwinCAT's `IP_CONTROL` does not. The test of `network` fails if a POU of the cleaned source has no port.
 
 Until a royaljelly release includes its `iec` package, `go.mod` replaces royaljelly with `../royaljelly`, a checkout next to this one.
 
@@ -49,7 +90,7 @@ Contributions from the community are highly encouraged and welcome! This project
 You can contribute in several ways:
 *   **Writing Tests**: The most critical need is to achieve 100% test coverage to ensure the ported logic is bug-free and behaves identically to the original.
 *   **Fixing Bugs**: If you find a discrepancy between the Go implementation and the original ST code, please open an issue or submit a pull request with a fix.
-*   **Porting the BUILDING library**: OSCAT BUILDING is not ported yet.
+*   **Porting more libraries**: OSCAT BASIC, BUILDING and NETWORK are ported; others of the archive are not.
 *   **Improving Documentation**: Enhancing the documentation helps everyone.
 
 When contributing, please strive to write clean, idiomatic Go code.

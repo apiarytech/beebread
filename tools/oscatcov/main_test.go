@@ -15,7 +15,7 @@ import "testing"
 
 // TestCoverage checks that every POU and type of OSCAT BASIC is ported.
 func TestCoverage(t *testing.T) {
-	pous, err := ReadPOUs("../../documents/oscat_basic_335.st")
+	pous, err := ReadPOUs("../../doc/beedance_basic.st")
 	if err != nil {
 		t.Fatal(err)
 	}

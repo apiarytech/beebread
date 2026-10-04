@@ -1,0 +1,58 @@
+# The POUs of doc/beedance_basic.st that stclean -refs comments out, and why:
+# beedance does not run them yet. The POUs that use them follow. main_test.go checks the doc file against this one.
+_BUFFER_CLEAR it computes with pointers as addresses (pt := pt + 1); beedance references (REF_TO) have no arithmetic.
+_BUFFER_INIT it computes with pointers as addresses (pt := pt + 1); beedance references (REF_TO) have no arithmetic.
+_STRING_TO_BUFFER it reads or writes the bytes of a STRING through a pointer; a beedance reference (REF_TO) refers to a whole variable of its type.
+BUFFER_SEARCH it reads or writes the bytes of a STRING through a pointer; a beedance reference (REF_TO) refers to a whole variable of its type.
+BUFFER_TO_STRING it computes with pointers as addresses (pt := pt + 1); beedance references (REF_TO) have no arithmetic.
+TEMP_PT it reads the bits of a REAL as a DWORD, or back, through a pointer; a beedance reference (REF_TO) refers to a variable of its own type.
+LIST_CLEAN it reads or writes the bytes of a STRING through a pointer; a beedance reference (REF_TO) refers to a whole variable of its type.
+LIST_GET it reads or writes the bytes of a STRING through a pointer; a beedance reference (REF_TO) refers to a whole variable of its type.
+LIST_INSERT it reads or writes the bytes of a STRING through a pointer; a beedance reference (REF_TO) refers to a whole variable of its type.
+LIST_LEN it reads or writes the bytes of a STRING through a pointer; a beedance reference (REF_TO) refers to a whole variable of its type.
+LIST_RETRIEVE it reads or writes the bytes of a STRING through a pointer; a beedance reference (REF_TO) refers to a whole variable of its type.
+LIST_RETRIEVE_LAST it reads or writes the bytes of a STRING through a pointer; a beedance reference (REF_TO) refers to a whole variable of its type.
+CHK_REAL it reads the bits of a REAL as a DWORD, or back, through a pointer; a beedance reference (REF_TO) refers to a variable of its own type.
+DW_TO_REAL it reads the bits of a REAL as a DWORD, or back, through a pointer; a beedance reference (REF_TO) refers to a variable of its own type.
+REAL_TO_DW it reads the bits of a REAL as a DWORD, or back, through a pointer; a beedance reference (REF_TO) refers to a variable of its own type.
+ARRAY_MAX it takes SIZEOF(pt), the size of a pointer, as the size of an element; a beedance reference (REF_TO) has no size of its own.
+ARRAY_MIN it takes SIZEOF(pt), the size of a pointer, as the size of an element; a beedance reference (REF_TO) has no size of its own.
+ARRAY_SPR it takes SIZEOF(pt), the size of a pointer, as the size of an element; a beedance reference (REF_TO) has no size of its own.
+ARRAY_SUM it takes SIZEOF(pt), the size of a pointer, as the size of an element; a beedance reference (REF_TO) has no size of its own.
+BIN_TO_BYTE it reads or writes the bytes of a STRING through a pointer; a beedance reference (REF_TO) refers to a whole variable of its type.
+BIN_TO_DWORD it reads or writes the bytes of a STRING through a pointer; a beedance reference (REF_TO) refers to a whole variable of its type.
+BYTE_TO_STRB it computes with pointers as addresses (pt := pt + 1); beedance references (REF_TO) have no arithmetic.
+BYTE_TO_STRH it computes with pointers as addresses (pt := pt + 1); beedance references (REF_TO) have no arithmetic.
+CAPITALIZE it computes with pointers as addresses (pt := pt + 1); beedance references (REF_TO) have no arithmetic.
+CHR_TO_STRING it computes with pointers as addresses (pt := pt + 1); beedance references (REF_TO) have no arithmetic.
+CODE it computes with pointers as addresses (pt := pt + 1); beedance references (REF_TO) have no arithmetic.
+COUNT_CHAR it reads or writes the bytes of a STRING through a pointer; a beedance reference (REF_TO) refers to a whole variable of its type.
+DEC_TO_BYTE it reads or writes the bytes of a STRING through a pointer; a beedance reference (REF_TO) refers to a whole variable of its type.
+DEC_TO_DWORD it reads or writes the bytes of a STRING through a pointer; a beedance reference (REF_TO) refers to a whole variable of its type.
+DEC_TO_INT it reads or writes the bytes of a STRING through a pointer; a beedance reference (REF_TO) refers to a whole variable of its type.
+DWORD_TO_STRB it computes with pointers as addresses (pt := pt + 1); beedance references (REF_TO) have no arithmetic.
+DWORD_TO_STRH it computes with pointers as addresses (pt := pt + 1); beedance references (REF_TO) have no arithmetic.
+FIND_CHAR it reads or writes the bytes of a STRING through a pointer; a beedance reference (REF_TO) refers to a whole variable of its type.
+FIND_CTRL it reads or writes the bytes of a STRING through a pointer; a beedance reference (REF_TO) refers to a whole variable of its type.
+FIND_NONUM it reads or writes the bytes of a STRING through a pointer; a beedance reference (REF_TO) refers to a whole variable of its type.
+FIND_NUM it reads or writes the bytes of a STRING through a pointer; a beedance reference (REF_TO) refers to a whole variable of its type.
+FINDB_NONUM it computes with pointers as addresses (pt := pt + 1); beedance references (REF_TO) have no arithmetic.
+FINDB_NUM it computes with pointers as addresses (pt := pt + 1); beedance references (REF_TO) have no arithmetic.
+FLOAT_TO_REAL it reads or writes the bytes of a STRING through a pointer; a beedance reference (REF_TO) refers to a whole variable of its type.
+HEX_TO_BYTE it reads or writes the bytes of a STRING through a pointer; a beedance reference (REF_TO) refers to a whole variable of its type.
+HEX_TO_DWORD it reads or writes the bytes of a STRING through a pointer; a beedance reference (REF_TO) refers to a whole variable of its type.
+IS_ALNUM it reads or writes the bytes of a STRING through a pointer; a beedance reference (REF_TO) refers to a whole variable of its type.
+IS_ALPHA it reads or writes the bytes of a STRING through a pointer; a beedance reference (REF_TO) refers to a whole variable of its type.
+IS_CTRL it reads or writes the bytes of a STRING through a pointer; a beedance reference (REF_TO) refers to a whole variable of its type.
+IS_HEX it reads or writes the bytes of a STRING through a pointer; a beedance reference (REF_TO) refers to a whole variable of its type.
+IS_LOWER it reads or writes the bytes of a STRING through a pointer; a beedance reference (REF_TO) refers to a whole variable of its type.
+IS_NUM it reads or writes the bytes of a STRING through a pointer; a beedance reference (REF_TO) refers to a whole variable of its type.
+IS_UPPER it reads or writes the bytes of a STRING through a pointer; a beedance reference (REF_TO) refers to a whole variable of its type.
+LOWERCASE it computes with pointers as addresses (pt := pt + 1); beedance references (REF_TO) have no arithmetic.
+MIRROR it reads or writes the bytes of a STRING through a pointer; a beedance reference (REF_TO) refers to a whole variable of its type.
+OCT_TO_BYTE it reads or writes the bytes of a STRING through a pointer; a beedance reference (REF_TO) refers to a whole variable of its type.
+OCT_TO_DWORD it reads or writes the bytes of a STRING through a pointer; a beedance reference (REF_TO) refers to a whole variable of its type.
+REPLACE_UML it reads or writes the bytes of a STRING through a pointer; a beedance reference (REF_TO) refers to a whole variable of its type.
+UPPERCASE it computes with pointers as addresses (pt := pt + 1); beedance references (REF_TO) have no arithmetic.
+LIST_NEXT it reads or writes the bytes of a STRING through a pointer; a beedance reference (REF_TO) refers to a whole variable of its type.
+ESR_MON_R4 it reads the bits of a REAL as a DWORD, or back, through a pointer; a beedance reference (REF_TO) refers to a variable of its own type.

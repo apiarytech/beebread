@@ -45,7 +45,15 @@ var (
 
 // ReadPOUs reads the POUs of an OSCAT source file, leaving out comments,
 // which may nest.
-func ReadPOUs(path string) ([]POU, error) {
+func ReadPOUs(path string) ([]POU, error) { return readPOUs(path, false) }
+
+// ReadCleanedPOUs reads the POUs of an OSCAT source cleaned by stclean, such
+// as doc/beedance_basic.st, those it commented out (// FUNCTION ...)
+// included. The cleaned source has no subjects (@PATH), so a POU's subject
+// is its kind.
+func ReadCleanedPOUs(path string) ([]POU, error) { return readPOUs(path, true) }
+
+func readPOUs(path string, cleaned bool) ([]POU, error) {
 	f, err := os.Open(path)
 	if err != nil {
 		return nil, err
@@ -62,6 +70,9 @@ func ReadPOUs(path string) ([]POU, error) {
 			subject = strings.ReplaceAll(m[1], `\/`, "/")
 			continue
 		}
+		if cleaned {
+			line = strings.TrimPrefix(line, "// ")
+		}
 		if depth == 0 {
 			if m := rePOU.FindStringSubmatch(line); m != nil {
 				kind := m[1]
@@ -69,7 +80,10 @@ func ReadPOUs(path string) ([]POU, error) {
 					kind = "FUNCTION_BLOCK"
 				}
 				s := subject
-				if s == "" {
+				switch {
+				case cleaned:
+					s = "/" + kind
+				case s == "":
 					s = "/Types"
 				}
 				pous = append(pous, POU{Subject: s, Kind: kind, Name: m[2], Line: n})
@@ -107,7 +121,7 @@ func Inputs(path string) (map[string][]string, error) {
 	sc := bufio.NewScanner(f)
 	sc.Buffer(make([]byte, 1<<20), 1<<24)
 	for sc.Scan() {
-		line := sc.Text()
+		line := strings.TrimPrefix(sc.Text(), "// ") // a POU stclean commented out too
 		wasComment := depth > 0
 		depth += strings.Count(line, "(*") - strings.Count(line, "*)")
 		if depth < 0 {
@@ -178,7 +192,7 @@ func ArrayBounds(path string) (map[string]map[string][]int64, error) {
 	sc := bufio.NewScanner(f)
 	sc.Buffer(make([]byte, 1<<20), 1<<24)
 	for sc.Scan() {
-		line := sc.Text()
+		line := strings.TrimPrefix(sc.Text(), "// ") // a POU stclean commented out too
 		wasComment := depth > 0
 		depth += strings.Count(line, "(*") - strings.Count(line, "*)")
 		if depth < 0 {

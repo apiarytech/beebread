@@ -10,7 +10,7 @@
  */
 
 // Package basic and the packages below it are a Go port of the OSCAT BASIC
-// library, version 3.35 (documents/oscat_basic_335.st). The port follows the
+// library, version 3.35 (doc/beedance_basic.st). The port follows the
 // conventions of royaljelly, the runtime beedance's transpiler targets, so
 // the library can be called from transpiled IEC 61131-3 programs.
 //

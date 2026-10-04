@@ -1,0 +1,3 @@
+# The POUs of doc/beedance_building.st that stclean -refs comments out, and why:
+# beedance does not run them yet. The POUs that use them follow. main_test.go checks the doc file against this one.
+TIMER_EVENT_DECODE it reads or writes the bytes of a STRING through a pointer; a beedance reference (REF_TO) refers to a whole variable of its type.

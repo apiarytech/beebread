@@ -1,0 +1,20 @@
+# The POUs of doc/beedance_network.st that stclean -refs comments out, and why:
+# beedance does not run them yet. The POUs that use them follow. main_test.go checks the doc file against this one.
+DLOG_STORE_FILE_CSV it names a variable fn, which beedance reads as its function keyword.
+DLOG_STORE_FILE_HTML it names a variable fn, which beedance reads as its function keyword.
+DLOG_STORE_FILE_XML it names a variable fn, which beedance reads as its function keyword.
+FTP_CLIENT it has a comment between UNTIL and END_REPEAT, which beedance does not parse yet.
+SMTP_CLIENT it has a comment between UNTIL and END_REPEAT, which beedance does not parse yet.
+ELEMENT_COUNT it reads or writes the bytes of a STRING through a pointer; a beedance reference (REF_TO) refers to a whole variable of its type.
+ELEMENT_GET it reads or writes the bytes of a STRING through a pointer; a beedance reference (REF_TO) refers to a whole variable of its type.
+HTML_ENCODE it reads or writes the bytes of a STRING through a pointer; a beedance reference (REF_TO) refers to a whole variable of its type.
+MD5_TO_STRH it computes with pointers as addresses (pt := pt + 1); beedance references (REF_TO) have no arithmetic.
+SHA1_TO_STRH it computes with pointers as addresses (pt := pt + 1); beedance references (REF_TO) have no arithmetic.
+URL_ENCODE it reads or writes the bytes of a STRING through a pointer; a beedance reference (REF_TO) refers to a whole variable of its type.
+CSV_PARSER_BUF it reads or writes the bytes of a STRING through a pointer; a beedance reference (REF_TO) refers to a whole variable of its type.
+CSV_PARSER_FILE it reads or writes the bytes of a STRING through a pointer; a beedance reference (REF_TO) refers to a whole variable of its type.
+INI_PARSER_BUF it reads or writes the bytes of a STRING through a pointer; a beedance reference (REF_TO) refers to a whole variable of its type.
+INI_PARSER_FILE it reads or writes the bytes of a STRING through a pointer; a beedance reference (REF_TO) refers to a whole variable of its type.
+IRTRANS_DECODE it reads or writes the bytes of a STRING through a pointer; a beedance reference (REF_TO) refers to a whole variable of its type.
+NET_VAR_CONTROL beedance cannot yet tell SIZEOF(X.S_BUF.BUFFER), the size of a member of the VAR_IN_OUT X.
+UNI_CIRCULAR_BUFFER it reads or writes the bytes of a STRING through a pointer; a beedance reference (REF_TO) refers to a whole variable of its type.

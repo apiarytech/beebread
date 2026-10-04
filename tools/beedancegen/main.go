@@ -24,8 +24,10 @@ import (
 	"go/format"
 	"go/parser"
 	"go/token"
+	"maps"
 	"os"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strings"
 
@@ -46,13 +48,66 @@ var aliases = map[string]string{
 	"basic/other":       "oscatother",
 	"basic/string":      "oscatstring",
 	"basic/time_date":   "oscattime",
+
+	"building":            "oscatbuild",
+	"building/actuators":  "oscatactuators",
+	"building/electrical": "oscatelectrical",
+	"building/hlk":        "oscathlk",
+	"building/jalousie":   "oscatjalousie",
+
+	"network":          "oscatnet",
+	"network/ads":      "oscatads",
+	"network/crypto":   "oscatcrypto",
+	"network/dlog":     "oscatdlog",
+	"network/encoding": "oscatencoding",
+	"network/file":     "oscatfile",
+	"network/inet":     "oscatinet",
+	"network/ip":       "oscatip",
+	"network/irtrans":  "oscatirtrans",
+	"network/logging":  "oscatlogging",
+	"network/modbus":   "oscatmodbus",
+	"network/netvar":   "oscatnetvar",
+	"network/parser":   "oscatparser",
+	"network/tcpip":    "oscattcpip",
+	"network/telnet":   "oscattelnet",
+	"network/weather":  "oscatweather",
 }
+
+// libraries are the OSCAT libraries beebread ports: the source their POUs
+// are read from, and their global variables with the package that declares
+// them and their types: a structured type, or the Go type of an IEC value.
+var libraries = []struct {
+	source  string
+	globals map[string]global
+}{
+	{"doc/beedance_basic.st", map[string]global{
+		"MATH": {"oscat", "CONSTANTS_MATH"}, "PHYS": {"oscat", "CONSTANTS_PHYS"},
+		"LANGUAGE": {"oscat", "CONSTANTS_LANGUAGE"}, "SETUP": {"oscat", "CONSTANTS_SETUP"},
+		"LOCATION": {"oscat", "CONSTANTS_LOCATION"}, "STRING_LENGTH": {"oscat", "iec.INT"}, "LIST_LENGTH": {"oscat", "iec.INT"},
+	}},
+	{"doc/beedance_building.st", nil},
+	{"doc/beedance_network.st", map[string]global{
+		"NETWORK_BUFFER_LONG_SIZE": {"oscatnet", "iec.UINT"}, "NETWORK_BUFFER_SHORT_SIZE": {"oscatnet", "iec.UINT"},
+		"LOG_MAX": {"oscatnet", "iec.INT"}, "LOG_SIZE": {"oscatnet", "iec.INT"}, "ELEMENT_LENGTH": {"oscatnet", "iec.INT"},
+		"TCP_SERVER_RESET": {"oscatnet", "iec.BYTE"}, "SSRVNETID": {"oscatnet", "iec.STRING"}, "SLOCALHOST": {"oscatnet", "iec.STRING"},
+		"SYSLIBSOCKETS_OPTION": {"oscatnet", "iec.BYTE"}, "LOG_CL": {"oscatnet", "LOG_CONTROL"},
+	}},
+}
+
+// global is an OSCAT global variable: the package of its port and its type.
+type global struct{ pkg, typ string }
+
+// external are the packages that port blocks OSCAT uses from outside its
+// libraries, all of whose exported declarations go in the table: TwinCAT's
+// TCP/IP blocks, which OSCAT NETWORK calls.
+var external = map[string]bool{"network/tcpip": true}
 
 // importNames maps the names a file imports the packages by to their
 // aliases, for the file being read.
 type file struct {
 	pkg     string            // the package's alias
 	imports map[string]string // import name to alias; "." for the dot import of basic
+	own     map[string]bool   // the exported types the package declares
 }
 
 // typeString writes a type expression with the aliases of the generated
@@ -61,8 +116,11 @@ type file struct {
 func (f *file) typeString(e ast.Expr) string {
 	switch e := e.(type) {
 	case *ast.Ident:
+		if f.own[e.Name] {
+			return f.pkg + "." + e.Name // a type of the package itself
+		}
 		if ast.IsExported(e.Name) {
-			// A type of basic, by its dot import or declared in basic.
+			// A type of basic, by its dot import.
 			return "oscat." + e.Name
 		}
 		return e.Name
@@ -78,7 +136,37 @@ func (f *file) typeString(e ast.Expr) string {
 		if e.Len == nil {
 			return "[]" + f.typeString(e.Elt)
 		}
-		return "[" + e.Len.(*ast.BasicLit).Value + "]" + f.typeString(e.Elt)
+		n := f.constString(e.Len)
+		if strings.Contains(n, "?") {
+			return "?"
+		}
+		return "[" + n + "]" + f.typeString(e.Elt)
+	}
+	return "?"
+}
+
+// constString writes a constant expression, an array length such as
+// NETWORK_BUFFER_LONG_SIZE + 1, with the names qualified by their packages.
+func (f *file) constString(e ast.Expr) string {
+	switch e := e.(type) {
+	case *ast.BasicLit:
+		return e.Value
+	case *ast.Ident:
+		if f.own[e.Name] {
+			return f.pkg + "." + e.Name
+		}
+		if ast.IsExported(e.Name) {
+			return "oscat." + e.Name
+		}
+	case *ast.SelectorExpr:
+		x := e.X.(*ast.Ident).Name
+		if alias, ok := f.imports[x]; ok {
+			return alias + "." + e.Sel.Name
+		}
+	case *ast.ParenExpr:
+		return "(" + f.constString(e.X) + ")"
+	case *ast.BinaryExpr:
+		return f.constString(e.X) + " " + e.Op.String() + " " + f.constString(e.Y)
 	}
 	return "?"
 }
@@ -100,23 +188,69 @@ type block struct {
 }
 
 func main() {
-	pous, err := oscat.ReadPOUs("documents/oscat_basic_335.st")
-	check(err)
 	// Only the ports of OSCAT's POUs and types go in the table; the helpers
-	// of the package basic, such as its IEC standard functions, do not.
+	// of the packages, such as basic's IEC standard functions, do not.
 	isPOU := map[string]bool{}
-	for _, p := range pous {
-		isPOU[p.GoName()] = true
-	}
-	inputs, err := oscat.Inputs("documents/oscat_basic_335.st")
-	check(err)
-	bounds, err := oscat.ArrayBounds("documents/oscat_basic_335.st")
-	check(err)
+	inputs := map[string][]string{}
+	bounds := map[string]map[string][]int64{}
 	oscatName := map[string]string{}
-	for _, p := range pous {
-		oscatName[p.GoName()] = p.Name
+	globals := map[string]global{}
+	for _, lib := range libraries {
+		pous, err := oscat.ReadCleanedPOUs(lib.source)
+		check(err)
+		for _, p := range pous {
+			isPOU[p.GoName()] = true
+			oscatName[p.GoName()] = p.Name
+		}
+		in, err := oscat.Inputs(lib.source)
+		check(err)
+		maps.Copy(inputs, in)
+		b, err := oscat.ArrayBounds(lib.source)
+		check(err)
+		maps.Copy(bounds, b)
+		maps.Copy(globals, lib.globals)
 	}
 	fset := token.NewFileSet()
+	// The exported types each package declares, so that a type named
+	// without a package is the package's own or else basic's.
+	own := map[string]map[string]bool{}
+	for dir, alias := range aliases {
+		own[alias] = map[string]bool{}
+		files, err := filepath.Glob(filepath.Join(dir, "*.go"))
+		check(err)
+		for _, path := range files {
+			if strings.HasSuffix(path, "_test.go") {
+				continue
+			}
+			src, err := parser.ParseFile(fset, path, nil, parser.SkipObjectResolution)
+			check(err)
+			for _, d := range src.Decls {
+				if g, ok := d.(*ast.GenDecl); ok {
+					for _, s := range g.Specs {
+						if vs, ok := s.(*ast.ValueSpec); ok && g.Tok == token.CONST {
+							for _, n := range vs.Names {
+								if n.IsExported() {
+									own[alias][n.Name] = true // a constant array lengths may name
+								}
+							}
+						}
+						if ts, ok := s.(*ast.TypeSpec); ok && ts.Name.IsExported() {
+							own[alias][ts.Name.Name] = true
+							if external[dir] {
+								isPOU[ts.Name.Name] = true
+							}
+						}
+					}
+				}
+				if fd, ok := d.(*ast.FuncDecl); ok && external[dir] && fd.Recv == nil && fd.Name.IsExported() {
+					isPOU[fd.Name.Name] = true
+				}
+			}
+		}
+	}
+	if own["oscat"] != nil {
+		own["oscat"] = nil // basic's types are oscat.T anyway
+	}
 	functions := map[string]function{}
 	blocks := map[string]*block{}
 	var order []string // blocks in the order they are declared
@@ -129,7 +263,7 @@ func main() {
 			}
 			src, err := parser.ParseFile(fset, path, nil, parser.SkipObjectResolution)
 			check(err)
-			f := &file{pkg: alias, imports: map[string]string{"iec": "iec"}}
+			f := &file{pkg: alias, imports: map[string]string{"iec": "iec"}, own: own[alias]}
 			for _, imp := range src.Imports {
 				p := strings.Trim(imp.Path.Value, `"`)
 				rel := strings.TrimPrefix(p, module+"/")
@@ -179,6 +313,9 @@ func main() {
 							fn.results = append(fn.results, f.typeString(r.Type))
 						}
 					}
+					if old, ok := functions[d.Name.Name]; ok && old.pkg != fn.pkg && isPOU[d.Name.Name] {
+						fmt.Fprintf(os.Stderr, "function %s in both %s and %s\n", d.Name.Name, old.pkg, fn.pkg)
+					}
 					functions[d.Name.Name] = fn
 				case *ast.GenDecl:
 					for _, s := range d.Specs {
@@ -191,6 +328,9 @@ func main() {
 							continue
 						}
 						name := ts.Name.Name
+						if b := blocks[name]; b != nil && len(b.fields) > 0 && b.pkg != alias && isPOU[name] {
+							fmt.Fprintf(os.Stderr, "type %s in both %s and %s\n", name, b.pkg, alias)
+						}
 						if blocks[name] == nil {
 							blocks[name] = &block{pkg: alias, methods: map[string]bool{}}
 						}
@@ -220,7 +360,7 @@ func main() {
 
 package transpiler
 
-// beebreadModule is the module of the OSCAT BASIC library.
+// beebreadModule is the module of beebread, the OSCAT libraries in Go.
 const beebreadModule = %q
 
 // beebreadPackages maps the names the generated code uses for the beebread
@@ -237,7 +377,7 @@ var beebreadPackages = map[string]string{
 	}
 	fmt.Fprintf(&out, `}
 
-// beebreadFunctions describes the functions of OSCAT BASIC: each parameter's
+// beebreadFunctions describes the functions of the OSCAT libraries: each parameter's
 // Go type and the result's. A function with more than one result, which no
 // OSCAT function has, is left out.
 var beebreadFunctions = map[string]stdFunction{
@@ -272,7 +412,7 @@ var beebreadStandard = map[string]stdFunction{
 	fmt.Fprintf(&out, `}
 
 // beebreadDefaults are the values of the parameters of the functions of
-// OSCAT BASIC that a call leaves out: their initial values, or the zero
+// the OSCAT libraries that a call leaves out: their initial values, or the zero
 // value of their type.
 var beebreadDefaults = map[string][]string{
 `)
@@ -290,12 +430,12 @@ var beebreadDefaults = map[string][]string{
 		for i, typ := range fn.params {
 			vals[i] = goValue(typ, lits[i])
 		}
-		fmt.Fprintf(&out, "\t%q: %#v,\n", n, quote(vals))
+		fmt.Fprintf(&out, "\t%q: %#v,\n", strings.ToUpper(n), quote(vals))
 	}
 	fmt.Fprintf(&out, `}
 
-// beebreadFunctionBlock is a function block or a structured type of OSCAT
-// BASIC: its Go type and its fields' Go types. A function block has the
+// beebreadFunctionBlock is a function block or a structured type of an
+// OSCAT library: its Go type and its fields' Go types. A function block has the
 // methods INIT and Execute(now); a VAR_IN_OUT is a pointer field. lows are
 // the lower bounds OSCAT declares for the dimensions of the fields that
 // are arrays and do not start at 0; the Go arrays start at 0.
@@ -307,7 +447,7 @@ type beebreadFunctionBlock struct {
 }
 
 // beebreadFunctionBlocks describes the function blocks and structured types
-// of OSCAT BASIC.
+// of the OSCAT libraries, by upper case name.
 var beebreadFunctionBlocks = map[string]beebreadFunctionBlock{
 `)
 	sort.Strings(order)
@@ -316,7 +456,7 @@ var beebreadFunctionBlocks = map[string]beebreadFunctionBlock{
 			continue
 		}
 		b := blocks[n]
-		fmt.Fprintf(&out, "\t%q: {goType: %q, isFB: %v, fields: map[string]string{", n, b.pkg+"."+n, b.methods["INIT"] && b.methods["Execute"])
+		fmt.Fprintf(&out, "\t%q: {goType: %q, isFB: %v, fields: map[string]string{", strings.ToUpper(n), b.pkg+"."+n, b.methods["INIT"] && b.methods["Execute"])
 		for i, fl := range b.fields {
 			if i > 0 {
 				out.WriteString(", ")
@@ -342,13 +482,18 @@ var beebreadFunctionBlocks = map[string]beebreadFunctionBlock{
 	}
 	fmt.Fprintf(&out, `}
 
-// beebreadGlobals are the global variables of OSCAT BASIC and their types.
-var beebreadGlobals = map[string]string{
-	"MATH": "CONSTANTS_MATH", "PHYS": "CONSTANTS_PHYS", "LANGUAGE": "CONSTANTS_LANGUAGE",
-	"SETUP": "CONSTANTS_SETUP", "LOCATION": "CONSTANTS_LOCATION",
-	"STRING_LENGTH": "", "LIST_LENGTH": "",
-}
+// beebreadGlobal is a global variable of an OSCAT library: the package of
+// its port and its type: a structured type's name, or the Go type of an IEC value.
+type beebreadGlobal struct{ pkg, typ string }
+
+// beebreadGlobals are the global variables of the OSCAT libraries.
+var beebreadGlobals = map[string]beebreadGlobal{
 `)
+	gnames := slices.Sorted(maps.Keys(globals))
+	for _, n := range gnames {
+		fmt.Fprintf(&out, "\t%q: {%q, %q},\n", n, globals[n].pkg, globals[n].typ)
+	}
+	out.WriteString("}\n")
 	src, err := format.Source(out.Bytes())
 	check(err)
 	os.Stdout.Write(src)

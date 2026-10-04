@@ -35,8 +35,9 @@ import (
 // POU is a POU of the OSCAT source.
 type POU = oscat.POU
 
-// ReadPOUs reads the POUs of an OSCAT source file.
-var ReadPOUs = oscat.ReadPOUs
+// ReadPOUs reads the POUs of the cleaned OSCAT source, those commented out
+// included.
+var ReadPOUs = oscat.ReadCleanedPOUs
 
 // Decl is a Go declaration of the basic packages.
 type Decl struct {
@@ -123,7 +124,7 @@ func Problem(p POU, decls map[string][]*Decl) string {
 
 func main() {
 	verbose := flag.Bool("v", false, "list the ported POUs too")
-	st := flag.String("st", "documents/oscat_basic_335.st", "the OSCAT source")
+	st := flag.String("st", "doc/beedance_basic.st", "the OSCAT source, cleaned by stclean")
 	dir := flag.String("go", "basic", "the directory of the port")
 	flag.Parse()
 	pous, err := ReadPOUs(*st)
