@@ -1,0 +1,149 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1250" height="670" viewBox="0 0 1250 670" font-family="Segoe UI, Helvetica, Arial, sans-serif">
+  <title>beebread architecture</title>
+  <defs>
+    <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#333"/>
+    </marker>
+    <style>
+      .t  { font-size: 12.5px; font-weight: 600; fill: #1f1f1f; text-anchor: middle; }
+      .s  { font-size: 11px; fill: #444; text-anchor: middle; }
+      .h  { font-size: 14px; font-weight: 700; fill: #1f1f1f; }
+      .hs { font-size: 12px; font-weight: 400; fill: #555; }
+      .l  { font-size: 10.5px; fill: #333; }
+      .bh { fill: #eaf1fb; stroke: #3d6fb3; stroke-width: 1.5; }
+      .bi { fill: #ffffff; stroke: #3d6fb3; stroke-width: 1.2; }
+      .dh { fill: #fff3e0; stroke: #c47a14; stroke-width: 1.5; }
+      .ex { fill: #ffffff; stroke: #555; stroke-width: 1.3; }
+      .ln { stroke: #333; stroke-width: 1.4; fill: none; }
+      .dep { stroke: #555; stroke-width: 1.2; fill: none; stroke-dasharray: 5 4; }
+    </style>
+  </defs>
+
+  <rect width="1250" height="670" fill="#ffffff"/>
+
+  <text x="20" y="32" style="font-size:20px;font-weight:700;fill:#1f1f1f">beebread · architecture</text>
+  <text x="20" y="52" style="font-size:12.5px;fill:#555">The OSCAT BASIC, BUILDING and NETWORK libraries ported from IEC 61131-3 Structured Text to Go, on royaljelly's types, so Go programs and transpiled PLC programs can call them.</text>
+
+  <!-- Module -->
+  <rect x="240" y="64" width="770" height="520" rx="10" fill="#fbfbfb" stroke="#333" stroke-width="1.6"/>
+  <text x="256" y="84" class="h">github.com/apiarytech/beebread <tspan class="hs">(standard library + royaljelly)</tspan></text>
+
+  <!-- Sources and checks -->
+  <rect x="260" y="100" width="220" height="70" rx="5" class="bi"/>
+  <text x="370" y="121" class="t">tools/stclean</text>
+  <text x="370" y="139" class="s">a CODESYS export or .lib →</text>
+  <text x="370" y="155" class="s">IEC 61131-3 that beedance reads</text>
+
+  <rect x="500" y="100" width="220" height="70" rx="5" class="bi"/>
+  <text x="610" y="121" class="t">doc/*.st</text>
+  <text x="610" y="139" class="s">the cleaned OSCAT sources:</text>
+  <text x="610" y="155" class="s">basic · building · network</text>
+
+  <rect x="740" y="100" width="250" height="70" rx="5" class="bi"/>
+  <text x="865" y="121" class="t">tools/oscatcov · coverage tests</text>
+  <text x="865" y="139" class="s">every POU of the source has a port,</text>
+  <text x="865" y="155" class="s">or the tests fail</text>
+
+  <path d="M480,135 H498" class="ln" marker-end="url(#a)"/>
+  <path d="M720,135 H738" class="dep" marker-end="url(#a)"/>
+
+  <!-- Libraries -->
+  <rect x="260" y="200" width="270" height="180" rx="6" class="bh"/>
+  <text x="395" y="222" class="t">basic · OSCAT BASIC 3.35</text>
+  <text x="395" y="242" class="s">559 functions, function blocks and types</text>
+  <text x="395" y="266" class="s">buffer · list · logic (gates, flip-flops,</text>
+  <text x="395" y="284" class="s">generators, memory) · string</text>
+  <text x="395" y="302" class="s">engineering: control, sensors, signal</text>
+  <text x="395" y="320" class="s">generators and processing</text>
+  <text x="395" y="338" class="s">math (complex, vectors, geometry)</text>
+  <text x="395" y="356" class="s">time_date (sun, holidays) · other</text>
+
+  <rect x="550" y="200" width="190" height="180" rx="6" class="bh"/>
+  <text x="645" y="222" class="t">building · BUILDING 1.00</text>
+  <text x="645" y="242" class="s">57 functions and blocks</text>
+  <text x="645" y="266" class="s">actuators: valves, pumps,</text>
+  <text x="645" y="284" class="s">coils, up/down drives</text>
+  <text x="645" y="302" class="s">electrical: switches,</text>
+  <text x="645" y="320" class="s">dimmers, lamps, timers</text>
+  <text x="645" y="338" class="s">hlk: heating, ventilation, A/C</text>
+  <text x="645" y="356" class="s">jalousie: blinds, shutters</text>
+
+  <rect x="760" y="200" width="230" height="180" rx="6" class="bh"/>
+  <text x="875" y="222" class="t">network · NETWORK 1.35</text>
+  <text x="875" y="242" class="s">127 functions and blocks, 34 types</text>
+  <text x="875" y="266" class="s">tcpip (sockets on net) · ads (files on os)</text>
+  <text x="875" y="284" class="s">ip · modbus (TCP, UDP) · netvar</text>
+  <text x="875" y="302" class="s">inet: DNS HTTP SNTP FTP SMTP MySQL</text>
+  <text x="875" y="320" class="s">file · parser (CSV, INI, XML)</text>
+  <text x="875" y="338" class="s">encoding · crypto · logging · dlog</text>
+  <text x="875" y="356" class="s">telnet · irtrans · weather</text>
+
+  <path d="M550,290 H532" class="ln" marker-end="url(#a)"/>
+  <path d="M875,380 V394 H395 V382" class="ln" marker-end="url(#a)"/>
+  <text x="560" y="408" class="l">building and network are built on basic</text>
+
+  <!-- Conventions -->
+  <rect x="260" y="420" width="730" height="64" rx="6" class="bi"/>
+  <text x="625" y="440" class="t">conventions of royaljelly's std and fb</text>
+  <text x="625" y="458" class="s">OSCAT's names (a leading _ moves to the end: BUFFER_CLEAR_) · royaljelly iec types (REAL is 32-bit, as on a PLC)</text>
+  <text x="625" y="474" class="s">a function takes OSCAT's inputs in order · a block is a struct with INIT() and Execute(now), and never reads the wall clock</text>
+
+  <rect x="260" y="504" width="360" height="60" rx="5" class="bi"/>
+  <text x="440" y="526" class="t">tools/beedancegen</text>
+  <text x="440" y="544" class="s">the library table the beedance transpiler calls through</text>
+
+  <!-- External, left -->
+  <rect x="20" y="100" width="200" height="70" rx="6" class="ex"/>
+  <text x="120" y="122" class="t">OSCAT library archive</text>
+  <text x="120" y="140" class="s">CODESYS ST exports, and</text>
+  <text x="120" y="156" class="s">NETWORK as a binary .lib</text>
+  <path d="M222,135 H258" class="ln" marker-end="url(#a)"/>
+
+  <rect x="20" y="255" width="200" height="70" rx="6" class="ex"/>
+  <text x="120" y="277" class="t">Go programs</text>
+  <text x="120" y="295" class="s">gateways, edge services,</text>
+  <text x="120" y="311" class="s">simulations: import directly</text>
+  <path d="M222,290 H258" class="ln" marker-end="url(#a)"/>
+
+  <rect x="20" y="420" width="200" height="64" rx="6" class="dh"/>
+  <text x="120" y="442" class="t">royaljelly · iec</text>
+  <text x="120" y="460" class="s">the IEC 61131-3 Go types</text>
+  <path d="M258,452 H222" class="dep" marker-end="url(#a)"/>
+
+  <!-- External, right -->
+  <rect x="1030" y="200" width="200" height="70" rx="6" class="ex"/>
+  <text x="1130" y="222" class="t">Real networks</text>
+  <text x="1130" y="240" class="s">TCP and UDP peers; tests use</text>
+  <text x="1130" y="256" class="s">loopback servers, no SSL</text>
+  <path d="M992,235 H1028" class="ln" marker-start="url(#a)" marker-end="url(#a)"/>
+
+  <rect x="1030" y="300" width="200" height="80" rx="6" class="dh"/>
+  <text x="1130" y="322" class="t">beehive native programs</text>
+  <text x="1130" y="340" class="s">linked by beehive-build;</text>
+  <text x="1130" y="356" class="s">network and file blocks only</text>
+  <text x="1130" y="372" class="s">with -allow-network, -allow-files</text>
+  <path d="M1028,340 H992" class="ln" marker-end="url(#a)"/>
+
+  <rect x="1030" y="499" width="200" height="70" rx="6" class="dh"/>
+  <text x="1130" y="521" class="t">beedance transpiler</text>
+  <text x="1130" y="539" class="s">transpiled programs call</text>
+  <text x="1130" y="555" class="s">OSCAT here, by the table</text>
+  <path d="M620,534 H1028" class="ln" marker-end="url(#a)"/>
+
+  <!-- Legend -->
+  <g transform="translate(240,606)">
+    <rect x="0" y="0" width="16" height="12" class="bh"/>
+    <text x="22" y="11" style="font-size:11.5px;fill:#333">the ported libraries</text>
+    <rect x="150" y="0" width="16" height="12" class="bi"/>
+    <text x="172" y="11" style="font-size:11.5px;fill:#333">beebread, around them</text>
+    <rect x="320" y="0" width="16" height="12" class="dh"/>
+    <text x="342" y="11" style="font-size:11.5px;fill:#333">other apiarytech projects</text>
+    <rect x="500" y="0" width="16" height="12" class="ex"/>
+    <text x="522" y="11" style="font-size:11.5px;fill:#333">outside</text>
+    <path d="M590,6 H630" class="ln" marker-end="url(#a)"/>
+    <text x="638" y="11" style="font-size:11.5px;fill:#333">uses</text>
+    <path d="M690,6 H730" class="dep" marker-end="url(#a)"/>
+    <text x="738" y="11" style="font-size:11.5px;fill:#333">depends on, checked against</text>
+    <text x="0" y="36" style="font-size:11.5px;fill:#555">Dual-licensed: EPL-2.0 or commercial. The cleaned sources beedance reads are in this folder: beedance_basic.st, beedance_building.st, beedance_network.st.</text>
+  </g>
+</svg>
