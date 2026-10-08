@@ -81,7 +81,7 @@ go run ./tools/stclean -refs -exclude tools/stclean/testdata/network.exclude -us
 
 The blocks run on a real network: their tests talk to loopback servers. SSL is not supported, as TwinCAT's `IP_CONTROL` does not. The test of `network` fails if a POU of the cleaned source has no port.
 
-Until a royaljelly release includes its `iec` package, `go.mod` replaces royaljelly with `../royaljelly`, a checkout next to this one.
+beebread requires royaljelly v0.3.0 or later, the first release series with the `iec` package it is written against.
 
 ## Community Contributions
 
