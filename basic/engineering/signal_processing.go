@@ -294,6 +294,8 @@ func (f *FILTER_MAV_DW) Execute(now time.Time) {
 		for i := 0; i < int(f.N); i++ {
 			f.buffer[i] = f.X
 		}
+		// OSCAT's FOR loop runs on the block's own i, which it leaves at N.
+		f.i = iec.INT(f.N)
 		f.Y = f.X
 		return
 	}
@@ -330,6 +332,9 @@ func (f *FILTER_MAV_W) Execute(now time.Time) {
 		for i := 1; i <= int(f.N)-1; i++ {
 			f.buffer[i] = f.X
 		}
+		// OSCAT's FOR loop runs on the block's own i, which it leaves at N,
+		// or at 1 when the loop does not run.
+		f.i = iec.INT(max(f.N, 1))
 		f.sum = iec.DWORD(f.Y) * iec.DWORD(f.N)
 		f.Y = f.X
 		return
