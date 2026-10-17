@@ -372,8 +372,13 @@ func HYPOT(x, y iec.REAL) iec.REAL {
 	return SQRT(x*x + y*y)
 }
 
-// INC increments x by d and continues from 0 when the result exceeds m.
+// INC increments x by d and continues from 0 when the result exceeds m. It
+// is 0 when m + 1 is not positive, as in OSCAT 3.36, which avoids MOD 0;
+// m = 32767 is a positive range, though m + 1 wraps in an INT.
 func INC(x, d, m iec.INT) iec.INT {
+	if int32(m)+1 <= 0 {
+		return 0
+	}
 	return (x + d + m + 1) % (m + 1)
 }
 
@@ -386,9 +391,13 @@ func INC1(x, n iec.INT) iec.INT {
 	return x + 1
 }
 
-// INC2 increments x by d and continues from l when the result exceeds u.
+// INC2 increments x by d and continues from l when the result exceeds u. It
+// is l when u - l + 1 is 0, as in OSCAT 3.36, which avoids MOD 0.
 func INC2(x, d, l, u iec.INT) iec.INT {
 	tmp := u - l + 1
+	if tmp == 0 {
+		return l
+	}
 	return (x+d-l+tmp)%tmp + l
 }
 

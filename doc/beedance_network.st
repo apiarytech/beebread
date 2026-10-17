@@ -227,7 +227,7 @@ END_FUNCTION_BLOCK
 // END_VAR
 //
 // IF RUN > 0 THEN
-// 	IF state = 0 THEN (* Auswertung neu beginnen *)
+// 	IF state = 0 THEN (* restart evaluation *)
 //
 // 		pv := REF(VALUE);
 // 		pv^ := 0; (* VALUE = '' *)
@@ -235,8 +235,8 @@ END_FUNCTION_BLOCK
 // 		i := UDINT_TO_INT(OFFSET);
 // 		size := UINT_TO_INT(PT.SIZE) - 1;
 // 		RESULT := 0;
-// 		state := 5; (* Befehl in Arbeit (Busy) *)
-// 		step := 0; (* Auswertung neu beginnen *)
+// 		state := 5; (* command in progress (busy) *)
+// 		step := 0; (* restart evaluation *)
 //
 // 		(* ---------------- Debug-Message -----------------------*)
 // 		(*IF _debug_enable THEN
@@ -248,71 +248,71 @@ END_FUNCTION_BLOCK
 //
 // 	END_IF;
 //
-// 	watchdog(IN:=FALSE,PT:=T#1ms); (* Timer neustarten *)
+// 	watchdog(IN:=FALSE,PT:=T#1ms); (* restart timer *)
 // 	watchdog.IN := TRUE;
 //
-// 	WHILE (state = 5) DO (* Schleife solange kein Ergebnis *)
+// 	WHILE (state = 5) DO (* loop as long as there is no result *)
 //
-// 		watchdog(); (* Timer aktualisieren *)
+// 		watchdog(); (* update timer *)
 //
-// 		IF watchdog.Q THEN (* watchdog ausgelöst *)
+// 		IF watchdog.Q THEN (* watchdog triggered *)
 // 			state := 5;
 // 			EXIT;
-// 		ELSIF i > size THEN (* kein weiteres zeichen vorhanden *)
-// 			state := 10; (* nichts gefunden - Daten-Ende erreicht *)
+// 		ELSIF i > size THEN (* no further character available *)
+// 			state := 10; (* nothing found - end of data reached *)
 // 			EXIT;
 // 		ELSE
 //
-// 			c := PT.BUFFER[i]; (* neues Zeichen aus Buffer lesen *)
+// 			c := PT.BUFFER[i]; (* read new character from buffer *)
 // 			eof := i + 1 = PT.SIZE; (* End of File *)
 //
 // 			v_add := 0;
 //
-// 			IF c = SEP THEN (* Neues Element erkannt *)
+// 			IF c = SEP THEN (* new element detected *)
 // 				state := 1;
 // 				x := TRUE;
-// 			ELSIF c >= 32 THEN (* Element erkannt *)
-// 				v_add := c; (* Zeichen ablegen *)
+// 			ELSIF c >= 32 THEN (* element detected *)
+// 				v_add := c; (* store character *)
 // 				IF eof THEN
-// 					state := 2; (* Element und Zeilenende erkannt *)
+// 					state := 2; (* element and end of line detected *)
 // 				ELSE
 // 					x := TRUE;
 // 				END_IF;
 // 			ELSE
 // 				IF x THEN
-// 					state := 2; (* Element und Zeilenende erkannt *)
+// 					state := 2; (* element and end of line detected *)
 // 					x := FALSE;
 // 				END_IF;
 // 			END_IF;
 //
-// 			IF v_add > 0  AND pv < pve THEN (* Zeichen zu Value-String hinzufügen *)
-// 				pv^ := v_add; (* Zeichen eintragen *)
+// 			IF v_add > 0  AND pv < pve THEN (* add character to value string *)
+// 				pv^ := v_add; (* enter character *)
 // 				pv := pv + 1;
-// 				pv^ := 0; (* String-Terminierung eintragen *)
+// 				pv^ := 0; (* enter string termination *)
 // 			END_IF;
 //
-// 			i := i + 1; (* Datenzeiger erhöhen *)
+// 			i := i + 1; (* increment data pointer *)
 //
 // 		END_IF;
 // 	END_WHILE;
 //
 // 	CASE state OF
-// 	01:	(* Element gefunden *)
-// 		RESULT := 1; (* Element gefunden *)
-// 		OFFSET := i; (* Offset uebernehmen *)
+// 	01:	(* element found *)
+// 		RESULT := 1; (* element found *)
+// 		OFFSET := i; (* take offset *)
 // 		RUN := 0;
 // 		state := 0;
-// 	02:	(* Element gefunden *)
-// 		RESULT := 2; (* Element und Zeilenende erkannt *)
-// 		OFFSET := i; (* Offset uebernehmen *)
+// 	02:	(* element found *)
+// 		RESULT := 2; (* element and end of line detected *)
+// 		OFFSET := i; (* take offset *)
 // 		RUN := 0;
 // 		state := 0;
 //
-// 	05:	RESULT := 5; (* in Arbeit *)
+// 	05:	RESULT := 5; (* in progress *)
 //
-// 	10:	(* Indexüberschreitung - Bufferende *)
-// 		RESULT := 10; (* nichts gefunden - Datenende erreicht *)
-// 		OFFSET := i; (* Offset uebernehmen *)
+// 	10:	(* index out of range - end of buffer *)
+// 		RESULT := 10; (* nothing found - end of data reached *)
+// 		OFFSET := i; (* take offset *)
 // 		RUN := 0;
 // 		state := 0;
 // 	END_CASE;
@@ -381,14 +381,14 @@ END_FUNCTION_BLOCK
 //
 // IF RUN > 0 THEN
 //
-// 	IF state = 0 THEN (* Auswertung neu beginnen *)
+// 	IF state = 0 THEN (* restart evaluation *)
 // 		pv := REF(VALUE);
 // 		pv^ := 0; (* VALUE = '' *)
 // 		pve := pv + INT_TO_DWORD(STRING_LENGTH);
 // 		i := OFFSET;
 // 		RESULT := 0;
-// 		state := 5; (* Befehl in Arbeit (Busy) *)
-// 		step := 0; (* Auswertung neu beginnen *)
+// 		state := 5; (* command in progress (busy) *)
+// 		step := 0; (* restart evaluation *)
 //
 // 		(* ---------------- Debug-Message -----------------------*)
 // 		(*IF _debug_enable THEN
@@ -400,10 +400,10 @@ END_FUNCTION_BLOCK
 //
 // 	END_IF;
 //
-// 	watchdog(IN:=FALSE,PT:=T#1ms); (* Timer neustarten *)
+// 	watchdog(IN:=FALSE,PT:=T#1ms); (* restart timer *)
 // 	watchdog.IN := TRUE;
 //
-// 	WHILE (state = 5) DO (* Schleife solange kein Ergebnis *)
+// 	WHILE (state = 5) DO (* loop as long as there is no result *)
 //
 // 		mode := 1;
 // 		FB(MODE:=mode,FSD:=fsd,PT:=PT,FILENAME:=FILENAME,POS:=i );
@@ -425,63 +425,63 @@ END_FUNCTION_BLOCK
 // 			LOG_MSG();
 // 		END_IF;*)
 // 		(* -----------------------------------------------------------------*)
-// 		watchdog(); (* Timer aktualisieren *)
+// 		watchdog(); (* update timer *)
 //
-// 		IF mode > 0 OR watchdog.Q THEN (* Baustein noch aktiv, oder watchdog ausgelöst *)
+// 		IF mode > 0 OR watchdog.Q THEN (* block still active, or watchdog triggered *)
 // 			state := 5;
 // 			EXIT;
-// 		ELSIF e > 0 THEN (* File_error oder kein weiteres zeichen vorhanden *)
-// 			state := 10; (* nichts gefunden - Daten-Ende erreicht *)
+// 		ELSIF e > 0 THEN (* File_error or no further character available *)
+// 			state := 10; (* nothing found - end of data reached *)
 // 			EXIT;
 // 		ELSE
 //
 // 			v_add := 0;
 //
-// 			IF c = SEP THEN (* Neues Element erkannt *)
+// 			IF c = SEP THEN (* new element detected *)
 // 				state := 1;
 // 				x := TRUE;
-// 			ELSIF c >= 32 THEN (* Element erkannt *)
-// 				v_add := c; (* Zeichen ablegen *)
+// 			ELSIF c >= 32 THEN (* element detected *)
+// 				v_add := c; (* store character *)
 // 				IF eof THEN
-// 					state := 2; (* Element und Zeilenende erkannt *)
+// 					state := 2; (* element and end of line detected *)
 // 				ELSE
 // 					x := TRUE;
 // 				END_IF;
 // 			ELSE
 // 				IF x THEN
-// 					state := 2; (* Element und Zeilenende erkannt *)
+// 					state := 2; (* element and end of line detected *)
 // 					x := FALSE;
 // 				END_IF;
 // 			END_IF;
 //
-// 			IF v_add > 0  AND pv < pve THEN (* Zeichen zu Value-String hinzufügen *)
-// 				pv^ := v_add; (* Zeichen eintragen *)
+// 			IF v_add > 0  AND pv < pve THEN (* add character to value string *)
+// 				pv^ := v_add; (* enter character *)
 // 				pv := pv + 1;
-// 				pv^ := 0; (* String-Terminierung eintragen *)
+// 				pv^ := 0; (* enter string termination *)
 // 			END_IF;
 //
-// 			i := i + 1; (* Datenzeiger erhöhen *)
+// 			i := i + 1; (* increment data pointer *)
 //
 // 		END_IF;
 // 	END_WHILE;
 //
 // 	CASE state OF
-// 	01:	(* Element gefunden *)
-// 		RESULT := 1; (* Element gefunden *)
-// 		OFFSET := i; (* Offset uebernehmen *)
+// 	01:	(* element found *)
+// 		RESULT := 1; (* element found *)
+// 		OFFSET := i; (* take offset *)
 // 		RUN := 0;
 // 		state := 0;
-// 	02:	(* Element gefunden *)
-// 		RESULT := 2; (* Element und Zeilenende erkannt *)
-// 		OFFSET := i; (* Offset uebernehmen *)
+// 	02:	(* element found *)
+// 		RESULT := 2; (* element and end of line detected *)
+// 		OFFSET := i; (* take offset *)
 // 		RUN := 0;
 // 		state := 0;
 //
-// 	05:	RESULT := 5; (* in Arbeit *)
+// 	05:	RESULT := 5; (* in progress *)
 //
-// 	10:	(* Indexüberschreitung - Bufferende *)
-// 		RESULT := 10; (* nichts gefunden - Datenende erreicht *)
-// 		OFFSET := i; (* Offset uebernehmen *)
+// 	10:	(* index out of range - end of buffer *)
+// 		RESULT := 10; (* nothing found - end of data reached *)
+// 		OFFSET := i; (* take offset *)
 // 		RUN := 0;
 // 		state := 0;
 // 	END_CASE;
@@ -537,14 +537,14 @@ END_FUNCTION_BLOCK
 //
 // 01:	(* ADD INFO *)
 // 	X.ID_MAX := X.ID_MAX + USINT#1;
-// 	id := WORD#16#0601; (* Quelltype BOOL , Zieltype STRING *)
+// 	id := WORD#16#0601; (* source type BOOL, target type STRING *)
 // 02:	(* ADD HEADER *)
 // 	X.UCB.D_STRING := COLUMN;
 // 	X.UCB.D_HEAD := id;
 // 	X.UCB.D_MODE := 1;
-// 	UCB(DATA:=X.UCB); (* Daten eintragen *)
+// 	UCB(DATA:=X.UCB); (* enter data *)
 // 03:	(* ADD DATA *)
-// 	IF X.STORE_TYPE = BYTE#05 THEN (* MySQL-Modus *)
+// 	IF X.STORE_TYPE = BYTE#05 THEN (* MySQL mode *)
 // 		X.UCB.D_STRING := SEL(state_last,'0','1');
 // 	ELSE
 // 		X.UCB.D_STRING := SEL(state_last,OFF,ON);
@@ -552,7 +552,7 @@ END_FUNCTION_BLOCK
 // 	X.UCB.D_HEAD := id;
 //
 // 	X.UCB.D_MODE := 1;
-// 	UCB(DATA:=X.UCB); (* Daten eintragen *)
+// 	UCB(DATA:=X.UCB); (* enter data *)
 // 	last_delta := STATE;
 // 04:	(* ADD DATA REQ *)
 // 	IF DELTA AND (STATE XOR last_delta) THEN
@@ -602,17 +602,17 @@ END_FUNCTION_BLOCK
 //
 // IF ACTIVATE THEN
 // 	IF NOT activate_old THEN
-// 		CD.CE[0].VALUE_MIN := 0;	(* Sekunden *)
+// 		CD.CE[0].VALUE_MIN := 0;	(* seconds *)
 // 		CD.CE[0].VALUE_MAX := 59;
-// 		CD.CE[1].VALUE_MIN := 0;	(* Minuten *)
+// 		CD.CE[1].VALUE_MIN := 0;	(* minutes *)
 // 		CD.CE[1].VALUE_MAX := 59;
-// 		CD.CE[2].VALUE_MIN := 0;	(* Stunden *)
+// 		CD.CE[2].VALUE_MIN := 0;	(* hours *)
 // 		CD.CE[2].VALUE_MAX := 59;
-// 		CD.CE[3].VALUE_MIN := 1;	(* Tage *)
+// 		CD.CE[3].VALUE_MIN := 1;	(* days *)
 // 		CD.CE[3].VALUE_MAX := 31;
-// 		CD.CE[4].VALUE_MIN := 1;	(* Wochentag *)
+// 		CD.CE[4].VALUE_MIN := 1;	(* weekday *)
 // 		CD.CE[4].VALUE_MAX := 7;
-// 		CD.CE[5].VALUE_MIN := 1;	(* Monat *)
+// 		CD.CE[5].VALUE_MIN := 1;	(* month *)
 // 		CD.CE[5].VALUE_MAX := 12;
 //
 // 		FOR idx1 := 0 TO 5 DO
@@ -638,7 +638,7 @@ END_FUNCTION_BLOCK
 // 		FOR idx1 := 0 TO 5 DO
 // 			str2 := ELEMENT_GET(BYTE#35, idx1, str1);
 // 			IF LEN(str2) > 0 THEN
-// 				cnt1 := ELEMENT_COUNT(BYTE#44, str2);	(* Trenzeichen ',' *)
+// 				cnt1 := ELEMENT_COUNT(BYTE#44, str2);	(* separator ',' *)
 // 			ELSE
 // 				cnt1 := 1;
 // 			END_IF;
@@ -662,7 +662,7 @@ END_FUNCTION_BLOCK
 // 						pos2 := CD.CE[idx1].VALUE_MAX;
 // 						CD.CE[idx1].ALL_SELECTED := TRUE;
 // 					ELSE
-// 						cnt2 := ELEMENT_COUNT(BYTE#45, str3);	(* Trenzeichen '-' *)
+// 						cnt2 := ELEMENT_COUNT(BYTE#45, str3);	(* separator '-' *)
 // 						char_cnt := LEN(str3);
 // 						IF char_cnt >= 1 AND char_cnt <= 10 THEN
 // 							num_str1 := ELEMENT_GET(BYTE#45, 0, str3);
@@ -684,36 +684,36 @@ END_FUNCTION_BLOCK
 // 			END_FOR;
 // 		END_FOR;
 // 	ELSIF DTI <> dti_last THEN
-// 		CD.CE[0].VALUE := SECOND_OF_DT(DTI); (* Sekunden *)
-// 		CD.CE[1].VALUE := MINUTE_OF_DT(DTI); (* Minuten *)
-// 		CD.CE[2].VALUE := HOUR_OF_DT(DTI); (* Stunden *)
+// 		CD.CE[0].VALUE := SECOND_OF_DT(DTI); (* seconds *)
+// 		CD.CE[1].VALUE := MINUTE_OF_DT(DTI); (* minutes *)
+// 		CD.CE[2].VALUE := HOUR_OF_DT(DTI); (* hours *)
 // 		datei := DT_TO_DATE(DTI);
 // 		CD.CE[3].VALUE := DAY_OF_MONTH(datei); (* Tag *)
-// 		CD.CE[4].VALUE := DAY_OF_WEEK(datei); (* Wochentag *)
-// 		CD.CE[5].VALUE := MONTH_OF_DATE(datei); (*  Monat *)
+// 		CD.CE[4].VALUE := DAY_OF_WEEK(datei); (* weekday *)
+// 		CD.CE[5].VALUE := MONTH_OF_DATE(datei); (*  month *)
 // 		dti_last := DTI;
 //
-// 		idx2 := CD.CE[0].VALUE;	(* sekunden *)
+// 		idx2 := CD.CE[0].VALUE;	(* seconds *)
 // 		Q := CD.CE[0].ELEMENTS[idx2] = TRUE;
-// 		idx2 := CD.CE[1].VALUE;	(* minuten *)
+// 		idx2 := CD.CE[1].VALUE;	(* minutes *)
 // 		Q := Q AND CD.CE[1].ELEMENTS[idx2] = TRUE;
-// 		idx2 := CD.CE[2].VALUE;	(* stunden *)
+// 		idx2 := CD.CE[2].VALUE;	(* hours *)
 // 		Q := Q AND CD.CE[2].ELEMENTS[idx2] = TRUE;
-// 		idx2 := CD.CE[5].VALUE;	(* monat *)
+// 		idx2 := CD.CE[5].VALUE;	(* month *)
 // 		Q := Q AND CD.CE[5].ELEMENTS[idx2] = TRUE;
 //
-// 		(* auswertung Tag und Wochentag *)
+// 		(* evaluate day and weekday *)
 // 		idx2 := CD.CE[3].VALUE;	(* Tag *)
 // 		trig_day:= CD.CE[3].ELEMENTS[idx2] = TRUE;
-// 		idx2 := CD.CE[4].VALUE;	(* Wochentag *)
+// 		idx2 := CD.CE[4].VALUE;	(* weekday *)
 // 		trig_weekday := CD.CE[4].ELEMENTS[idx2] = TRUE;
 //
 // 		IF CD.CE[3].ALL_SELECTED = FALSE AND CD.CE[4].ALL_SELECTED = TRUE THEN
-// 			Q := Q AND trig_day; (* nur Tag auswerten *)
+// 			Q := Q AND trig_day; (* evaluate day only *)
 // 		ELSIF CD.CE[3].ALL_SELECTED = TRUE AND CD.CE[4].ALL_SELECTED = FALSE THEN
-// 			Q := Q AND trig_weekday; (* nur Wochentag auswerten *)
+// 			Q := Q AND trig_weekday; (* evaluate weekday only *)
 // 		ELSIF CD.CE[3].ALL_SELECTED = FALSE AND CD.CE[4].ALL_SELECTED = FALSE THEN
-// 			Q := Q AND (trig_weekday OR trig_day); (* Tag und Wochentag auswerten *)
+// 			Q := Q AND (trig_weekday OR trig_day); (* evaluate day and weekday *)
 // 		END_IF;
 // 	END_IF;
 //
@@ -742,17 +742,17 @@ END_FUNCTION_BLOCK
 //
 // 01:	(* ADD INFO *)
 // 	X.ID_MAX := X.ID_MAX + USINT#1;
-// 	id := WORD#16#0801; (* Quelltype DINT , Zieltype STRING *)
+// 	id := WORD#16#0801; (* source type DINT, target type STRING *)
 // 02:	(* ADD HEADER *)
 // 	X.UCB.D_STRING := COLUMN;
 // 	X.UCB.D_HEAD := id;
 // 	X.UCB.D_MODE := 1;
-// 	UCB(DATA:=X.UCB); (* Daten eintragen *)
+// 	UCB(DATA:=X.UCB); (* enter data *)
 // 03:	(* ADD DATA *)
 // 	X.UCB.D_STRING := DINT_TO_STRING(value_last);
 // 	X.UCB.D_HEAD := id;
 // 	X.UCB.D_MODE := 1;
-// 	UCB(DATA:=X.UCB); (* Daten eintragen *)
+// 	UCB(DATA:=X.UCB); (* enter data *)
 // 	delta_last := value_last;
 // 04:	(* ADD DATA REQ *)
 // 	IF DELTA <> DINT#0 THEN
@@ -788,17 +788,17 @@ END_FUNCTION_BLOCK
 //
 // 01:	(* ADD INFO *)
 // 	X.ID_MAX := X.ID_MAX + USINT#1;
-// 	id := WORD#16#0D01; (* Quelltype DT , Zieltype STRING *)
+// 	id := WORD#16#0D01; (* source type DT, target type STRING *)
 // 02:	(* ADD HEADER *)
 // 	X.UCB.D_STRING := COLUMN;
 // 	X.UCB.D_HEAD := id;
 // 	X.UCB.D_MODE := 1;
-// 	UCB(DATA:=X.UCB); (* Daten eintragen *)
+// 	UCB(DATA:=X.UCB); (* enter data *)
 // 03:	(* ADD DATA *)
 // 	X.UCB.D_STRING := DT_TO_STRF(DTI:=X.DTI,MS:=0,FMT:=FMT,LANG:=0);
 // 	X.UCB.D_HEAD := id;
 // 	X.UCB.D_MODE := 1;
-// 	UCB(DATA:=X.UCB); (* Daten eintragen *)
+// 	UCB(DATA:=X.UCB); (* enter data *)
 // 	delta_last := X.DTI;
 // 04:	(* ADD DATA REQ *)
 // 	IF DELTA <> UDINT#0 THEN
@@ -847,19 +847,19 @@ END_FUNCTION_BLOCK
 // 	_debug_enable : BOOL := TRUE;*)
 // END_VAR
 //
-// (* neue Filenamen speichern *)
+// (* store new file name *)
 // IF X.NEW_FILE_RTRIG AND ftrig_old = FALSE THEN
 // 	UCBD.D_HEAD := 1;
 // 	UCBD.D_MODE := 1;
 // 	UCBD.D_STRING := X.NEW_FILE;
-// 	UCB(DATA:=UCBD); (* Daten eintragen *)
+// 	UCB(DATA:=UCBD); (* enter data *)
 // END_IF;
 // ftrig_old := X.NEW_FILE_RTRIG;
 //
 // CASE step OF
 //
 // 00:	IF UCBD.BUF_COUNT > 0 AND ftp_busy = FALSE THEN
-// 		UCBD.D_MODE := 12; (* Daten lesen und löschen *)
+// 		UCBD.D_MODE := 12; (* read and delete data *)
 // 		UCB(DATA:=UCBD);
 // 		filename := UCBD.D_STRING;
 // 		cnt := RETRY;
@@ -886,13 +886,13 @@ END_FUNCTION_BLOCK
 // 			(*########################################################################*)
 // 			step := 0;
 // 		ELSE
-// 			step := 20; (* pause nach error *)
+// 			step := 20; (* pause after error *)
 // 		END_IF;
 // 	END_IF;
 //
-// 20:	IF WT_1.Q THEN (* Wartezeit *)
+// 20:	IF WT_1.Q THEN (* wait time *)
 // 		cnt := cnt - 1;
-// 		IF RETRY = 0 THEN (* FTP Transfer unbegrenzt wiederholen *)
+// 		IF RETRY = 0 THEN (* repeat FTP transfer indefinitely *)
 // 			(*####################  DEBUG-MESSAGE  ###################################*)
 // 			(*IF _debug_enable THEN
 // 				LOG_CL.NEW_MSG := 'F_T_FTP: Auftrag unbegrenzt wiederholen /file: ~2';
@@ -900,7 +900,7 @@ END_FUNCTION_BLOCK
 // 				LOG_MSG();
 // 			END_IF;*)
 // 			(*########################################################################*)
-// 			step := 10; (* FTP Transfer wiederholen *)
+// 			step := 10; (* repeat FTP transfer *)
 // 		ELSIF cnt >= 0 THEN
 // 			(*####################  DEBUG-MESSAGE  ###################################*)
 // 			(*IF _debug_enable THEN
@@ -910,7 +910,7 @@ END_FUNCTION_BLOCK
 // 				LOG_MSG();
 // 			END_IF;*)
 // 			(*########################################################################*)
-// 			step := 10; (* FTP Transfer wiederholen *)
+// 			step := 10; (* repeat FTP transfer *)
 // 		ELSE
 // 			(*####################  DEBUG-MESSAGE  ###################################*)
 // 			(*IF _debug_enable THEN
@@ -919,7 +919,7 @@ END_FUNCTION_BLOCK
 // 				LOG_MSG();
 // 			END_IF;*)
 // 			(*########################################################################*)
-// 			step := 0; (* FTP Auftrag verwerfen *)
+// 			step := 0; (* discard FTP job *)
 // 		END_IF;
 // 	END_IF;
 //
@@ -943,15 +943,15 @@ END_FUNCTION_BLOCK
 // 	BUSY=> ftp_busy
 // 	);
 //
-// (* Fehlerauswertung *)
+// (* error evaluation *)
 // IF FTP_CLIENT.ERROR_T <> BYTE#0 THEN
 // 	ERROR_C := FTP_CLIENT.ERROR_C;
 // 	ERROR_T := FTP_CLIENT.ERROR_T;
 // ELSIF UCBD.BUF_DATA_LOST > UDINT#0 THEN
-// 	ERROR_C := DWORD#2; (* Fehler: Bufferüberlauf - Datenmenge reduzieren *)
+// 	ERROR_C := DWORD#2; (* error: buffer overflow - reduce amount of data *)
 // 	ERROR_T := BYTE#6; 	(* Type: Buffer *)
 // ELSIF UCBD.BUF_USED_MAX > USINT#90 THEN
-// 	ERROR_C := DWORD#1; (* Warnung: Buffer auslastung > 90% *)
+// 	ERROR_C := DWORD#1; (* warning: buffer utilization > 90% *)
 // 	ERROR_T := BYTE#6;	(* Type: Buffer *)
 // ELSE
 // 	ERROR_C := DWORD#0;
@@ -1000,19 +1000,19 @@ END_FUNCTION_BLOCK
 // 	_debug_enable : BOOL := TRUE;*)
 // END_VAR
 //
-// (* neue Filenamen speichern *)
+// (* store new file name *)
 // IF X.NEW_FILE_RTRIG AND ftrig_old = FALSE THEN
 // 	UCBD.D_HEAD := 1;
 // 	UCBD.D_MODE := 1;
 // 	UCBD.D_STRING := X.NEW_FILE;
-// 	UCB(DATA:=UCBD); (* Daten eintragen *)
+// 	UCB(DATA:=UCBD); (* enter data *)
 // END_IF;
 // ftrig_old := X.NEW_FILE_RTRIG;
 //
 // CASE step OF
 //
 // 00:	IF UCBD.BUF_COUNT > 0 AND smtp_busy = FALSE THEN
-// 		UCBD.D_MODE := 12; (* Daten lesen und löschen *)
+// 		UCBD.D_MODE := 12; (* read and delete data *)
 // 		UCB(DATA:=UCBD);
 // 		files := UCBD.D_STRING;
 // 		IF FILE_DELETE THEN
@@ -1042,13 +1042,13 @@ END_FUNCTION_BLOCK
 // 			(*########################################################################*)
 // 			step := 0;
 // 		ELSE
-// 			step := 20; (* pause nach error *)
+// 			step := 20; (* pause after error *)
 // 		END_IF;
 // 	END_IF;
 //
-// 20:	IF WT_1.Q THEN (* Wartezeit *)
+// 20:	IF WT_1.Q THEN (* wait time *)
 // 		cnt := cnt - 1;
-// 		IF RETRY = 0 THEN (* Transfer unbegrenzt wiederholen *)
+// 		IF RETRY = 0 THEN (* repeat transfer indefinitely *)
 // 			(*####################  DEBUG-MESSAGE  ###################################*)
 // 			(*IF _debug_enable THEN
 // 				LOG_CL.NEW_MSG := 'F_T_SMTP: Auftrag unbegrenzt wiederholen /file: ~2';
@@ -1056,7 +1056,7 @@ END_FUNCTION_BLOCK
 // 				LOG_MSG();
 // 			END_IF;*)
 // 			(*########################################################################*)
-// 			step := 10; (* Transfer wiederholen *)
+// 			step := 10; (* repeat transfer *)
 // 		ELSIF cnt >= 0 THEN
 // 			(*####################  DEBUG-MESSAGE  ###################################*)
 // 			(*IF _debug_enable THEN
@@ -1066,7 +1066,7 @@ END_FUNCTION_BLOCK
 // 				LOG_MSG();
 // 			END_IF;*)
 // 			(*########################################################################*)
-// 			step := 10; (* Transfer wiederholen *)
+// 			step := 10; (* repeat transfer *)
 // 		ELSE
 // 			(*####################  DEBUG-MESSAGE  ###################################*)
 // 			(*IF _debug_enable THEN
@@ -1075,7 +1075,7 @@ END_FUNCTION_BLOCK
 // 				LOG_MSG();
 // 			END_IF;*)
 // 			(*########################################################################*)
-// 			step := 0; (* Auftrag verwerfen *)
+// 			step := 0; (* discard job *)
 // 		END_IF;
 // 	END_IF;
 //
@@ -1101,15 +1101,15 @@ END_FUNCTION_BLOCK
 // 	BUSY=> smtp_busy
 // 	);
 //
-// (* Fehlerauswertung *)
+// (* error evaluation *)
 // IF SMTP_CLIENT.ERROR_T <> BYTE#0 THEN
 // 	ERROR_C := SMTP_CLIENT.ERROR_C;
 // 	ERROR_T := SMTP_CLIENT.ERROR_T;
 // ELSIF UCBD.BUF_DATA_LOST > UDINT#0 THEN
-// 	ERROR_C := DWORD#2; (* Fehler: Bufferüberlauf - Datenmenge reduzieren *)
+// 	ERROR_C := DWORD#2; (* error: buffer overflow - reduce amount of data *)
 // 	ERROR_T := BYTE#6; 	(* Type: Buffer *)
 // ELSIF UCBD.BUF_USED_MAX > USINT#90 THEN
-// 	ERROR_C := DWORD#1; (* Warnung: Buffer auslastung > 90% *)
+// 	ERROR_C := DWORD#1; (* warning: buffer utilization > 90% *)
 // 	ERROR_T := BYTE#6;	(* Type: Buffer *)
 // ELSE
 // 	ERROR_C := DWORD#0;
@@ -1140,17 +1140,17 @@ END_FUNCTION_BLOCK
 //
 // 01:	(* ADD INFO *)
 // 	X.ID_MAX := X.ID_MAX + USINT#1;
-// 	id := WORD#16#0201; (* Quelltype REAL , Zieltype STRING *)
+// 	id := WORD#16#0201; (* source type REAL, target type STRING *)
 // 02:	(* ADD HEADER *)
 // 	X.UCB.D_STRING := COLUMN;
 // 	X.UCB.D_HEAD := id;
 // 	X.UCB.D_MODE := 1;
-// 	UCB(DATA:=X.UCB); (* Daten eintragen *)
+// 	UCB(DATA:=X.UCB); (* enter data *)
 // 03:	(* ADD DATA *)
 // 	X.UCB.D_STRING := REAL_TO_STRF(IN:=value_last,N:=N,D:=D);
 // 	X.UCB.D_HEAD := id;
 // 	X.UCB.D_MODE := 1;
-// 	UCB(DATA:=X.UCB); (* Daten eintragen *)
+// 	UCB(DATA:=X.UCB); (* enter data *)
 // 	delta_last := value_last;
 // 04:	(* ADD DATA REQ *)
 // 	IF DELTA <> 0.0 THEN
@@ -1186,8 +1186,8 @@ END_FUNCTION_BLOCK
 //
 // 	01:	(* ADD INFO *)
 // 		X.ID_MAX := X.ID_MAX + USINT#1;
-// 		id := WORD#16#0201; (* Quelltype REAL , Zieltype STRING *)
-// 		(* automatisch Namen vergeben *)
+// 		id := WORD#16#0201; (* source type REAL, target type STRING *)
+// 		(* assign name automatically *)
 // 		IF LEN(R_ARRAY[idx].COLUMN) = 0 THEN
 // 			R_ARRAY[idx].COLUMN := CONCAT('Spalte_',USINT_TO_STRING(X.ID_MAX));
 // 		END_IF;
@@ -1195,12 +1195,12 @@ END_FUNCTION_BLOCK
 // 		X.UCB.D_STRING := R_ARRAY[idx].COLUMN;
 // 		X.UCB.D_HEAD := id;
 // 		X.UCB.D_MODE := 1;
-// 		UCB(DATA:=X.UCB); (* Daten eintragen *)
+// 		UCB(DATA:=X.UCB); (* enter data *)
 // 	03:	(* ADD DATA *)
 // 		X.UCB.D_STRING := REAL_TO_STRF(IN:=R_ARRAY[idx]._value_last,N:=N,D:=D);
 // 		X.UCB.D_HEAD := id;
 // 		X.UCB.D_MODE := 1;
-// 		UCB(DATA:=X.UCB); (* Daten eintragen *)
+// 		UCB(DATA:=X.UCB); (* enter data *)
 // 		R_ARRAY[idx]._delta_last := R_ARRAY[idx]._value_last;
 // 	04:	(* ADD DATA REQ *)
 // 		IF R_ARRAY[idx].DELTA <> 0.0 THEN
@@ -1264,13 +1264,13 @@ END_FUNCTION_BLOCK
 // 	*)
 // END_VAR
 //
-// X.DTI := DTI; (* Datum / Zeit eintragen *)
+// X.DTI := DTI; (* enter date / time *)
 // X.CLOCK_TRIG := DTI <> dti_last;
 // dti_last := DTI;
 // trig_auto := FALSE;
-// IF X.CLOCK_TRIG THEN (* Impuls in jeder Sekunde *)
-// 	fn := DT_TO_STRF(DTI, 0, FILENAME, 0); (* automatische Dateinamen generierung *)
-// 	IF TRIG_T >= T#1000ms THEN (* automatischer Trigger *)
+// IF X.CLOCK_TRIG THEN (* pulse every second *)
+// 	fn := DT_TO_STRF(DTI, 0, FILENAME, 0); (* automatic file name generation *)
+// 	IF TRIG_T >= T#1000ms THEN (* automatic trigger *)
 // 		trig_auto := DT_TO_UDINT(DTI) MOD (TIME_TO_UDINT(TRIG_T) / UDINT#1000) = UDINT#0;
 // 	END_IF;
 // END_IF;
@@ -1280,10 +1280,10 @@ END_FUNCTION_BLOCK
 // 00:	IF ENABLE THEN
 // 		aw_enable := AUTO_CLOSE >= T#5s;
 // 		wd_time := SEL(X.LOAD_TIME_MAX > T#0s, T#5ms,X.LOAD_TIME_MAX);
-// 		fn_last := fn; (* aktuellen Dateinnamen speichern *)
-// 		IF X.ID_MAX = USINT#0 THEN (* nur einmal nach Satellitenbausteinen scannen *)
+// 		fn_last := fn; (* store current file name *)
+// 		IF X.ID_MAX = USINT#0 THEN (* scan for satellite blocks only once *)
 // 			X.ADD_COM := 01; (* ADD INFO *)
-// 			X.STORE_TYPE := BYTE#2; (* CSV-Modus *)
+// 			X.STORE_TYPE := BYTE#2; (* CSV mode *)
 // 		END_IF;
 // 		step_1 := 10;
 //
@@ -1307,18 +1307,18 @@ END_FUNCTION_BLOCK
 // 		X.ADD_COM := 02; (* ADD HEADER *)
 // 	END_IF;
 //
-// 	X.UCB.D_MODE := 1; (* Dateinamen als String ablegen *)
-// 	UCB(DATA:=X.UCB); (* Daten eintragen *)
+// 	X.UCB.D_MODE := 1; (* store file name as string *)
+// 	UCB(DATA:=X.UCB); (* enter data *)
 // 	step_1 := 30;
 //
-// 30:	(* LOG-Trigger verarbeiten *)
+// 30:	(* process LOG trigger *)
 // 	trig_tmp := (TRIG_M AND NOT trig_m_last) OR trig_auto OR X.ADD_DATA_REQ;
 //
-// 	IF ENABLE = FALSE OR fn <> fn_last THEN (* ENABLE = 0 oder neuen Dateinamen -> Log Stop *)
-// 		trig_stored := trig_tmp; (* aktuellen Triggerpuls speichern *)
+// 	IF ENABLE = FALSE OR fn <> fn_last THEN (* ENABLE = 0 or new file name -> log stop *)
+// 		trig_stored := trig_tmp; (* store current trigger pulse *)
 // 		X.UCB.D_HEAD := WORD#16#EE00;
 // 		X.UCB.D_MODE := 1;
-// 		UCB(DATA:=X.UCB); (* Element schreiben *)
+// 		UCB(DATA:=X.UCB); (* write element *)
 // 		X.ADD_COM := 00;
 // 		step_1 := 00;
 //
@@ -1331,7 +1331,7 @@ END_FUNCTION_BLOCK
 // 		(* -----------------------------------------------------------------*)
 //
 // 	ELSIF ENABLE THEN
-// 		IF trig_tmp OR trig_stored THEN (* manueller, automatischer oder externer Trigger *)
+// 		IF trig_tmp OR trig_stored THEN (* manual, automatic or external trigger *)
 // 			trig_stored := FALSE;
 // 			X.ADD_COM := 03; (* ADD DATA *)
 // 			SAVE_DATA.TRIG_CNT := SAVE_DATA.TRIG_CNT + UDINT#1;
@@ -1349,16 +1349,16 @@ END_FUNCTION_BLOCK
 // 	END_IF;
 //
 // END_CASE;
-// X.ADD_DATA_REQ := FALSE; (* externe Anforderung rücksetzen *)
+// X.ADD_DATA_REQ := FALSE; (* reset external request *)
 //
 // (* ##################################### *)
 //
 // CASE step_2 OF
 //
 // 00:	aw_ton(IN:= idx > 0 AND aw_enable, PT:= AUTO_CLOSE); (* AutoWrite Timer *)
-// 	IF aw_ton.Q THEN (* Zeitgesteuertes Datenschreiben *)
+// 	IF aw_ton.Q THEN (* time-controlled data writing *)
 // 		aw_aktiv := TRUE;
-// 		step_2 := 10; (* Daten schreiben *)
+// 		step_2 := 10; (* write data *)
 // 		(* ---------------- Debug-Message -----------------------*)
 // 		(*IF _debug_enable THEN
 // 			LOG_CL.NEW_MSG := 'FILE_CSV2 - AutoWrite: [~2]';
@@ -1373,18 +1373,18 @@ END_FUNCTION_BLOCK
 // 		WHILE X.UCB.BUF_COUNT > 0 AND step_2 = 0 AND wd_ton.Q = FALSE DO
 //
 // 			X.UCB.D_MODE := 10;
-// 			UCB(DATA:=X.UCB); (* Element lesen , aber noch nicht entfernen *)
-// 			IF X.UCB.D_HEAD > WORD#16#F000 THEN (* F301 oder F201 *)
+// 			UCB(DATA:=X.UCB); (* read element, but do not remove it yet *)
+// 			IF X.UCB.D_HEAD > WORD#16#F000 THEN (* F301 or F201 *)
 // 				X.UCB.D_MODE := 11;
-// 				UCB(DATA:=X.UCB); (* Element entfernen *)
+// 				UCB(DATA:=X.UCB); (* remove element *)
 //
 // 				FSD.MODE := WORD_TO_BYTE(SHR(SHL(X.UCB.D_HEAD,4),12)); (* 0X00 -> 000X = 3 create + write / 2 open + write *)
-// 				FSD.OFFSET := UDINT#0; (* Start bei Dateianfang *)
-// 				FSD.FILENAME := X.UCB.D_STRING; (* Dateiname *)
+// 				FSD.OFFSET := UDINT#0; (* start at beginning of file *)
+// 				FSD.FILENAME := X.UCB.D_STRING; (* file name *)
 // 				PT.SIZE := UINT#0;
-// 				SAVE_DATA.FN_REM := FSD.FILENAME; (* aktuellen Dateinamen remanent sichern *)
+// 				SAVE_DATA.FN_REM := FSD.FILENAME; (* save current file name as retained *)
 //
-// 				IF FSD.MODE = BYTE#3 THEN	(* Datei neu anlegen -> dann zähler reset *)
+// 				IF FSD.MODE = BYTE#3 THEN	(* create new file -> then reset counter *)
 // 					SAVE_DATA.TRIG_CNT := UDINT#0;
 // 				END_IF;
 //
@@ -1403,13 +1403,13 @@ END_FUNCTION_BLOCK
 //
 // 			ELSIF X.UCB.D_HEAD = WORD#16#EE00 THEN (* LOG_STOP Command *)
 // 				X.UCB.D_MODE := 11;
-// 				UCB(DATA:=X.UCB); (* Element entfernen *)
+// 				UCB(DATA:=X.UCB); (* remove element *)
 // 				log_stop := TRUE;
-// 				step_2 := 10; (* Daten schreiben *)
+// 				step_2 := 10; (* write data *)
 //
-// 			ELSIF idx + X.UCB.D_SIZE + 2 < SIZEOF(PT.BUFFER) THEN (* bufferplatz vorhanden *)
+// 			ELSIF idx + X.UCB.D_SIZE + 2 < SIZEOF(PT.BUFFER) THEN (* buffer space available *)
 // 				X.UCB.D_MODE := 11;
-// 				UCB(DATA:=X.UCB); (* Element entfernen *)
+// 				UCB(DATA:=X.UCB); (* remove element *)
 // 				(* ---------------- Debug-Message -----------------------*)
 // 				(*IF _debug_enable THEN
 // 					LOG_CL.NEW_MSG := 'FILE_CSV2 - BUF: TXT [~1],Pos [~2], [~3]';
@@ -1422,7 +1422,7 @@ END_FUNCTION_BLOCK
 // 				_STRING_TO_BUFFER(STR:=X.UCB.D_STRING, POS:=idx, PT:=REF(PT.BUFFER), SIZE:=SIZEOF(PT.BUFFER));
 // 				idx := idx + LEN(X.UCB.D_STRING);
 // 				n := n + USINT#1;
-// 				IF n = X.ID_MAX THEN (* letztes Element einer Zeile *)
+// 				IF n = X.ID_MAX THEN (* last element of a line *)
 // 					n := USINT#0;
 // 					PT.BUFFER[idx] := BYTE#16#0D;
 // 					idx := idx + 1;
@@ -1432,17 +1432,17 @@ END_FUNCTION_BLOCK
 // 				END_IF;
 // 				idx := idx + 1;
 // 				X.NEW_FILE_SIZE := total_bytes + INT_TO_UDINT(idx);
-// 			ELSE (* kein Platz vorhanden *)
-// 				step_2 := 10; (* Daten schreiben *)
+// 			ELSE (* no space available *)
+// 				step_2 := 10; (* write data *)
 // 			END_IF;
 // 			wd_ton();
 // 		END_WHILE;
 // 	END_IF;
 //
-// 10:	IF idx > 0 THEN (* Daten schreiben *)
+// 10:	IF idx > 0 THEN (* write data *)
 // 		FSD.MODE := BYTE#2; (* File_Open_Exist + File_Write *)
-// 		FSD.OFFSET := UDINT#4294967294; (* 16#FFFF_FFFE ->Spezialcode: Daten automatisch an Dateiende anhängen *)
-// 		PT.SIZE := INT_TO_UINT(idx); (* Datenlänge eintragen *)
+// 		FSD.OFFSET := UDINT#4294967294; (* 16#FFFF_FFFE -> special code: automatically append data to end of file *)
+// 		PT.SIZE := INT_TO_UINT(idx); (* enter data length *)
 // 		idx := 0;
 // 		(* ---------------- Debug-Message -----------------------*)
 // 		(*IF _debug_enable THEN
@@ -1461,7 +1461,7 @@ END_FUNCTION_BLOCK
 // 		X.NEW_FILE_SIZE := total_bytes + INT_TO_UDINT(idx);
 // 		IF log_stop OR aw_aktiv THEN
 // 			aw_aktiv := FALSE;
-// 			FSD.MODE := BYTE#5; (* Datei schliessen *)
+// 			FSD.MODE := BYTE#5; (* close file *)
 // 			(* ---------------- Debug-Message -----------------------*)
 // 			(*IF _debug_enable THEN
 // 				LOG_CL.NEW_MSG := 'FILE_CSV2 - Close: [~2]';
@@ -1473,11 +1473,11 @@ END_FUNCTION_BLOCK
 // 		step_2 := 30;
 // 	END_IF;
 //
-// 30:	IF FSD.MODE = BYTE#0 THEN (* Befehl beendet ? *)
+// 30:	IF FSD.MODE = BYTE#0 THEN (* command finished? *)
 // 		IF log_stop THEN
 // 			X.NEW_FILE_RTRIG := TRUE;
 // 			log_stop := FALSE;
-// 			SAVE_DATA.FN_REM := ''; (* remanenten Dateinamen löschen *)
+// 			SAVE_DATA.FN_REM := ''; (* clear retained file name *)
 // 		END_IF;
 // 		step_2 := 00;
 // 	END_IF;
@@ -1485,15 +1485,15 @@ END_FUNCTION_BLOCK
 // END_CASE;
 //
 // FS(FSD:=FSD,PT:=PT); (* FILE_SERVER *)
-// (* Fehlerauswertung *)
+// (* error evaluation *)
 // IF FSD.ERROR <> BYTE#0 THEN
 // 	ERROR_C := BYTE_TO_DWORD(FSD.ERROR);
 // 	ERROR_T := BYTE#1;
 // ELSIF X.UCB.BUF_DATA_LOST > UDINT#0 THEN
-// 	ERROR_C := DWORD#2; (* Fehler: Bufferüberlauf - Datenmenge reduzieren *)
+// 	ERROR_C := DWORD#2; (* error: buffer overflow - reduce amount of data *)
 // 	ERROR_T := BYTE#6; 	(* Type: Buffer *)
 // ELSIF X.UCB.BUF_USED_MAX > USINT#90 THEN
-// 	ERROR_C := DWORD#1; (* Warnung: Buffer auslastung > 90% *)
+// 	ERROR_C := DWORD#1; (* warning: buffer utilization > 90% *)
 // 	ERROR_T := BYTE#6;	(* Type: Buffer *)
 // ELSE
 // 	ERROR_C := DWORD#0;
@@ -1560,13 +1560,13 @@ END_FUNCTION_BLOCK
 //
 // END_VAR
 //
-// X.DTI := DTI; (* Datum / Zeit eintragen *)
+// X.DTI := DTI; (* enter date / time *)
 // X.CLOCK_TRIG := DTI <> dti_last;
 // dti_last := DTI;
 // trig_auto := FALSE;
-// IF X.CLOCK_TRIG THEN (* Impuls in jeder Sekunde *)
-// 	fn := DT_TO_STRF(DTI, 0, FILENAME, 0); (* automatische Dateinamen generierung *)
-// 	IF TRIG_T >= T#1000ms THEN (* automatischer Trigger *)
+// IF X.CLOCK_TRIG THEN (* pulse every second *)
+// 	fn := DT_TO_STRF(DTI, 0, FILENAME, 0); (* automatic file name generation *)
+// 	IF TRIG_T >= T#1000ms THEN (* automatic trigger *)
 // 		trig_auto := DT_TO_UDINT(DTI) MOD (TIME_TO_UDINT(TRIG_T) / UDINT#1000) = UDINT#0;
 // 	END_IF;
 // END_IF;
@@ -1576,10 +1576,10 @@ END_FUNCTION_BLOCK
 // 00:	IF ENABLE THEN
 // 		aw_enable := AUTO_CLOSE >= T#5s;
 // 		wd_time := SEL(X.LOAD_TIME_MAX > T#0s, T#5ms,X.LOAD_TIME_MAX);
-// 		fn_last := fn; (* aktuellen Dateinnamen speichern *)
-// 		IF X.ID_MAX = USINT#0 THEN (* nur einmal nach Satellitenbausteinen scannen *)
+// 		fn_last := fn; (* store current file name *)
+// 		IF X.ID_MAX = USINT#0 THEN (* scan for satellite blocks only once *)
 // 			X.ADD_COM := 01; (* ADD INFO *)
-// 			X.STORE_TYPE := BYTE#4; (* HTML-Modus *)
+// 			X.STORE_TYPE := BYTE#4; (* HTML mode *)
 // 		END_IF;
 // 		step_1 := 10;
 //
@@ -1603,18 +1603,18 @@ END_FUNCTION_BLOCK
 // 		X.ADD_COM := 02; (* ADD HEADER *)
 // 	END_IF;
 //
-// 	X.UCB.D_MODE := 1; (* Dateinamen als String ablegen *)
-// 	UCB(DATA:=X.UCB); (* Daten eintragen *)
+// 	X.UCB.D_MODE := 1; (* store file name as string *)
+// 	UCB(DATA:=X.UCB); (* enter data *)
 // 	step_1 := 30;
 //
-// 30:	(* LOG-Trigger verarbeiten *)
+// 30:	(* process LOG trigger *)
 // 	trig_tmp := (TRIG_M AND NOT trig_m_last) OR trig_auto OR X.ADD_DATA_REQ;
 //
-// 	IF ENABLE = FALSE OR fn <> fn_last THEN (* ENABLE = 0 oder neuen Dateinamen -> Log Stop *)
-// 		trig_stored := trig_tmp; (* aktuellen Triggerpuls speichern *)
+// 	IF ENABLE = FALSE OR fn <> fn_last THEN (* ENABLE = 0 or new file name -> log stop *)
+// 		trig_stored := trig_tmp; (* store current trigger pulse *)
 // 		X.UCB.D_HEAD := WORD#16#EE00;
 // 		X.UCB.D_MODE := 1;
-// 		UCB(DATA:=X.UCB); (* Element schreiben *)
+// 		UCB(DATA:=X.UCB); (* write element *)
 // 		X.ADD_COM := 00;
 // 		step_1 := 00;
 //
@@ -1627,7 +1627,7 @@ END_FUNCTION_BLOCK
 // 		(* -----------------------------------------------------------------*)
 //
 // 	ELSIF ENABLE THEN
-// 		IF trig_tmp OR trig_stored THEN (* manueller, automatischer oder externer Trigger *)
+// 		IF trig_tmp OR trig_stored THEN (* manual, automatic or external trigger *)
 // 			trig_stored := FALSE;
 // 			X.ADD_COM := 03; (* ADD DATA *)
 // 			SAVE_DATA.TRIG_CNT := SAVE_DATA.TRIG_CNT + UDINT#1;
@@ -1645,16 +1645,16 @@ END_FUNCTION_BLOCK
 // 	END_IF;
 //
 // END_CASE;
-// X.ADD_DATA_REQ := FALSE; (* externe Anforderung rücksetzen *)
+// X.ADD_DATA_REQ := FALSE; (* reset external request *)
 //
 // (* ##################################### *)
 //
 // CASE step_2 OF
 //
 // 00:	aw_ton(IN:= idx > 0 AND aw_enable , PT:= AUTO_CLOSE); (* AutoWrite Timer *)
-// 	IF aw_ton.Q THEN (* Zeitgesteuertes Datenschreiben *)
+// 	IF aw_ton.Q THEN (* time-controlled data writing *)
 // 		aw_aktiv := TRUE;
-// 		step_2 := 10; (* Daten schreiben *)
+// 		step_2 := 10; (* write data *)
 // 		(* ---------------- Debug-Message -----------------------*)
 // 		(*IF _debug_enable THEN
 // 			LOG_CL.NEW_MSG := 'FILE_HTML2 - AutoWrite: [~2]';
@@ -1669,31 +1669,31 @@ END_FUNCTION_BLOCK
 // 		WHILE X.UCB.BUF_COUNT > 0 AND step_2 = 0 AND wd_ton.Q = FALSE DO
 //
 // 			X.UCB.D_MODE := 10;
-// 			UCB(DATA:=X.UCB); (* Element lesen , aber noch nicht entfernen *)
+// 			UCB(DATA:=X.UCB); (* read element, but do not remove it yet *)
 //
-// 			IF X.UCB.D_HEAD > WORD#16#F000 THEN (* F301 oder F201 *)
+// 			IF X.UCB.D_HEAD > WORD#16#F000 THEN (* F301 or F201 *)
 //
 // 				str := CONCAT('<html><body><table ',HTML_TABLE);
 // 		        		str := CONCAT(str,'><caption>');
 // 		        		str := CONCAT(str,HTML_CAPTION);
 // 		        		str := CONCAT(str,'</caption>');
 //
-// 				IF idx + LEN(str) < SIZEOF(PT.BUFFER) THEN (* Platz für Element vorhanden ? *)
+// 				IF idx + LEN(str) < SIZEOF(PT.BUFFER) THEN (* space for element available? *)
 //
 // 					FSD.MODE := WORD_TO_BYTE(SHR(SHL(X.UCB.D_HEAD,4),12)); (* 0X00 -> 000X = 3 create + write / 2 open + write *)
-// 					FSD.OFFSET := UDINT#0; (* Start bei Dateianfang *)
-// 					FSD.FILENAME := X.UCB.D_STRING; (* Dateiname *)
+// 					FSD.OFFSET := UDINT#0; (* start at beginning of file *)
+// 					FSD.FILENAME := X.UCB.D_STRING; (* file name *)
 // 					PT.SIZE := UINT#0;
-// 					SAVE_DATA.FN_REM := FSD.FILENAME; (* aktuellen Dateinamen remanent sichern *)
+// 					SAVE_DATA.FN_REM := FSD.FILENAME; (* save current file name as retained *)
 //
 // 					X.NEW_FILE := FSD.FILENAME;
 // 					X.NEW_FILE_SIZE := UDINT#0;
 // 					X.NEW_FILE_RTRIG := FALSE;
 // 					step_2 := 20;
 //
-// 					(* Headerdaten schreiben *)
+// 					(* write header data *)
 // 					IF FSD.MODE = BYTE#3 THEN
-// 						SAVE_DATA.TRIG_CNT := UDINT#0; (* Datei neu anlegen -> dann zähler reset *)
+// 						SAVE_DATA.TRIG_CNT := UDINT#0; (* create new file -> then reset counter *)
 // 						SAVE_DATA.COLOR := FALSE;
 // 						SAVE_DATA.HEAD := FALSE;
 //
@@ -1703,7 +1703,7 @@ END_FUNCTION_BLOCK
 // 					END_IF;
 //
 // 					X.UCB.D_MODE := 11;
-// 					UCB(DATA:=X.UCB); (* Element entfernen *)
+// 					UCB(DATA:=X.UCB); (* remove element *)
 //
 // 					(* ---------------- Debug-Message -----------------------*)
 // 					(*IF _debug_enable THEN
@@ -1719,18 +1719,18 @@ END_FUNCTION_BLOCK
 //
 // 				str := '</table></body></html>';
 //
-// 				IF idx + LEN(str) < SIZEOF(PT.BUFFER) THEN (* Platz für Element vorhanden ? *)
+// 				IF idx + LEN(str) < SIZEOF(PT.BUFFER) THEN (* space for element available? *)
 //
 // 					_STRING_TO_BUFFER(STR:=str, POS:=idx, PT:=REF(PT.BUFFER), SIZE:=SIZEOF(PT.BUFFER));
 // 					idx := idx + LEN(str);
 // 					log_stop := TRUE;
-// 					step_2 := 10; (* Daten schreiben *)
+// 					step_2 := 10; (* write data *)
 //
 // 					X.UCB.D_MODE := 11;
-// 					UCB(DATA:=X.UCB); (* Element entfernen *)
+// 					UCB(DATA:=X.UCB); (* remove element *)
 // 				END_IF;
 //
-// 			ELSIF idx + LEN(X.UCB.D_STRING) + 120 < SIZEOF(PT.BUFFER) THEN (* Platz für Element vorhanden ? *)
+// 			ELSIF idx + LEN(X.UCB.D_STRING) + 120 < SIZEOF(PT.BUFFER) THEN (* space for element available? *)
 //
 // 				(* ---------------- Debug-Message -----------------------*)
 // 				(*IF _debug_enable THEN
@@ -1777,20 +1777,20 @@ END_FUNCTION_BLOCK
 // 				X.NEW_FILE_SIZE := total_bytes + INT_TO_UDINT(idx);
 //
 // 				X.UCB.D_MODE := 11;
-// 				UCB(DATA:=X.UCB); (* Element entfernen *)
+// 				UCB(DATA:=X.UCB); (* remove element *)
 //
-// 			ELSE (* kein Platz vorhanden *)
-// 				step_2 := 10; (* Daten schreiben *)
+// 			ELSE (* no space available *)
+// 				step_2 := 10; (* write data *)
 //
 // 			END_IF;
 // 			wd_ton();
 // 		END_WHILE;
 // 	END_IF;
 //
-// 10:	IF idx > 0 THEN (* Daten schreiben *)
+// 10:	IF idx > 0 THEN (* write data *)
 // 		FSD.MODE := BYTE#2; (* File_Open_Exist + File_Write *)
-// 		FSD.OFFSET := UDINT#4294967294; (* 16#FFFF_FFFE ->Spezialcode: Daten automatisch an Dateiende anhängen *)
-// 		PT.SIZE := INT_TO_UINT(idx); (* Datenlänge eintragen *)
+// 		FSD.OFFSET := UDINT#4294967294; (* 16#FFFF_FFFE -> special code: automatically append data to end of file *)
+// 		PT.SIZE := INT_TO_UINT(idx); (* enter data length *)
 // 		idx := 0;
 // 		(* ---------------- Debug-Message -----------------------*)
 // 		(*IF _debug_enable THEN
@@ -1809,7 +1809,7 @@ END_FUNCTION_BLOCK
 // 		X.NEW_FILE_SIZE := total_bytes + INT_TO_UDINT(idx);
 // 		IF log_stop OR aw_aktiv THEN
 // 			aw_aktiv := FALSE;
-// 			FSD.MODE := BYTE#5; (* Datei schliessen *)
+// 			FSD.MODE := BYTE#5; (* close file *)
 // 			(* ---------------- Debug-Message -----------------------*)
 // 			(*IF _debug_enable THEN
 // 				LOG_CL.NEW_MSG := 'FILE_HTML2 - Close: [~2]';
@@ -1821,11 +1821,11 @@ END_FUNCTION_BLOCK
 // 		step_2 := 30;
 // 	END_IF;
 //
-// 30:	IF FSD.MODE = BYTE#0 THEN (* Datei schliessen beendet *)
+// 30:	IF FSD.MODE = BYTE#0 THEN (* file close finished *)
 // 		IF log_stop THEN
 // 			X.NEW_FILE_RTRIG := TRUE;
 // 			log_stop := FALSE;
-// 			SAVE_DATA.FN_REM := ''; (* remanenten Dateinamen löschen *)
+// 			SAVE_DATA.FN_REM := ''; (* clear retained file name *)
 // 		END_IF;
 // 		step_2 := 00;
 // 	END_IF;
@@ -1834,15 +1834,15 @@ END_FUNCTION_BLOCK
 //
 // FS(FSD:=FSD,PT:=PT); (* FILE_SERVER *)
 //
-// (* Fehlerauswertung *)
+// (* error evaluation *)
 // IF FSD.ERROR <> BYTE#0 THEN
 // 	ERROR_C := BYTE_TO_DWORD(FSD.ERROR);
 // 	ERROR_T := BYTE#1;
 // ELSIF X.UCB.BUF_DATA_LOST > UDINT#0 THEN
-// 	ERROR_C := DWORD#2; (* Fehler: Bufferüberlauf - Datenmenge reduzieren *)
+// 	ERROR_C := DWORD#2; (* error: buffer overflow - reduce amount of data *)
 // 	ERROR_T := BYTE#6; 	(* Type: Buffer *)
 // ELSIF X.UCB.BUF_USED_MAX > USINT#90 THEN
-// 	ERROR_C := DWORD#1; (* Warnung: Buffer auslastung > 90% *)
+// 	ERROR_C := DWORD#1; (* warning: buffer utilization > 90% *)
 // 	ERROR_T := BYTE#6;	(* Type: Buffer *)
 // ELSE
 // 	ERROR_C := DWORD#0;
@@ -1902,13 +1902,13 @@ END_FUNCTION_BLOCK
 // 	*)
 // END_VAR
 //
-// X.DTI := DTI; (* Datum / Zeit eintragen *)
+// X.DTI := DTI; (* enter date / time *)
 // X.CLOCK_TRIG := DTI <> dti_last;
 // dti_last := DTI;
 // trig_auto := FALSE;
-// IF X.CLOCK_TRIG THEN (* Impuls in jeder Sekunde *)
-// 	fn := DT_TO_STRF(DTI, 0, FILENAME, 0); (* automatische Dateinamen generierung *)
-// 	IF TRIG_T >= T#1000ms THEN (* automatischer Trigger *)
+// IF X.CLOCK_TRIG THEN (* pulse every second *)
+// 	fn := DT_TO_STRF(DTI, 0, FILENAME, 0); (* automatic file name generation *)
+// 	IF TRIG_T >= T#1000ms THEN (* automatic trigger *)
 // 		trig_auto := DT_TO_UDINT(DTI) MOD (TIME_TO_UDINT(TRIG_T) / UDINT#1000) = UDINT#0;
 // 	END_IF;
 // END_IF;
@@ -1918,10 +1918,10 @@ END_FUNCTION_BLOCK
 // 00:	IF ENABLE THEN
 // 		aw_enable := AUTO_CLOSE >= T#5s;
 // 		wd_time := SEL(X.LOAD_TIME_MAX > T#0s, T#5ms,X.LOAD_TIME_MAX);
-// 		fn_last := fn; (* aktuellen Dateinnamen speichern *)
-// 		IF X.ID_MAX = USINT#0 THEN (* nur einmal nach Satellitenbausteinen scannen *)
+// 		fn_last := fn; (* store current file name *)
+// 		IF X.ID_MAX = USINT#0 THEN (* scan for satellite blocks only once *)
 // 			X.ADD_COM := 01; (* ADD INFO *)
-// 			X.STORE_TYPE := BYTE#3; (* XML-Modus *)
+// 			X.STORE_TYPE := BYTE#3; (* XML mode *)
 // 		END_IF;
 // 		step_1 := 10;
 //
@@ -1945,18 +1945,18 @@ END_FUNCTION_BLOCK
 // 		X.ADD_COM := 02; (* ADD HEADER *)
 // 	END_IF;
 //
-// 	X.UCB.D_MODE := 1; (* Dateinamen als String ablegen *)
-// 	UCB(DATA:=X.UCB); (* Daten eintragen *)
+// 	X.UCB.D_MODE := 1; (* store file name as string *)
+// 	UCB(DATA:=X.UCB); (* enter data *)
 // 	step_1 := 30;
 //
-// 30:	(* LOG-Trigger verarbeiten *)
+// 30:	(* process LOG trigger *)
 // 	trig_tmp := (TRIG_M AND NOT trig_m_last) OR trig_auto OR X.ADD_DATA_REQ;
 //
-// 	IF ENABLE = FALSE OR fn <> fn_last THEN (* ENABLE = 0 oder neuen Dateinamen -> Log Stop *)
-// 		trig_stored := trig_tmp; (* aktuellen Triggerpuls speichern *)
+// 	IF ENABLE = FALSE OR fn <> fn_last THEN (* ENABLE = 0 or new file name -> log stop *)
+// 		trig_stored := trig_tmp; (* store current trigger pulse *)
 // 		X.UCB.D_HEAD := WORD#16#EE00;
 // 		X.UCB.D_MODE := 1;
-// 		UCB(DATA:=X.UCB); (* Element schreiben *)
+// 		UCB(DATA:=X.UCB); (* write element *)
 // 		X.ADD_COM := 00;
 // 		step_1 := 00;
 //
@@ -1969,7 +1969,7 @@ END_FUNCTION_BLOCK
 // 		(* -----------------------------------------------------------------*)
 //
 // 	ELSIF ENABLE THEN
-// 		IF trig_tmp OR trig_stored THEN (* manueller, automatischer oder externer Trigger *)
+// 		IF trig_tmp OR trig_stored THEN (* manual, automatic or external trigger *)
 // 			trig_stored := FALSE;
 // 			X.ADD_COM := 03; (* ADD DATA *)
 // 			SAVE_DATA.TRIG_CNT := SAVE_DATA.TRIG_CNT + UDINT#1;
@@ -1987,16 +1987,16 @@ END_FUNCTION_BLOCK
 // 	END_IF;
 //
 // END_CASE;
-// X.ADD_DATA_REQ := FALSE; (* externe Anforderung rücksetzen *)
+// X.ADD_DATA_REQ := FALSE; (* reset external request *)
 //
 // (* ##################################### *)
 //
 // CASE step_2 OF
 //
 // 00:	aw_ton(IN:= idx > 0 AND aw_enable , PT:= AUTO_CLOSE); (* AutoWrite Timer *)
-// 	IF aw_ton.Q THEN (* Zeitgesteuertes Datenschreiben *)
+// 	IF aw_ton.Q THEN (* time-controlled data writing *)
 // 		aw_aktiv := TRUE;
-// 		step_2 := 10; (* Daten schreiben *)
+// 		step_2 := 10; (* write data *)
 // 		(* ---------------- Debug-Message -----------------------*)
 // 		(*IF _debug_enable THEN
 // 			LOG_CL.NEW_MSG := 'FILE_XML2 - AutoWrite: [~2]';
@@ -2011,28 +2011,28 @@ END_FUNCTION_BLOCK
 // 		WHILE X.UCB.BUF_COUNT > 0 AND step_2 = 0 AND wd_ton.Q = FALSE DO
 //
 // 			X.UCB.D_MODE := 10;
-// 			UCB(DATA:=X.UCB); (* Element lesen , aber noch nicht entfernen *)
+// 			UCB(DATA:=X.UCB); (* read element, but do not remove it yet *)
 //
-// 			IF X.UCB.D_HEAD > WORD#16#F000 THEN (* F301 oder F201 *)
+// 			IF X.UCB.D_HEAD > WORD#16#F000 THEN (* F301 or F201 *)
 //
 // 				str := '<?xml version="1.0" encoding="UTF-8"?><table>';
 //
-// 				IF idx + LEN(str) < SIZEOF(PT.BUFFER) THEN (* Platz für Element vorhanden ? *)
+// 				IF idx + LEN(str) < SIZEOF(PT.BUFFER) THEN (* space for element available? *)
 //
 // 					FSD.MODE := WORD_TO_BYTE(SHR(SHL(X.UCB.D_HEAD,4),12)); (* 0X00 -> 000X = 3 create + write / 2 open + write *)
-// 					FSD.OFFSET := UDINT#0; (* Start bei Dateianfang *)
-// 					FSD.FILENAME := X.UCB.D_STRING; (* Dateiname *)
+// 					FSD.OFFSET := UDINT#0; (* start at beginning of file *)
+// 					FSD.FILENAME := X.UCB.D_STRING; (* file name *)
 // 					PT.SIZE := UINT#0;
-// 					SAVE_DATA.FN_REM := FSD.FILENAME; (* aktuellen Dateinamen remanent sichern *)
+// 					SAVE_DATA.FN_REM := FSD.FILENAME; (* save current file name as retained *)
 //
 // 					X.NEW_FILE := FSD.FILENAME;
 // 					X.NEW_FILE_SIZE := UDINT#0;
 // 					X.NEW_FILE_RTRIG := FALSE;
 // 					step_2 := 20;
 //
-// 					(* Headerdaten schreiben *)
+// 					(* write header data *)
 // 					IF FSD.MODE = BYTE#3 THEN
-// 						SAVE_DATA.TRIG_CNT := UDINT#0; (* Datei neu anlegen -> dann zähler reset *)
+// 						SAVE_DATA.TRIG_CNT := UDINT#0; (* create new file -> then reset counter *)
 //
 // 						_STRING_TO_BUFFER(STR:=str, POS:=idx, PT:=REF(PT.BUFFER), SIZE:=SIZEOF(PT.BUFFER));
 // 						idx := idx + LEN(str);
@@ -2040,7 +2040,7 @@ END_FUNCTION_BLOCK
 // 					END_IF;
 //
 // 					X.UCB.D_MODE := 11;
-// 					UCB(DATA:=X.UCB); (* Element entfernen *)
+// 					UCB(DATA:=X.UCB); (* remove element *)
 //
 // 					(* ---------------- Debug-Message -----------------------*)
 // 					(*IF _debug_enable THEN
@@ -2056,19 +2056,19 @@ END_FUNCTION_BLOCK
 //
 // 				str := '</table>';
 //
-// 				IF idx + LEN(str) < SIZEOF(PT.BUFFER) THEN (* Platz für Element vorhanden ? *)
+// 				IF idx + LEN(str) < SIZEOF(PT.BUFFER) THEN (* space for element available? *)
 //
 // 					_STRING_TO_BUFFER(STR:=str, POS:=idx, PT:=REF(PT.BUFFER), SIZE:=SIZEOF(PT.BUFFER));
 // 					idx := idx + LEN(str);
 // 					log_stop := TRUE;
-// 					step_2 := 10; (* Daten schreiben *)
+// 					step_2 := 10; (* write data *)
 //
 // 					X.UCB.D_MODE := 11;
-// 					UCB(DATA:=X.UCB); (* Element entfernen *)
+// 					UCB(DATA:=X.UCB); (* remove element *)
 //
 // 				END_IF;
 //
-// 			ELSIF idx + LEN(X.UCB.D_STRING) + 120 < SIZEOF(PT.BUFFER) THEN (* Platz für Element vorhanden ? *)
+// 			ELSIF idx + LEN(X.UCB.D_STRING) + 120 < SIZEOF(PT.BUFFER) THEN (* space for element available? *)
 //
 // 				(* ---------------- Debug-Message -----------------------*)
 // 				(*IF _debug_enable THEN
@@ -2106,19 +2106,19 @@ END_FUNCTION_BLOCK
 // 				X.NEW_FILE_SIZE := total_bytes + INT_TO_UDINT(idx);
 //
 // 				X.UCB.D_MODE := 11;
-// 				UCB(DATA:=X.UCB); (* Element entfernen *)
+// 				UCB(DATA:=X.UCB); (* remove element *)
 //
-// 			ELSE (* kein Platz vorhanden *)
-// 				step_2 := 10; (* Daten schreiben *)
+// 			ELSE (* no space available *)
+// 				step_2 := 10; (* write data *)
 // 			END_IF;
 // 			wd_ton();
 // 		END_WHILE;
 // 	END_IF;
 //
-// 10:	IF idx > 0 THEN (* Daten schreiben *)
+// 10:	IF idx > 0 THEN (* write data *)
 // 		FSD.MODE := BYTE#2; (* File_Open_Exist + File_Write *)
-// 		FSD.OFFSET := UDINT#4294967294; (* 16#FFFF_FFFE ->Spezialcode: Daten automatisch an Dateiende anhängen *)
-// 		PT.SIZE := INT_TO_UINT(idx); (* Datenlänge eintragen *)
+// 		FSD.OFFSET := UDINT#4294967294; (* 16#FFFF_FFFE -> special code: automatically append data to end of file *)
+// 		PT.SIZE := INT_TO_UINT(idx); (* enter data length *)
 // 		idx := 0;
 // 		(* ---------------- Debug-Message -----------------------*)
 // 		(*IF _debug_enable THEN
@@ -2137,7 +2137,7 @@ END_FUNCTION_BLOCK
 // 		X.NEW_FILE_SIZE := total_bytes + INT_TO_UDINT(idx);
 // 		IF log_stop OR aw_aktiv THEN
 // 			aw_aktiv := FALSE;
-// 			FSD.MODE := BYTE#5; (* Datei schliessen *)
+// 			FSD.MODE := BYTE#5; (* close file *)
 // 			(* ---------------- Debug-Message -----------------------*)
 // 			(*IF _debug_enable THEN
 // 				LOG_CL.NEW_MSG := 'FILE_XML2 - Close: [~2]';
@@ -2149,11 +2149,11 @@ END_FUNCTION_BLOCK
 // 		step_2 := 30;
 // 	END_IF;
 //
-// 30:	IF FSD.MODE = BYTE#0 THEN (* Datei schliessen beendet *)
+// 30:	IF FSD.MODE = BYTE#0 THEN (* file close finished *)
 // 		IF log_stop THEN
 // 			X.NEW_FILE_RTRIG := TRUE;
 // 			log_stop := FALSE;
-// 			SAVE_DATA.FN_REM := ''; (* remanenten Dateinamen löschen *)
+// 			SAVE_DATA.FN_REM := ''; (* clear retained file name *)
 // 		END_IF;
 // 		step_2 := 00;
 // 	END_IF;
@@ -2162,15 +2162,15 @@ END_FUNCTION_BLOCK
 //
 // FS(FSD:=FSD,PT:=PT); (* FILE_SERVER *)
 //
-// (* Fehlerauswertung *)
+// (* error evaluation *)
 // IF FSD.ERROR <> BYTE#0 THEN
 // 	ERROR_C := BYTE_TO_DWORD(FSD.ERROR);
 // 	ERROR_T := BYTE#1;
 // ELSIF X.UCB.BUF_DATA_LOST > UDINT#0 THEN
-// 	ERROR_C := DWORD#2; (* Fehler: Bufferüberlauf - Datenmenge reduzieren *)
+// 	ERROR_C := DWORD#2; (* error: buffer overflow - reduce amount of data *)
 // 	ERROR_T := BYTE#6; 	(* Type: Buffer *)
 // ELSIF X.UCB.BUF_USED_MAX > USINT#90 THEN
-// 	ERROR_C := DWORD#1; (* Warnung: Buffer auslastung > 90% *)
+// 	ERROR_C := DWORD#1; (* warning: buffer utilization > 90% *)
 // 	ERROR_T := BYTE#6;	(* Type: Buffer *)
 // ELSE
 // 	ERROR_C := DWORD#0;
@@ -2230,13 +2230,13 @@ END_FUNCTION_BLOCK
 // 	*)
 // END_VAR
 //
-// X.DTI := DTI; (* Datum / Zeit eintragen *)
+// X.DTI := DTI; (* enter date / time *)
 // X.CLOCK_TRIG := DTI <> dti_last;
 // dti_last := DTI;
 // trig_auto := FALSE;
-// IF X.CLOCK_TRIG THEN (* Impuls in jeder Sekunde *)
+// IF X.CLOCK_TRIG THEN (* pulse every second *)
 // 	del_start := DT_TO_UDINT(DTI) - del_dt > AUTO_DELETE AND AUTO_DELETE > UDINT#0;
-// 	IF TRIG_T >= T#1000ms THEN (* automatischer Trigger *)
+// 	IF TRIG_T >= T#1000ms THEN (* automatic trigger *)
 // 		trig_auto := DT_TO_UDINT(DTI) MOD (TIME_TO_UDINT(TRIG_T) / UDINT#1000) = UDINT#0;
 // 	END_IF;
 // END_IF;
@@ -2250,12 +2250,12 @@ END_FUNCTION_BLOCK
 // 		y.DNS_IP4 := DNS_IP4;
 // 		y.SQL_CON := TRUE;
 //
-// 		X.UCB.D_MODE := 99; (* Buffer reset - Alles löschen *)
+// 		X.UCB.D_MODE := 99; (* buffer reset - delete everything *)
 // 		UCB(DATA:=X.UCB);
 //
-// 		IF X.ID_MAX = USINT#0 THEN (* nur einmal nach Satellitenbausteinen scannen *)
+// 		IF X.ID_MAX = USINT#0 THEN (* scan for satellite blocks only once *)
 // 			X.ADD_COM := 01; (* ADD INFO *)
-// 			X.STORE_TYPE := BYTE#5; (* MySQL-Modus *)
+// 			X.STORE_TYPE := BYTE#5; (* MySQL mode *)
 // 		END_IF;
 //
 // 		step := 05;
@@ -2285,7 +2285,7 @@ END_FUNCTION_BLOCK
 // 			snd_text := CONCAT(snd_text,'` (`ID` BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY ,');
 // 			snd_text := CONCAT(snd_text,' store_timestamp TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP');
 // 		ELSIF n <= X.ID_MAX THEN
-// 			X.UCB.D_MODE := 12; (* Element lesen und löschen *)
+// 			X.UCB.D_MODE := 12; (* read and delete element *)
 // 			UCB(DATA:=X.UCB);
 // 			snd_text := CONCAT(', `',X.UCB.D_STRING);
 // 			CASE WORD_TO_INT(SHR(X.UCB.D_HEAD,8)) OF
@@ -2302,7 +2302,7 @@ END_FUNCTION_BLOCK
 // 			snd_size := idx + LEN(snd_text);
 // 			next_step := 40;
 // 		END_IF;
-// 		_STRING_TO_BUFFER(str:=snd_text,pos:=idx,pt:=REF(y.S_BUF.BUFFER),size:=SIZEOF(y.S_BUF.BUFFER)); (* String in puffer kopieren *)
+// 		_STRING_TO_BUFFER(str:=snd_text,pos:=idx,pt:=REF(y.S_BUF.BUFFER),size:=SIZEOF(y.S_BUF.BUFFER)); (* copy string into buffer *)
 // 		idx := idx + LEN(snd_text);
 // 		n := n + USINT#1;
 //
@@ -2333,7 +2333,7 @@ END_FUNCTION_BLOCK
 // 		(*########################################################################*)
 //
 //          (* INSERT INTO `tb_name` VALUES (CURRENT_TIMESTAMP,  "n1","n2") *)
-// 	ELSIF X.UCB.BUF_COUNT >= USINT_TO_INT(X.ID_MAX) AND step > 0 THEN (* Neue Datenreihe(n) vorhanden *)
+// 	ELSIF X.UCB.BUF_COUNT >= USINT_TO_INT(X.ID_MAX) AND step > 0 THEN (* new data row(s) available *)
 // 		idx := 5;
 // 		n := USINT#0;
 // 		sql_command := BYTE#0;
@@ -2342,7 +2342,7 @@ END_FUNCTION_BLOCK
 // 				snd_text := CONCAT('INSERT INTO `', TB_NAME);
 // 				snd_text := CONCAT(snd_text,'` VALUES (NULL, CURRENT_TIMESTAMP');
 // 			ELSIF n <= X.ID_MAX THEN
-// 				X.UCB.D_MODE := 12; (* Element lesen und löschen *)
+// 				X.UCB.D_MODE := 12; (* read and delete element *)
 // 				UCB(DATA:=X.UCB);
 // 				snd_text := CONCAT(', "',X.UCB.D_STRING);
 // 				snd_text := CONCAT(snd_text, '"');
@@ -2352,7 +2352,7 @@ END_FUNCTION_BLOCK
 // 				snd_size := idx + LEN(snd_text);
 // 				next_step := 40;
 // 			END_IF;
-// 			_STRING_TO_BUFFER(str:=snd_text,pos:=idx,pt:=REF(y.S_BUF.BUFFER),size:=SIZEOF(y.S_BUF.BUFFER)); (* String in puffer kopieren *)
+// 			_STRING_TO_BUFFER(str:=snd_text,pos:=idx,pt:=REF(y.S_BUF.BUFFER),size:=SIZEOF(y.S_BUF.BUFFER)); (* copy string into buffer *)
 // 			idx := idx + LEN(snd_text);
 // 			n := n + USINT#1;
 //
@@ -2366,10 +2366,10 @@ END_FUNCTION_BLOCK
 // 		END_WHILE;
 // 	END_IF;
 //
-// 	IF ENABLE THEN 	(* LOG-Trigger verarbeiten *)
+// 	IF ENABLE THEN 	(* process LOG trigger *)
 // 		trig_tmp := (TRIG_M AND NOT trig_m_last) OR trig_auto OR X.ADD_DATA_REQ;
 //
-// 		IF trig_tmp THEN (* manueller, automatischer oder externer Trigger *)
+// 		IF trig_tmp THEN (* manual, automatic or external trigger *)
 // 			X.ADD_COM := 03; (* ADD DATA *)
 // 			(* ---------------- Debug-Message -----------------------*)
 // 			(*IF _debug_enable THEN
@@ -2382,7 +2382,7 @@ END_FUNCTION_BLOCK
 // 			X.ADD_COM := 04;	(* ADD DATA REQ *)
 // 		END_IF;
 // 	ELSE
-// 		y.SQL_CON := FALSE; (* MySQL Verbindung beenden *)
+// 		y.SQL_CON := FALSE; (* close MySQL connection *)
 // 		step := 0;
 // 	END_IF;
 // 	X.ADD_DATA_REQ := FALSE;
@@ -2391,33 +2391,33 @@ END_FUNCTION_BLOCK
 //
 // 199:IF y.SQL_RCV_STATE = BYTE#1 THEN (* OK *)
 // 		step := next_step;
-// 	ELSIF y.SQL_RCV_STATE = BYTE#2 THEN  (* FEHLER *)
+// 	ELSIF y.SQL_RCV_STATE = BYTE#2 THEN  (* ERROR *)
 // 		step := 0;
 // 	END_IF;
 //
 // END_CASE;
 //
 // (* ########################## *)
-// (* SQL-Kommando ausführen *)
+// (* execute SQL command *)
 // IF sql_command > BYTE#0 THEN
 //
 // 	IF snd_size > 0 THEN
 // 		y.S_BUF.SIZE := INT_TO_UINT(snd_size);
 // 		snd_size := 0;
 // 	ELSE
-// 		_STRING_TO_BUFFER(str:=snd_text,pos:=5,pt:=REF(y.S_BUF.BUFFER),size:=SIZEOF(y.S_BUF.BUFFER)); (* String in puffer kopieren *)
+// 		_STRING_TO_BUFFER(str:=snd_text,pos:=5,pt:=REF(y.S_BUF.BUFFER),size:=SIZEOF(y.S_BUF.BUFFER)); (* copy string into buffer *)
 // 		y.S_BUF.SIZE := INT_TO_UINT(5 + LEN(snd_text));
 // 		snd_text := '';
 // 	END_IF;
 //
-// 	IF y.S_BUF.SIZE > SIZEOF(y.S_BUF.BUFFER) THEN (* buffer überlauf erkannt -> Abbruch *)
+// 	IF y.S_BUF.SIZE > SIZEOF(y.S_BUF.BUFFER) THEN (* buffer overflow detected -> abort *)
 // 		y.S_BUF.SIZE := 0;
 // 		sql_command := BYTE#0;
-// 		y.SQL_CON := FALSE; (* MySQL Verbindung beenden *)
-// 		step := 999; (* Dummy-Schritt *)
+// 		y.SQL_CON := FALSE; (* close MySQL connection *)
+// 		step := 999; (* dummy step *)
 // 	ELSE
 //
-// 		i2 := UINT_TO_INT(y.S_BUF.SIZE) - 1; (* alle " zeichen mit ' ersetzen *)
+// 		i2 := UINT_TO_INT(y.S_BUF.SIZE) - 1; (* replace all " characters with ' *)
 // 		FOR i1 := 5 TO i2 DO
 // 			IF y.S_BUF.BUFFER[i1] = BYTE#34 THEN
 // 				y.S_BUF.BUFFER[i1] := BYTE#39;
@@ -2435,19 +2435,19 @@ END_FUNCTION_BLOCK
 //
 // MYSQL_CONTROL(COM:= y, INFO:=SQL_INFO);
 //
-// (* Fehlerauswertung *)
-// IF step = 999 THEN	(* Buffer überlauf *)
-// 	ERROR_C := DWORD#3; (* Netzwerkbuffer überlauf *)
+// (* error evaluation *)
+// IF step = 999 THEN	(* buffer overflow *)
+// 	ERROR_C := DWORD#3; (* network buffer overflow *)
 // 	ERROR_T := BYTE#6; 	(* Type: Buffer *)
 // ELSIF y.ERROR_T > BYTE#0 THEN	(* SQL Error *)
 // 	ERROR_C := y.ERROR_C;
 // 	ERROR_T := y.ERROR_T;
 // 	step := 0;
 // ELSIF X.UCB.BUF_DATA_LOST > UDINT#0 THEN
-// 	ERROR_C := DWORD#2; (* Fehler: Bufferüberlauf - Datenmenge reduzieren *)
+// 	ERROR_C := DWORD#2; (* error: buffer overflow - reduce amount of data *)
 // 	ERROR_T := BYTE#6; 	(* Type: Buffer *)
 // ELSIF X.UCB.BUF_USED_MAX > USINT#90 THEN
-// 	ERROR_C := DWORD#1; (* Warnung: Buffer auslastung > 90% *)
+// 	ERROR_C := DWORD#1; (* warning: buffer utilization > 90% *)
 // 	ERROR_T := BYTE#6;	(* Type: Buffer *)
 // ELSE
 // 	ERROR_C := DWORD#0;
@@ -2482,7 +2482,7 @@ END_FUNCTION_BLOCK
 // END_VAR
 // VAR
 // 	UCB : UNI_CIRCULAR_BUFFER;
-// 	IP_C : IP_C; (* IP_Control Verwaltungsstruktur *)
+// 	IP_C : IP_C; (* IP_Control management structure *)
 // 	S_BUF : NETWORK_BUFFER;
 // 	R_BUF : NETWORK_BUFFER;
 // 	URL_DATA : url;
@@ -2507,12 +2507,12 @@ END_FUNCTION_BLOCK
 // 	*)
 // END_VAR
 //
-// X.DTI := DTI; (* Datum / Zeit eintragen *)
+// X.DTI := DTI; (* enter date / time *)
 // X.CLOCK_TRIG := DTI <> dti_last;
 // dti_last := DTI;
 // trig_auto := FALSE;
-// IF X.CLOCK_TRIG THEN (* Impuls in jeder Sekunde *)
-// 	IF TRIG_T >= T#1000ms THEN (* automatischer Trigger *)
+// IF X.CLOCK_TRIG THEN (* pulse every second *)
+// 	IF TRIG_T >= T#1000ms THEN (* automatic trigger *)
 // 		trig_auto := DT_TO_UDINT(DTI) MOD (TIME_TO_UDINT(TRIG_T) / UDINT#1000) = UDINT#0;
 // 	END_IF;
 // END_IF;
@@ -2520,18 +2520,18 @@ END_FUNCTION_BLOCK
 // CASE step_1 OF
 //
 // 00:	IF ENABLE THEN
-// 		IF X.ID_MAX = USINT#0 THEN (* nur einmal nach Satellitenbausteinen scannen *)
+// 		IF X.ID_MAX = USINT#0 THEN (* scan for satellite blocks only once *)
 // 			X.ADD_COM := 01; (* ADD INFO *)
-// 			X.STORE_TYPE := BYTE#1; (* RRD-Modus *)
+// 			X.STORE_TYPE := BYTE#1; (* RRD mode *)
 // 		END_IF;
 //
 // 		ERROR_T := BYTE#0;
 // 		ERROR_C := DWORD#0;
 //
 // 		X.UCB.D_MODE := 99;
-// 		UCB(DATA:=X.UCB); (* Buffer löschen *)
+// 		UCB(DATA:=X.UCB); (* clear buffer *)
 //
-// 		URL_DATA:=STRING_TO_URL(STR:=URL,DEFAULT_PROTOCOL:='',DEFAULT_PATH:=''); (* URL zerlegen *)
+// 		URL_DATA:=STRING_TO_URL(STR:=URL,DEFAULT_PROTOCOL:='',DEFAULT_PATH:=''); (* split URL *)
 // 		sep_char := CHR_TO_STRING(SEP);
 // 		url_query := URL_DATA.QUERY;
 // 		step_1 := 30;
@@ -2546,7 +2546,7 @@ END_FUNCTION_BLOCK
 //
 // 	END_IF;
 //
-// 30:	(* LOG-Trigger verarbeiten *)
+// 30:	(* process LOG trigger *)
 // 	trig_tmp := (TRIG_M AND NOT trig_m_last) OR trig_auto OR X.ADD_DATA_REQ;
 //
 // 	IF ENABLE = FALSE THEN (* ENABLE = 0 -> Log Stop *)
@@ -2562,7 +2562,7 @@ END_FUNCTION_BLOCK
 // 		(* -----------------------------------------------------------------*)
 //
 // 	ELSIF ENABLE THEN
-// 		IF trig_tmp OR trig_stored THEN (* manueller, automatischer oder externer Trigger *)
+// 		IF trig_tmp OR trig_stored THEN (* manual, automatic or external trigger *)
 // 			trig_stored := FALSE;
 // 			X.ADD_COM := 03; (* ADD DATA *)
 // 			(* ---------------- Debug-Message -----------------------*)
@@ -2578,35 +2578,35 @@ END_FUNCTION_BLOCK
 // 	END_IF;
 //
 // END_CASE;
-// X.ADD_DATA_REQ := FALSE; (* externe Anforderung rücksetzen *)
+// X.ADD_DATA_REQ := FALSE; (* reset external request *)
 //
 // (* ##################################### *)
 //
 // CASE step_2 OF
 //
 // 00:	IF X.UCB.BUF_DATA_LOST > UDINT#0 THEN
-// 		ERROR_C := DWORD#2; (* Fehler: Bufferüberlauf - Datenmenge reduzieren *)
+// 		ERROR_C := DWORD#2; (* error: buffer overflow - reduce amount of data *)
 // 		ERROR_T := BYTE#6; 	(* Type: Buffer *)
 // 		step_2 := 100;
 // 	ELSIF X.UCB.BUF_USED_MAX > USINT#90 THEN
-// 		ERROR_C := DWORD#1; (* Warnung: Buffer auslastung > 90% *)
+// 		ERROR_C := DWORD#1; (* warning: buffer utilization > 90% *)
 // 		ERROR_T := BYTE#6;	(* Type: Buffer *)
 // 	END_IF;
 //
-// 	IF X.UCB.BUF_COUNT >= USINT_TO_INT(X.ID_MAX) THEN (* genug Einträge vorhanden *)
-// 		URL_DATA.QUERY := url_query; (* original Query wiederherstellen *)
+// 	IF X.UCB.BUF_COUNT >= USINT_TO_INT(X.ID_MAX) THEN (* enough entries available *)
+// 		URL_DATA.QUERY := url_query; (* restore original query *)
 // 		n := 1;
 // 		WHILE n <= USINT_TO_INT(X.ID_MAX) DO
-// 			X.UCB.D_MODE := 12; (* Element lesen und löschen *)
+// 			X.UCB.D_MODE := 12; (* read and delete element *)
 // 			UCB(DATA:=X.UCB);
-// 			IF n < USINT_TO_INT(X.ID_MAX) THEN (* Trennzeichen hinzufügen *)
+// 			IF n < USINT_TO_INT(X.ID_MAX) THEN (* add separator *)
 // 				X.UCB.D_STRING := CONCAT(X.UCB.D_STRING,sep_char);
 // 			END_IF;
 // 			IF LEN(X.UCB.D_STRING) + LEN(URL_DATA.QUERY) <= STRING_LENGTH THEN
-// 				URL_DATA.QUERY := CONCAT(URL_DATA.QUERY,X.UCB.D_STRING); (* Query mit LOG-Daten ergänzen *)
+// 				URL_DATA.QUERY := CONCAT(URL_DATA.QUERY,X.UCB.D_STRING); (* append LOG data to query *)
 // 				step_2 := 40;
 // 			ELSE
-// 				ERROR_T := BYTE#4; (* LOG-Daten können nicht in URL gepackt werden *)
+// 				ERROR_T := BYTE#4; (* LOG data cannot be packed into the URL *)
 // 				ERROR_C := DWORD#1;
 // 				step_2 := 100;
 // 			END_IF;
@@ -2617,7 +2617,7 @@ END_FUNCTION_BLOCK
 // 40:	IF DNS_CLIENT.DONE THEN
 // 		step_2 := 60;
 // 	ELSIF (DNS_CLIENT.ERROR > DWORD#0) THEN
-// 		ERROR_C := DNS_CLIENT.ERROR; (* Fehlerbehandlung *)
+// 		ERROR_C := DNS_CLIENT.ERROR; (* error handling *)
 // 		ERROR_T := BYTE#1;
 // 		step_2 := 100;
 // 	END_IF;
@@ -2630,7 +2630,7 @@ END_FUNCTION_BLOCK
 // 		END_IF;
 // 		step_2 := 100;
 //
-// 	ELSIF HTTP_GET.ERROR > DWORD#0 THEN (* Fehlerbehandlung *)
+// 	ELSIF HTTP_GET.ERROR > DWORD#0 THEN (* error handling *)
 // 		ERROR_C := HTTP_GET.ERROR;
 // 		ERROR_T := BYTE#2;
 // 		step_2 := 100;
@@ -2674,17 +2674,17 @@ END_FUNCTION_BLOCK
 //
 // 01:	(* ADD INFO *)
 // 	X.ID_MAX := X.ID_MAX + USINT#1;
-// 	id := WORD#16#0101; (* Quelltype STRING , Zieltype STRING *)
+// 	id := WORD#16#0101; (* source type STRING, target type STRING *)
 // 02:	(* ADD HEADER *)
 // 	X.UCB.D_STRING := COLUMN;
 // 	X.UCB.D_HEAD := id;
 // 	X.UCB.D_MODE := 1;
-// 	UCB(DATA:=X.UCB); (* Daten eintragen *)
+// 	UCB(DATA:=X.UCB); (* enter data *)
 // 03:	(* ADD DATA *)
 // 	X.UCB.D_STRING := str_last;
 // 	X.UCB.D_HEAD := id;
 // 	X.UCB.D_MODE := 1;
-// 	UCB(DATA:=X.UCB); (* Daten eintragen *)
+// 	UCB(DATA:=X.UCB); (* enter data *)
 // END_CASE;
 // str_last := STR;
 // END_FUNCTION_BLOCK
@@ -2692,7 +2692,7 @@ END_FUNCTION_BLOCK
 // Commented out for beedance: it uses CODE, which is commented out.
 // FUNCTION_BLOCK DNS_CLIENT
 // VAR_IN_OUT
-// 	IP_C : IP_C; (* IP_Control Verwaltungsstruktur *)
+// 	IP_C : IP_C; (* IP_Control management structure *)
 // 	S_BUF : NETWORK_BUFFER;
 // 	R_BUF : NETWORK_BUFFER;
 // END_VAR
@@ -2733,13 +2733,13 @@ END_FUNCTION_BLOCK
 //
 // CASE state OF
 //
-// 00:	IF ACTIVATE AND NOT activate_last THEN (* auf positive Flanke GET warten *)
+// 00:	IF ACTIVATE AND NOT activate_last THEN (* wait for rising edge on GET *)
 // 		DONE := FALSE;
 // 		ERROR := DWORD#0;
 // 		state := 5;
 // 	END_IF;
 //
-// 05:	IP4 := IP4_DECODE(str:=DOMAIN); (* prüfe ob domain schon eine IP4-Adresse ist *)
+// 05:	IP4 := IP4_DECODE(str:=DOMAIN); (* check whether domain is already an IP4 address *)
 // 	IF IP4 > DWORD#00 THEN
 // 		DONE := TRUE;
 // 		state := 0;
@@ -2753,7 +2753,7 @@ END_FUNCTION_BLOCK
 // 	ELSE
 // 		ip_state := BYTE#1;
 // 		ttl_last := DWORD#0;
-// 		domain_copy := DOMAIN; (* DOMAIN String sichern *)
+// 		domain_copy := DOMAIN; (* save DOMAIN string *)
 // 		state := 10;
 //         		(*####################  DEBUG-MESSAGE  ###################################*)
 //         		(*IF _debug_enable THEN
@@ -2763,9 +2763,9 @@ END_FUNCTION_BLOCK
 //         		(*########################################################################*)
 // 	END_IF;
 //
-// 10:	IF ip_state = BYTE#3 THEN (* Bei IP_Control anmelden *)
+// 10:	IF ip_state = BYTE#3 THEN (* register with IP_Control *)
 // 		url_length := LEN(domain_copy);
-// 		char_count := 17 + url_length; (* sendebuffer initialisieren *)
+// 		char_count := 17 + url_length; (* initialize send buffer *)
 // 		FOR i := 0 TO char_count DO
 // 			S_BUF.BUFFER[i] := BYTE#00;
 // 		END_FOR;
@@ -2773,34 +2773,34 @@ END_FUNCTION_BLOCK
 // 		S_BUF.BUFFER[01] := tid; (* Transaction ID lowbyte *)
 // 		S_BUF.BUFFER[02] := BYTE#16#01; (* Flags: highbyte *)
 // 		S_BUF.BUFFER[05] := BYTE#16#01; (* Questions: lowbyte *)
-// 		i := url_length + 12;	(* den servernamen von hinten nach vorne bearbeiten *)
+// 		i := url_length + 12;	(* process the server name from back to front *)
 // 		char_count := 0;
 // 		WHILE i > 12 DO
 // 			char := CODE(STR:=domain_copy,POS:=i - 12);
-// 			IF char = BYTE#46 THEN (* prüfe auf haupt/sub domänen namens-teiler "." *)
-// 				S_BUF.BUFFER[i] := INT_TO_BYTE(char_count); (* anstelle des teilers "." wird die länge des erkannten haupt/sub domänennames eingetragen *)
+// 			IF char = BYTE#46 THEN (* check for main/sub domain name separator "." *)
+// 				S_BUF.BUFFER[i] := INT_TO_BYTE(char_count); (* instead of the separator "." the length of the detected main/sub domain name is entered *)
 // 				char_count := 0;
 // 			ELSE
-// 				S_BUF.BUFFER[i] := char; (* char in buffer eintragen *)
-// 				char_count := char_count + 1; (* anzahl char zählen *)
+// 				S_BUF.BUFFER[i] := char; (* enter char into buffer *)
+// 				char_count := char_count + 1; (* count number of chars *)
 // 			END_IF;
 // 			i := i - 1;
 // 		END_WHILE;
-// 		S_BUF.BUFFER[i] := INT_TO_BYTE(char_count); (* längenangabe des ganz linken (ersten) domänennamens eintragen *)
-// 		i := url_length + 15; (* position hinter dem servernamen *)
+// 		S_BUF.BUFFER[i] := INT_TO_BYTE(char_count); (* enter the length of the leftmost (first) domain name *)
+// 		i := url_length + 15; (* position after the server name *)
 // 		S_BUF.BUFFER[i] := BYTE#01; (* Type: A Hostaddress lowbyte *)
 // 		i := i + 2;
 // 		S_BUF.BUFFER[i] := BYTE#01; (* Class: IN lowbyte *)
 // 		i := i + 1;
-// 		(* IP Datenverkehr einrichten *)
-// 		IP_C.C_PORT := WORD#53; (* Portnummer eintragen *)
-// 		IP_C.C_IP := IP4_DNS; (* IP eintragen *)
-// 		IP_C.C_MODE := BYTE#1; (* Mode: UDP+AKTIV+PORT+IP *)
-// 		IP_C.C_ENABLE := TRUE; (* Verbindungsaufbau freigeben *)
-// 		IP_C.TIME_RESET := TRUE; (* Zeitueberwachung rücksetzen *)
-// 		IP_C.R_OBSERVE  := TRUE; (* Datenempfang ueberwachen *)
-// 		S_BUF.SIZE := INT_TO_UINT(i); (* sendelänge eintragen *)
-// 		R_BUF.SIZE := UINT#0; (* Empfangslänge rücksetzen *)
+// 		(* set up IP data traffic *)
+// 		IP_C.C_PORT := WORD#53; (* enter port number *)
+// 		IP_C.C_IP := IP4_DNS; (* enter IP *)
+// 		IP_C.C_MODE := BYTE#1; (* Mode: UDP+ACTIVE+PORT+IP *)
+// 		IP_C.C_ENABLE := TRUE; (* enable connection setup *)
+// 		IP_C.TIME_RESET := TRUE; (* reset timeout monitoring *)
+// 		IP_C.R_OBSERVE  := TRUE; (* monitor data reception *)
+// 		S_BUF.SIZE := INT_TO_UINT(i); (* enter send length *)
+// 		R_BUF.SIZE := UINT#0; (* reset receive length *)
 // 		state := 30;
 //
 //         		(*####################  DEBUG-MESSAGE  ###################################*)
@@ -2822,11 +2822,11 @@ END_FUNCTION_BLOCK
 //         		END_IF;*)
 //         		(*########################################################################*)
 //
-// 	ELSIF (S_BUF.SIZE = UINT#0) AND (tid = R_BUF.BUFFER[1]) AND (R_BUF.SIZE >= INT_TO_UINT(34 + url_length)) THEN	(* prüfe ob antwort telegramm die richtige Transaction-ID und mindestlänge hat *)
-// 		ERROR := BYTE_TO_DWORD(R_BUF.BUFFER[3] AND BYTE#2#0000_1111); (* prüfe Return code der Flags. 4 bits *)
+// 	ELSIF (S_BUF.SIZE = UINT#0) AND (tid = R_BUF.BUFFER[1]) AND (R_BUF.SIZE >= INT_TO_UINT(34 + url_length)) THEN	(* check whether the response telegram has the correct transaction ID and minimum length *)
+// 		ERROR := BYTE_TO_DWORD(R_BUF.BUFFER[3] AND BYTE#2#0000_1111); (* check return code of the flags. 4 bits *)
 // 		IF ERROR = DWORD#00 THEN
-// 			anc := R_BUF.BUFFER[7]; (* Anzahl der Answer-RR *)
-// 			IP_C.R_OBSERVE := FALSE; (* Datenempfang ueberwachen *)
+// 			anc := R_BUF.BUFFER[7]; (* number of answer RRs *)
+// 			IP_C.R_OBSERVE := FALSE; (* monitor data reception *)
 // 			state := 40;
 // 		ELSE
 // 			state := 99;
@@ -2838,13 +2838,13 @@ END_FUNCTION_BLOCK
 // 		WHILE i < R_BUF.SIZE DO
 // 			x := R_BUF.BUFFER[i];
 // 			IF rr_stop = FALSE THEN
-// 				IF x > BYTE#63 THEN (* zeiger auf namen *)
+// 				IF x > BYTE#63 THEN (* pointer to name *)
 // 					i := i + 1;
 // 					rr_stop := TRUE;
-// 				ELSIF x= BYTE#0 THEN (* namens ende *)
+// 				ELSIF x= BYTE#0 THEN (* end of name *)
 // 					rr_stop := TRUE;
 // 				ELSE
-// 					i := i + x; (* namen *)
+// 					i := i + x; (* names *)
 // 				END_IF;
 // 				i := i + 1;
 // 			ELSE
@@ -2853,20 +2853,20 @@ END_FUNCTION_BLOCK
 // 					i := i + 4;
 // 					ttl_tmp := DWORD_OF_BYTE(R_BUF.BUFFER[i],R_BUF.BUFFER[i+1],R_BUF.BUFFER[i+2],R_BUF.BUFFER[i+3]); (* Time to live *)
 // 					i := i + 6;
-// 					IF ttl_tmp >= ttl_last THEN (* TTL ist länger *)
+// 					IF ttl_tmp >= ttl_last THEN (* TTL is longer *)
 // 						ttl_last := ttl_tmp;
-// 						IP4 := DWORD_OF_BYTE(R_BUF.BUFFER[i],R_BUF.BUFFER[i+1],R_BUF.BUFFER[i+2],R_BUF.BUFFER[i+3]); (* IP-Adresse *)
+// 						IP4 := DWORD_OF_BYTE(R_BUF.BUFFER[i],R_BUF.BUFFER[i+1],R_BUF.BUFFER[i+2],R_BUF.BUFFER[i+3]); (* IP address *)
 // 					END_IF;
 // 					i := i + 4;
 // 				ELSE
 // 					i := i + 9;
-// 					i := i + R_BUF.BUFFER[i] + 1; (* offset zu nächsten Block *)
+// 					i := i + R_BUF.BUFFER[i] + 1; (* offset to next block *)
 // 				END_IF;
 // 				EXIT;
 // 			END_IF;
 // 		END_WHILE;
 // 	ELSE
-// 		IF IP4 > DWORD#0 THEN (* gültige RR mit IP gefunden *)
+// 		IF IP4 > DWORD#0 THEN (* valid RR with IP found *)
 // 			DONE := TRUE;
 //             		(*####################  DEBUG-MESSAGE  ###################################*)
 //             		(*IF _debug_enable THEN
@@ -2875,18 +2875,18 @@ END_FUNCTION_BLOCK
 //             		END_IF;*)
 //             		(*########################################################################*)
 // 		ELSE
-// 			ERROR := DWORD#255; (* Daten fehlerhaft - keine IP-Adresse vorhanden *)
+// 			ERROR := DWORD#255; (* data faulty - no IP address present *)
 // 		END_IF;
 // 		state := 99;
 // 	END_IF;
 //
-// 99:	R_BUF.SIZE := UINT#0; (* Empfangslänge rücksetzen *)
-// 	ip_state := BYTE#4; (* Abmelden *)
+// 99:	R_BUF.SIZE := UINT#0; (* reset receive length *)
+// 	ip_state := BYTE#4; (* unregister *)
 // 	state := 00;
 //
 // END_CASE;
 //
-// activate_last := ACTIVATE; (* letzten Status sichern zur Flankenerkennung *)
+// activate_last := ACTIVATE; (* save last status for edge detection *)
 // IP_FIFO(FIFO:=IP_C.FIFO,STATE:=ip_state,ID:=ip_id); (* IP_FIFO *)
 //
 // (*----------------------------------------------------------------------------------------------------------------*)
@@ -2930,8 +2930,8 @@ END_FUNCTION_BLOCK
 // 010	NotZone,			Name not contained in zone.
 // 255	Timeout				No Response
 //
-// beispiel einer DNS Request von google.at
-// ein request mit 3 Answer-Blocks
+// example of a DNS request for google.at
+// a request with 3 answer blocks
 //
 // Domain Name System (response)
 // [Request In: 3]
@@ -2988,7 +2988,7 @@ END_FUNCTION_BLOCK
 // Commented out for beedance: it uses BUFFER_TO_STRING, which is commented out.
 // FUNCTION_BLOCK DNS_DYN
 // VAR_IN_OUT
-// 	IP_C : IP_C; (* IP_Control Verwaltungsstruktur *)
+// 	IP_C : IP_C; (* IP_Control management structure *)
 // 	S_BUF : NETWORK_BUFFER;
 // 	R_BUF : NETWORK_BUFFER;
 // END_VAR
@@ -3035,25 +3035,25 @@ END_FUNCTION_BLOCK
 // 		ELSE (* selfhost.de *)
 // 			s2 := 'http://carol.selfhost.de/nic/update?hostname=1';
 // 		END_IF;
-// 		IF IP4 > 0 THEN (* parametrierte IP verwenden *)
+// 		IF IP4 > 0 THEN (* use configured IP *)
 // 			s1 := CONCAT('&myip=',IP4_TO_STRING(IP4));
 // 			s2 := CONCAT(s2,s1);
 // 		END_IF;
-// 		URL_DATA:=STRING_TO_URL(STR:=s2, DEFAULT_PROTOCOL:='', DEFAULT_PATH:=''); (* URL for DNS UND HTTP-GET *)
+// 		URL_DATA:=STRING_TO_URL(STR:=s2, DEFAULT_PROTOCOL:='', DEFAULT_PATH:=''); (* URL for DNS AND HTTP-GET *)
 // 		s1 := CONCAT(USERNAME,':');
 // 		s1 := CONCAT(s1,PASSWORD); (* BASE64 Encode Text *)
 // 	END_IF;
 //
 // 20:	IF DNS_CLIENT.DONE THEN (* DNS_CLIENT *)
 // 			state := 40;
-// 	ELSIF (DNS_CLIENT.ERROR > DWORD#00) THEN (* Fehlerbehandlung *)
+// 	ELSIF (DNS_CLIENT.ERROR > DWORD#00) THEN (* error handling *)
 // 		ERROR_C := DNS_CLIENT.ERROR;
 // 		ERROR_T := BYTE#01;
 // 		BUSY := FALSE;
 // 		state := 0;
 // 	END_IF;
 //
-// 40: IF base64_done THEN (* BASE64 Encode beendet ? *)
+// 40: IF base64_done THEN (* BASE64 encode finished? *)
 // 		s1 := CONCAT('Authorization: Basic ',s2);
 // 		s1 := CONCAT(s1,'$0D$0AUser-Agent: x$0D$0A');
 // 		URL_DATA.HEADER := s1;
@@ -3080,7 +3080,7 @@ END_FUNCTION_BLOCK
 // 				DONE := FALSE;
 // 			END_IF;
 // 		END_IF;
-// 	ELSIF (HTTP_GET.ERROR > DWORD#00) THEN (* Fehlerbehandlung *)
+// 	ELSIF (HTTP_GET.ERROR > DWORD#00) THEN (* error handling *)
 // 		ERROR_C := HTTP_GET.ERROR;
 // 		ERROR_T := BYTE#02;
 // 		BUSY := FALSE;
@@ -3100,7 +3100,7 @@ END_FUNCTION_BLOCK
 // Commented out for beedance: it uses CODE, which is commented out.
 // FUNCTION_BLOCK DNS_REV_CLIENT
 // VAR_IN_OUT
-// 	IP_C : IP_C; (* IP_Control Verwaltungsstruktur *)
+// 	IP_C : IP_C; (* IP_Control management structure *)
 // 	S_BUF : NETWORK_BUFFER;
 // 	R_BUF : NETWORK_BUFFER;
 // END_VAR
@@ -3133,10 +3133,10 @@ END_FUNCTION_BLOCK
 // (* Domain Name System (query) *)
 //
 // CASE state OF
-// 00: (* auf positive Flanke GET warten *)
+// 00: (* wait for rising edge on GET *)
 // 	IF ACTIVATE AND NOT activate_last THEN
 // 		ERROR := DWORD#0;
-// 		ip4_copy := ip4; (* IP4 sichern *)
+// 		ip4_copy := ip4; (* save IP4 *)
 // 		ip_state := BYTE#1;
 // 		DOMAIN := '';
 // 		DONE := FALSE;
@@ -3151,11 +3151,11 @@ END_FUNCTION_BLOCK
 // 		state := 10;
 // 	END_IF;
 //
-// 10: (* Bei IP_Control anmelden *)
+// 10: (* register with IP_Control *)
 // 	IF ip_state = BYTE#3 THEN
 // 		dl := LEN(d);
 //
-// 		(* sendebuffer initialisieren *)
+// 		(* initialize send buffer *)
 // 		char_count := 17 + dl;
 // 		FOR i := 0 TO char_count DO
 // 			S_BUF.BUFFER[i] := BYTE#00;
@@ -3166,51 +3166,51 @@ END_FUNCTION_BLOCK
 // 		S_BUF.BUFFER[02] := BYTE#16#01; (* Flags: highbyte *)
 // 		S_BUF.BUFFER[05] := BYTE#16#01; (* Questions: lowbyte *)
 //
-// 		(* den servernamen von hinten nach vorne bearbeiten *)
+// 		(* process the server name from back to front *)
 // 		i := dl + 12;
 // 		char_count := 0;
 //
 // 		WHILE i > 12 DO
 // 			char := CODE(STR:=d,POS:=i - 12);
 //
-// 			(* prüfe auf haupt/sub domänen namens-teiler "." *)
+// 			(* check for main/sub domain name separator "." *)
 // 			IF char = BYTE#46 THEN
-// 				(* anstelle des teilers "." wird die länge des erkannten haupt/sub domänennames eingetragen *)
+// 				(* instead of the separator "." the length of the detected main/sub domain name is entered *)
 // 				S_BUF.BUFFER[i] := INT_TO_BYTE(char_count);
 // 				char_count := 0;
 // 			ELSE
-// 				S_BUF.BUFFER[i] := char; (* char in buffer eintragen *)
-// 				char_count := char_count + 1; (* anzahl char zählen *)
+// 				S_BUF.BUFFER[i] := char; (* enter char into buffer *)
+// 				char_count := char_count + 1; (* count number of chars *)
 // 			END_IF;
 // 			i := i - 1;
 // 		END_WHILE;
 //
-// 		S_BUF.BUFFER[i] := INT_TO_BYTE(char_count); (* längenangabe des ganz linken (ersten) domänennamens eintragen *)
-// 		i := dl + 15; (* position hinter dem servernamen *)
+// 		S_BUF.BUFFER[i] := INT_TO_BYTE(char_count); (* enter the length of the leftmost (first) domain name *)
+// 		i := dl + 15; (* position after the server name *)
 // 		S_BUF.BUFFER[i] := BYTE#12; (* Type: PTR (Domain name pointer) lowbyte *)
 // 		i := i + 2;
 // 		S_BUF.BUFFER[i] := BYTE#01; (* Class: IN lowbyte *)
 // 		i := i + 1;
 //
-// 		(* IP Datenverkehr einrichten *)
-// 		IP_C.C_PORT := WORD#53; (* Portnummer eintragen *)
-// 		IP_C.C_IP := IP4_DNS; (* IP eintragen *)
-// 		IP_C.C_MODE := BYTE#1; (* Mode: UDP+AKTIV+PORT+IP *)
-// 		IP_C.C_ENABLE := TRUE; (* Verbindungsaufbau freigeben *)
-// 		IP_C.TIME_RESET := TRUE; (* Zeitueberwachung rücksetzen *)
-// 		IP_C.R_OBSERVE  := TRUE; (* Datenempfang ueberwachen *)
-// 		S_BUF.SIZE := INT_TO_UINT(i); (* sendelänge eintragen *)
-// 		R_BUF.SIZE := UINT#0; (* Empfangslänge rücksetzen *)
+// 		(* set up IP data traffic *)
+// 		IP_C.C_PORT := WORD#53; (* enter port number *)
+// 		IP_C.C_IP := IP4_DNS; (* enter IP *)
+// 		IP_C.C_MODE := BYTE#1; (* Mode: UDP+ACTIVE+PORT+IP *)
+// 		IP_C.C_ENABLE := TRUE; (* enable connection setup *)
+// 		IP_C.TIME_RESET := TRUE; (* reset timeout monitoring *)
+// 		IP_C.R_OBSERVE  := TRUE; (* monitor data reception *)
+// 		S_BUF.SIZE := INT_TO_UINT(i); (* enter send length *)
+// 		R_BUF.SIZE := UINT#0; (* reset receive length *)
 // 		state := 30;
 // 	END_IF;
 //
 // 30:
 // 	IF IP_C.ERROR <> DWORD#00 THEN
 // 		ERROR := IP_C.ERROR;
-// 	(* prüfe ob antwort telegramm die richtige Transaction-ID und mindestlänge hat *)
+// 	(* check whether the response telegram has the correct transaction ID and minimum length *)
 // 	ELSIF (S_BUF.SIZE = UINT#0) AND (tid = R_BUF.BUFFER[1]) AND (R_BUF.SIZE >= INT_TO_UINT(i+12)) THEN
 //
-// 		(* prüfe Return code der Flags. 4 bits *)
+// 		(* check return code of the flags. 4 bits *)
 // 		ERROR := BYTE_TO_DWORD(R_BUF.BUFFER[3] AND BYTE#2#0000_1111);
 //
 // 		IF ERROR = DWORD#00 THEN
@@ -3243,13 +3243,13 @@ END_FUNCTION_BLOCK
 // 	END_IF;
 //
 // 	IF state = 0 THEN
-// 		IP_C.R_OBSERVE := FALSE; (* Datenempfang ueberwachen *)
-// 		ip_state := BYTE#4; (* Abmelden *)
+// 		IP_C.R_OBSERVE := FALSE; (* monitor data reception *)
+// 		ip_state := BYTE#4; (* unregister *)
 // 	END_IF;
 //
 // END_CASE;
 //
-// activate_last := ACTIVATE; (* letzten Status sichern zur Flankenerkennung *)
+// activate_last := ACTIVATE; (* save last status for edge detection *)
 //
 // (* IP_FIFO *)
 // IP_FIFO(FIFO:=IP_C.FIFO,STATE:=ip_state,ID:=ip_id);
@@ -3377,16 +3377,16 @@ CASE step OF
 		IF FSD.FILE_OPEN AND (FSD.FILE_SIZE = 0 OR POS >= FSD.FILE_SIZE) THEN
 			ERROR := 255;
 			MODE := 0;
-		ELSIF POS < data_start OR POS > data_stop OR NOT FSD.FILE_OPEN THEN (* Daten lesen notwendig *)
+		ELSIF POS < data_start OR POS > data_stop OR NOT FSD.FILE_OPEN THEN (* reading data necessary *)
 			FSD.FILENAME := FILENAME;
 			FSD.MODE := 1; (* open + read *)
 			FSD.OFFSET := POS;
-			PT.SIZE := 65535; (* maximale anzahl lesen *);
+			PT.SIZE := 65535; (* read maximum number *);
 			data_start := 0;
 			data_stop := 0;
 			step := 10;
-		ELSE (* Daten sind im Buffer vorhanden *)
-			i := UDINT_TO_INT(POS - data_start); (* index berechnen *)
+		ELSE (* data is present in the buffer *)
+			i := UDINT_TO_INT(POS - data_start); (* calculate index *)
 			DATA := PT.BUFFER[i];
 			MODE := 0;
 			(* ---------------------- Debug-Message ----------------------------*)
@@ -3394,9 +3394,9 @@ CASE step OF
 		END_IF;
 	END_IF;
 
-10:	IF FSD.MODE = 0 THEN (* Befehl beendet *)
+10:	IF FSD.MODE = 0 THEN (* command finished *)
 		IF FSD.ERROR > 0 THEN
-			ERROR := FSD.ERROR; (* Fehler ausgeben *)
+			ERROR := FSD.ERROR; (* output error *)
 			MODE := 0;
 		ELSE
 			data_start := POS;
@@ -3460,9 +3460,9 @@ END_VAR
 VAR
 	buf_size : UDINT;
 	handle : UINT; (* Filehandle *)
-	read_max_length : UDINT;(* maximale Datenlänge *)
-	file_position : UDINT;(* aktueller Schreib/Lesezeiger *)
-	used_filename : STRING;(* aktueller Dateiname *)
+	read_max_length : UDINT;(* maximum data length *)
+	file_position : UDINT;(* current write/read pointer *)
+	used_filename : STRING;(* current file name *)
 	length_read : UDINT;
 	write_length : UDINT;
 	length_written : UDINT;
@@ -3492,7 +3492,7 @@ CASE step OF
 		(* ---------------------- Debug-Message ----------------------------*)
 		(* -----------------------------------------------------------------------------*)
 
-		(* Initialisierung *)
+		(* initialization *)
 		X.sNetId := '';
 		X.tTimeout := T#5s;
 		X.nPort := 10000; (* AMSPORT_R3_SYSSERV *)
@@ -3502,20 +3502,20 @@ CASE step OF
 		IF FSD.MODE = 4 THEN (* File_Remove *)
 			IF handle > 0 THEN
 				File_change := TRUE;
-				step := 32000; (* File_Close ausführen *)
+				step := 32000; (* execute File_Close *)
 			ELSE
-				step := 90; (* File_Remove ausführen *)
+				step := 90; (* execute File_Remove *)
 			END_IF;
 
 		ELSIF FSD.MODE = 5 THEN (* File_Close *)
-			step := 32000; (* File_Close ausführen *)
+			step := 32000; (* execute File_Close *)
 
 		ELSIF handle = 0 THEN (* MODE 1,2,3 *)
-			step := 100; (* File muss erst geöffnet werden *)
+			step := 100; (* file must be opened first *)
 
-		ELSE (* File ist geöffnet *)
-			IF used_filename = FSD.FILENAME AND FSD.MODE = last_mode THEN (* kein Moduswechsel ? *)
-				step := 200; (* ohne open prozedure weitermachen *)
+		ELSE (* file is open *)
+			IF used_filename = FSD.FILENAME AND FSD.MODE = last_mode THEN (* no mode change? *)
+				step := 200; (* continue without open procedure *)
 			ELSE
 				step := 32000;
 				File_change := TRUE;
@@ -3528,9 +3528,9 @@ CASE step OF
 	command := 7; (* File Remove *)
 	step := 95;
 
-095: (* File_Remove beendet *)
+095: (* File_Remove finished *)
 	IF command = 0 THEN
-		step := 30000; (* Beenden *)
+		step := 30000; (* exit *)
 	END_IF;
 (* ----------------------------------- *)
 
@@ -3543,15 +3543,15 @@ CASE step OF
 	command := 1; (* FileOpen *)
 	step := 105;
 
-105: (* File Open beendet *)
+105: (* file open finished *)
 	IF command = 0 THEN
 		IF error THEN
-			step := 30000; (* Beenden *)
+			step := 30000; (* exit *)
 		ELSE
-			(* Filedaten eintragen *)
+			(* enter file data *)
 			handle := open_handle;
 			used_filename := FSD.FILENAME;
-			file_position := UDINT#4294967295; (* 16#FFFF_FFFF -> maximal = unbekannt *)
+			file_position := UDINT#4294967295; (* 16#FFFF_FFFF -> maximum = unknown *)
 			last_mode := FSD.MODE;
 			step := 110;
 		END_IF;
@@ -3563,36 +3563,36 @@ CASE step OF
 	seek_mode := 2; (* SEEK_END - Seek from the end of file *)
 	step := 115;
 
-115: (* File Seek beendet *)
+115: (* file seek finished *)
 	IF command = 0 THEN
 		IF error THEN
-			step := 30000; (* Beenden *)
+			step := 30000; (* exit *)
 		ELSE
-			command := 6; (* File-Tell starten *)
+			command := 6; (* start file tell *)
 			step := 120;
 		END_IF;
 	END_IF;
 
-120: (* File Tell beendet *)
+120: (* file tell finished *)
 	IF command = 0 THEN
 		IF error THEN
-			step := 30000; (* Beenden *)
+			step := 30000; (* exit *)
 		ELSE
-			FSD.FILE_SIZE := tell_position; (* aktuelle Dateigroesse *)
+			FSD.FILE_SIZE := tell_position; (* current file size *)
 			FSD.FILE_OPEN := TRUE;
 			step := 200;
 		END_IF;
 	END_IF;
 
 200: (* File Seek *)
-	IF FSD.OFFSET = UDINT#4294967294 THEN (* 16#FFFF_FFFE -> Zeiger auf Dateiende stellen *)
+	IF FSD.OFFSET = UDINT#4294967294 THEN (* 16#FFFF_FFFE -> set pointer to end of file *)
 		command := 5; (* File-Seek *)
 		seek_position := FSD.FILE_SIZE;
 		seek_mode := 0; (* Seek from beginning of file *)
 		step := 210;
-	ELSIF FSD.OFFSET > FSD.FILE_SIZE THEN (* prüfe auf gültige offset-vorgabe *)
+	ELSIF FSD.OFFSET > FSD.FILE_SIZE THEN (* check for valid offset setting *)
 		error_code := 255;
-		step := 30000; (* Beenden *)
+		step := 30000; (* exit *)
 	ELSIF FSD.OFFSET <> file_position THEN
 		command := 5; (* File-Seek *)
 		seek_position := FSD.OFFSET;
@@ -3606,7 +3606,7 @@ CASE step OF
 	IF command = 0 THEN
 		file_position := seek_position;
 		IF error THEN
-			step := 30000; (* Beenden *)
+			step := 30000; (* exit *)
 		ELSE
 			step := 300;
 		END_IF;
@@ -3620,17 +3620,17 @@ CASE step OF
 	END_IF;
 
 400: (* File Read *)
-	IF UINT_TO_UDINT(PT.SIZE) > buf_size THEN (* Leselänge auf Buffergroesse begrenzen *)
+	IF UINT_TO_UDINT(PT.SIZE) > buf_size THEN (* limit read length to buffer size *)
 		read_max_length := buf_size;
 	ELSE
 		read_max_length := UINT_TO_UDINT(PT.SIZE);
 	END_IF;
 
 	IF read_max_length > buf_size THEN
-		read_max_length := buf_size;  (* Leselänge auf Buffergroesse begrenzen *)
+		read_max_length := buf_size;  (* limit read length to buffer size *)
 	END_IF;
 
-	(* Leselänge an Dateilänge anpassen *)
+	(* adjust read length to file length *)
 	IF file_position + read_max_length > FSD.FILE_SIZE THEN
 		read_max_length := FSD.FILE_SIZE - file_position;
 	END_IF;
@@ -3640,21 +3640,21 @@ CASE step OF
 		step := 410;
 	ELSE
 		PT.SIZE := UINT#0;
-		step := 30000; (* Beenden *)
+		step := 30000; (* exit *)
 	END_IF;
 
 410: (* File Read *)
 	IF command = 0 THEN
 		PT.SIZE := UDINT_TO_UINT(length_read);
 		IF NOT Error THEN
-			file_position := file_position + length_read; (* aktueller File_Position korrigieren *)
+			file_position := file_position + length_read; (* correct current File_Position *)
 			FSD.OFFSET := file_position;
 		END_IF;
-		step := 30000; (* Beenden *)
+		step := 30000; (* exit *)
 	END_IF;
 
 500: (* File Write *)
-	IF UINT_TO_UDINT(PT.SIZE) > buf_size THEN (* Schreiblänge auf Buffergroesse begrenzen *)
+	IF UINT_TO_UDINT(PT.SIZE) > buf_size THEN (* limit write length to buffer size *)
 		write_length := buf_size;
 	ELSE
 		write_length := UINT_TO_UDINT(PT.SIZE);
@@ -3664,24 +3664,24 @@ CASE step OF
 		command := 4; (* File_Write *)
 		step := 510;
 	ELSE
-		step := 30000; (* Beenden *)
+		step := 30000; (* exit *)
 	END_IF;
 
 510:
 	IF command = 0 THEN
 		IF NOT Error THEN
-			file_position := file_position + length_written; (* aktueller File_Position korrigieren *)
+			file_position := file_position + length_written; (* correct current File_Position *)
 			FSD.OFFSET := file_position;
-			IF file_position > FSD.FILE_SIZE THEN (* Datei ist groesser geworden *)
+			IF file_position > FSD.FILE_SIZE THEN (* file has grown *)
 				FSD.FILE_SIZE := file_position;
 			END_IF;
 		END_IF;
-		step := 30000; (* Beenden *)
+		step := 30000; (* exit *)
 	END_IF;
 
  (* --------------------------------------------- *)
 
-30000: (* Befehl fertig *)
+30000: (* command done *)
 	FSD.MODE := 0;
 	FSD.ERROR := error_code;
 	step := 0;
@@ -3691,13 +3691,13 @@ CASE step OF
 
 32000:
 	IF handle > 0 THEN
-		command := 2; (* File_Close ausführen *)
+		command := 2; (* execute File_Close *)
 	END_IF;
 	step := 32100;
 
 32100:
-	IF command = 0 THEN (* File Close beendet *)
-		(* Filedaten ablöschen *)
+	IF command = 0 THEN (* file close finished *)
+		(* clear file data *)
 		FSD.FILE_OPEN := FALSE;
 		file_position := 0;
 		FSD.FILE_SIZE := 0;
@@ -3705,7 +3705,7 @@ CASE step OF
 		used_filename := '';
 		handle := 0;
 
-		(* File_Name wurde fliegend geändert ? *)
+		(* File_Name changed on the fly? *)
 		IF file_change THEN
 			file_change := FALSE;
 			step := 0;
@@ -3716,9 +3716,9 @@ CASE step OF
 
 END_CASE;
 
-X(bExecute := FALSE); (* Zyklischer FW_AdsRdWrt Aufruf *)
+X(bExecute := FALSE); (* cyclic FW_AdsRdWrt call *)
 
-FSR(MODE:=BYTE#0,COMMAND:=command,FSD:=FSD); (* File server Runtime / Befehlsstart überwachen *)
+FSR(MODE:=BYTE#0,COMMAND:=command,FSD:=FSD); (* monitor file server runtime / command start *)
 
 (* ------------ File Open ------------- *)
 IF command = 1 THEN
@@ -3743,7 +3743,7 @@ IF command = 1 THEN
 			open_handle := 0;
 		END_IF;
 		command := 0;
-		FSR(MODE:=BYTE#1,COMMAND:=command,FSD:=FSD); (* File server Runtime / Befehlstop überwachen *)
+		FSR(MODE:=BYTE#1,COMMAND:=command,FSD:=FSD); (* monitor file server runtime / command stop *)
 		(* ---------------- Debug-Message -----------------------*)
 		(* -----------------------------------------------------------------*)
 	END_IF;
@@ -3766,7 +3766,7 @@ IF command = 2 THEN
 		error := X.bError;
 		error_code := SEL(error,0,UDINT_TO_BYTE(X.nErrId + 16#30));
 		command := 0;
-		FSR(MODE:=BYTE#1,COMMAND:=command,FSD:=FSD); (* File server Runtime / Befehlstop überwachen *)
+		FSR(MODE:=BYTE#1,COMMAND:=command,FSD:=FSD); (* monitor file server runtime / command stop *)
 		(* ---------------- Debug-Message -----------------------*)
 		(* -----------------------------------------------------------------*)
 	END_IF;
@@ -3790,7 +3790,7 @@ IF command = 3 THEN
 		error := X.bError;
 		error_code := SEL(error,0,UDINT_TO_BYTE(X.nErrId + 16#40));
 		command := 0;
-		FSR(MODE:=BYTE#1,COMMAND:=command,FSD:=FSD); (* File server Runtime / Befehlstop überwachen *)
+		FSR(MODE:=BYTE#1,COMMAND:=command,FSD:=FSD); (* monitor file server runtime / command stop *)
 		(* ---------------- Debug-Message -----------------------*)
 		(* -----------------------------------------------------------------*)
 	END_IF;
@@ -3813,7 +3813,7 @@ IF command = 4 THEN
 		error := X.bError;
 		error_code := SEL(error,0,UDINT_TO_BYTE(X.nErrId + 16#50));
 		command := 0;
-		FSR(MODE:=BYTE#1,COMMAND:=command,FSD:=FSD); (* File server Runtime / Befehlstop überwachen *)
+		FSR(MODE:=BYTE#1,COMMAND:=command,FSD:=FSD); (* monitor file server runtime / command stop *)
 		(* ---------------- Debug-Message -----------------------*)
 		(* -----------------------------------------------------------------*)
 	END_IF;
@@ -3839,7 +3839,7 @@ IF command = 5 THEN
 		error := X.bError;
 		error_code := SEL(error,0,UDINT_TO_BYTE(X.nErrId + 16#60));
 		command := 0;
-		FSR(MODE:=BYTE#1,COMMAND:=command,FSD:=FSD); (* File server Runtime / Befehlstop überwachen *)
+		FSR(MODE:=BYTE#1,COMMAND:=command,FSD:=FSD); (* monitor file server runtime / command stop *)
 		(* ---------------- Debug-Message -----------------------*)
 		(* -----------------------------------------------------------------*)
 	END_IF;
@@ -3862,7 +3862,7 @@ IF command = 6 THEN
 		error := X.bError;
 		error_code := SEL(error,0,UDINT_TO_BYTE(X.nErrId + 16#70));
 		command := 0;
-		FSR(MODE:=BYTE#1,COMMAND:=command,FSD:=FSD); (* File server Runtime / Befehlstop überwachen *)
+		FSR(MODE:=BYTE#1,COMMAND:=command,FSD:=FSD); (* monitor file server runtime / command stop *)
 		(* ---------------- Debug-Message -----------------------*)
 		(* -----------------------------------------------------------------*)
 	END_IF;
@@ -3885,7 +3885,7 @@ IF command = 7 THEN
 		error := X.bError;
 		error_code := SEL(error,0,UDINT_TO_BYTE(X.nErrId + 16#80));
 		command := 0;
-		FSR(MODE:=BYTE#1,COMMAND:=command,FSD:=FSD); (* File server Runtime / Befehlstop überwachen *)
+		FSR(MODE:=BYTE#1,COMMAND:=command,FSD:=FSD); (* monitor file server runtime / command stop *)
 		(* ---------------- Debug-Message -----------------------*)
 		(* -----------------------------------------------------------------*)
 	END_IF;
@@ -3922,10 +3922,10 @@ IF init = FALSE THEN
 	FSD.RUNTIME.TIME_FILE_DELETE_MIN := UDINT#99999999;
 END_IF;
 
-(* warten auf File_Server Befehl *)
+(* wait for File_Server command *)
 IF MODE = BYTE#0 THEN
 
-	(* neuen befehl erkannt *)
+	(* new command detected *)
 	IF last_command = BYTE#0 AND COMMAND <> BYTE#0 THEN
 
 		(* read system time *)
@@ -3943,60 +3943,60 @@ IF MODE = BYTE#1 THEN
 
 	CASE BYTE_TO_INT(COMMAND) OF
 
-	1:	FSD.RUNTIME.TIME_FILE_OPEN_CUR := runtime; 			(* aktuelle laufzeit *)
+	1:	FSD.RUNTIME.TIME_FILE_OPEN_CUR := runtime; 			(* current runtime *)
 		IF FSD.RUNTIME.TIME_FILE_OPEN_MAX < runtime THEN
-			FSD.RUNTIME.TIME_FILE_OPEN_MAX := runtime;		(* neue max laufzeit *)
+			FSD.RUNTIME.TIME_FILE_OPEN_MAX := runtime;		(* new max runtime *)
 		END_IF;
 		IF FSD.RUNTIME.TIME_FILE_OPEN_MIN > runtime THEN
-			FSD.RUNTIME.TIME_FILE_OPEN_MIN := runtime;		(* neue min laufzeit *)
+			FSD.RUNTIME.TIME_FILE_OPEN_MIN := runtime;		(* new min runtime *)
 		END_IF;
 
-	2:	FSD.RUNTIME.TIME_FILE_CLOSE_CUR := runtime; 			(* aktuelle laufzeit *)
+	2:	FSD.RUNTIME.TIME_FILE_CLOSE_CUR := runtime; 			(* current runtime *)
 		IF FSD.RUNTIME.TIME_FILE_CLOSE_MAX < runtime THEN
-			FSD.RUNTIME.TIME_FILE_CLOSE_MAX := runtime;		(* neue max laufzeit *)
+			FSD.RUNTIME.TIME_FILE_CLOSE_MAX := runtime;		(* new max runtime *)
 		END_IF;
 		IF FSD.RUNTIME.TIME_FILE_CLOSE_MIN > runtime THEN
-			FSD.RUNTIME.TIME_FILE_CLOSE_MIN := runtime;		(* neue min laufzeit *)
+			FSD.RUNTIME.TIME_FILE_CLOSE_MIN := runtime;		(* new min runtime *)
 		END_IF;
 
-	3:	FSD.RUNTIME.TIME_FILE_READ_CUR := runtime; 			(* aktuelle laufzeit *)
+	3:	FSD.RUNTIME.TIME_FILE_READ_CUR := runtime; 			(* current runtime *)
 		IF FSD.RUNTIME.TIME_FILE_READ_MAX < runtime THEN
-			FSD.RUNTIME.TIME_FILE_READ_MAX := runtime;		(* neue max laufzeit *)
+			FSD.RUNTIME.TIME_FILE_READ_MAX := runtime;		(* new max runtime *)
 		END_IF;
 		IF FSD.RUNTIME.TIME_FILE_READ_MIN > runtime THEN
-			FSD.RUNTIME.TIME_FILE_READ_MIN := runtime;		(* neue min laufzeit *)
+			FSD.RUNTIME.TIME_FILE_READ_MIN := runtime;		(* new min runtime *)
 		END_IF;
 
-	4:	FSD.RUNTIME.TIME_FILE_WRITE_CUR := runtime; 			(* aktuelle laufzeit *)
+	4:	FSD.RUNTIME.TIME_FILE_WRITE_CUR := runtime; 			(* current runtime *)
 		IF FSD.RUNTIME.TIME_FILE_WRITE_MAX < runtime THEN
-			FSD.RUNTIME.TIME_FILE_WRITE_MAX := runtime;		(* neue max laufzeit *)
+			FSD.RUNTIME.TIME_FILE_WRITE_MAX := runtime;		(* new max runtime *)
 		END_IF;
 		IF FSD.RUNTIME.TIME_FILE_WRITE_MIN > runtime THEN
-			FSD.RUNTIME.TIME_FILE_WRITE_MIN := runtime;		(* neue min laufzeit *)
+			FSD.RUNTIME.TIME_FILE_WRITE_MIN := runtime;		(* new min runtime *)
 		END_IF;
 
-	5:	FSD.RUNTIME.TIME_FILE_SEEK_CUR := runtime; 			(* aktuelle laufzeit *)
+	5:	FSD.RUNTIME.TIME_FILE_SEEK_CUR := runtime; 			(* current runtime *)
 		IF FSD.RUNTIME.TIME_FILE_SEEK_MAX < runtime THEN
-			FSD.RUNTIME.TIME_FILE_SEEK_MAX := runtime;		(* neue max laufzeit *)
+			FSD.RUNTIME.TIME_FILE_SEEK_MAX := runtime;		(* new max runtime *)
 		END_IF;
 		IF FSD.RUNTIME.TIME_FILE_SEEK_MIN > runtime THEN
-			FSD.RUNTIME.TIME_FILE_SEEK_MIN := runtime;		(* neue min laufzeit *)
+			FSD.RUNTIME.TIME_FILE_SEEK_MIN := runtime;		(* new min runtime *)
 		END_IF;
 
-	6:	FSD.RUNTIME.TIME_FILE_TELL_CUR := runtime; 			(* aktuelle laufzeit *)
+	6:	FSD.RUNTIME.TIME_FILE_TELL_CUR := runtime; 			(* current runtime *)
 		IF FSD.RUNTIME.TIME_FILE_TELL_MAX < runtime THEN
-			FSD.RUNTIME.TIME_FILE_TELL_MAX := runtime;		(* neue max laufzeit *)
+			FSD.RUNTIME.TIME_FILE_TELL_MAX := runtime;		(* new max runtime *)
 		END_IF;
 		IF FSD.RUNTIME.TIME_FILE_TELL_MIN > runtime THEN
-			FSD.RUNTIME.TIME_FILE_TELL_MIN := runtime;		(* neue min laufzeit *)
+			FSD.RUNTIME.TIME_FILE_TELL_MIN := runtime;		(* new min runtime *)
 		END_IF;
 
-	7:	FSD.RUNTIME.TIME_FILE_DELETE_CUR := runtime; 			(* aktuelle laufzeit *)
+	7:	FSD.RUNTIME.TIME_FILE_DELETE_CUR := runtime; 			(* current runtime *)
 		IF FSD.RUNTIME.TIME_FILE_DELETE_MAX < runtime THEN
-			FSD.RUNTIME.TIME_FILE_DELETE_MAX := runtime;		(* neue max laufzeit *)
+			FSD.RUNTIME.TIME_FILE_DELETE_MAX := runtime;		(* new max runtime *)
 		END_IF;
 		IF FSD.RUNTIME.TIME_FILE_DELETE_MIN > runtime THEN
-			FSD.RUNTIME.TIME_FILE_DELETE_MIN := runtime;		(* neue min laufzeit *)
+			FSD.RUNTIME.TIME_FILE_DELETE_MIN := runtime;		(* new min runtime *)
 		END_IF;
 
 	END_CASE;
@@ -4026,8 +4026,8 @@ END_FUNCTION_BLOCK
 // 	ERROR_T : BYTE;
 // END_VAR
 // VAR
-// 	IP_C1 : IP_C; (* IP_Control Verwaltungsstruktur *)
-// 	IP_C2 : IP_C; (* IP_Control Verwaltungsstruktur *)
+// 	IP_C1 : IP_C; (* IP_Control management structure *)
+// 	IP_C2 : IP_C; (* IP_Control management structure *)
 // 	S_BUF1 : NETWORK_BUFFER;
 // 	S_BUF2 : NETWORK_BUFFER;
 // 	R_BUF1 : NETWORK_BUFFER;
@@ -4060,8 +4060,8 @@ END_FUNCTION_BLOCK
 // 	timeout2 : TIME;
 // 	timeout3 : TIME;
 // 	ftp_file_size : UDINT;
-// 	ip_c1_red_disable : BOOL; (* IP_CONTROL 1 - Remote Disconnect Error unterdrücken *)
-// 	ip_c2_red_disable : BOOL; (* IP_CONTROL 1 - Remote Disconnect Error unterdrücken *)
+// 	ip_c1_red_disable : BOOL; (* IP_CONTROL 1 - suppress remote disconnect error *)
+// 	ip_c2_red_disable : BOOL; (* IP_CONTROL 1 - suppress remote disconnect error *)
 //
 // 	(*LOG_MSG : LOG_MSG;
 // 	_debug_enable : BOOL := FALSE;*)
@@ -4086,10 +4086,10 @@ END_FUNCTION_BLOCK
 // 			URL_DATA.PASSWORD := 'User@';
 // 		END_IF;
 //
-// 		FILE_PATH_SPLIT(FILENAME:=FILENAME,X:=fpd); (* Datei-Path zerlegen *)
-// 		str1 := fpd.FILENAME; (* zwischenspeichern *)
-// 		FILE_PATH_SPLIT(FILENAME:=URL_DATA.PATH,X:=fpd); (* FTP-Path zerlegen *)
-// 		IF LEN(fpd.FILENAME) = 0 THEN (* wenn FTP-Path keinen Dateinamen enthält , dann den Namen der lokalen Datei benutzen *)
+// 		FILE_PATH_SPLIT(FILENAME:=FILENAME,X:=fpd); (* split file path *)
+// 		str1 := fpd.FILENAME; (* buffer temporarily *)
+// 		FILE_PATH_SPLIT(FILENAME:=URL_DATA.PATH,X:=fpd); (* split FTP path *)
+// 		IF LEN(fpd.FILENAME) = 0 THEN (* if the FTP path contains no file name, use the name of the local file *)
 // 			ftp_path := CONCAT(URL_DATA.PATH,str1);
 // 		ELSE
 // 			ftp_path := URL_DATA.PATH;
@@ -4105,16 +4105,16 @@ END_FUNCTION_BLOCK
 // 		step := 980;
 // 	END_IF;
 //
-// 20:	(* FTP Steuerkanal einrichten *)
-// 	IP_C1.C_PORT := WORD#21; (* Portnummer eintragen *)
-//   	IP_C1.C_IP := DNS_CLIENT.IP4; (* IP eintragen *)
+// 20:	(* set up FTP control channel *)
+// 	IP_C1.C_PORT := WORD#21; (* enter port number *)
+//   	IP_C1.C_IP := DNS_CLIENT.IP4; (* enter IP *)
 //   	IP_C1.C_MODE := BYTE#0; (* Mode: TCP+ACTIV+PORT *)
-//   	IP_C1.TIME_RESET := TRUE; (* Zeitueberwachung rücksetzen *)
-//   	IP_C1.C_ENABLE := TRUE; (* Verbindungsaufbau freigeben *)
-//   	IP_C1.R_OBSERVE := TRUE; (* Empfangsueberwachung *)
+//   	IP_C1.TIME_RESET := TRUE; (* reset timeout monitoring *)
+//   	IP_C1.C_ENABLE := TRUE; (* enable connection setup *)
+//   	IP_C1.R_OBSERVE := TRUE; (* receive monitoring *)
 // 	R_BUF1.SIZE := UINT#0;
 //
-//   	IP_C2.C_ENABLE   := FALSE; (* Verbindungsaufbau sperren *)
+//   	IP_C2.C_ENABLE   := FALSE; (* block connection setup *)
 // 	step := 30;
 //
 // 30:	IF rcv_state = 220 THEN (* 220 = Service ready for new user *)
@@ -4128,17 +4128,17 @@ END_FUNCTION_BLOCK
 // 	ELSIF rcv_state = 230 THEN (* 230 = User logged in, proceed *)
 // 		next_step := 50;
 // 	ELSIF rcv_state = 220 THEN (* 220 = Service ready for new user *)
-// 		next_step := 20; (* WORK verbindung sollte ab/aufgebaut werden *)
+// 		next_step := 20; (* WORK connection should be closed/opened *)
 // 	END_IF;
 //
 // 50:	IF rcv_state = 230 THEN (* 230 = User logged in, proceed *)
-// 		snd_text := 'TYPE I';  (* binären Modus aktivieren *)
+// 		snd_text := 'TYPE I';  (* activate binary mode *)
 // 		next_step := 54;
 // 	END_IF;
 //
 // 54:	IF rcv_state = 200 THEN (* 200 = Command okay *)
-// 		IF FTP_DOWNLOAD THEN (* Datei von FTP Empfangen *)
-// 			snd_text := CONCAT('SIZE ', ftp_path); (* SIZE /PFAD/FILENAME *)
+// 		IF FTP_DOWNLOAD THEN (* receive file from FTP *)
+// 			snd_text := CONCAT('SIZE ', ftp_path); (* SIZE /PATH/FILENAME *)
 // 			next_step := 56;
 // 		ELSE
 // 			step := 60;
@@ -4147,13 +4147,13 @@ END_FUNCTION_BLOCK
 //
 // 56:	IF rcv_state = 213 THEN (* 213 Filesize *)
 // 		str1 := ELEMENT_GET(SEP:=BYTE#32,POS:=1,ELEMENT:=rcv_text);
-// 		ftp_file_size := STRING_TO_UDINT(str1); (* Dateigroesse in bytes gestimmen *)
+// 		ftp_file_size := STRING_TO_UDINT(str1); (* determine file size in bytes *)
 // 		step := 60;
 // 	END_IF;
 //
-// 60:	IF FTP_ACTIV THEN (* FTP Server aktiv *)
+// 60:	IF FTP_ACTIV THEN (* FTP server active *)
 // 		IF URL_DATA.PORT = WORD#0 THEN
-// 			URL_DATA.PORT := WORD#20; (* Standard Datenkanal *)
+// 			URL_DATA.PORT := WORD#20; (* default data channel *)
 // 		END_IF;
 // 		str2 := '';
 // 		dw_tmp := PLC_IP4;
@@ -4168,15 +4168,15 @@ END_FUNCTION_BLOCK
 // 				str2 := CONCAT(str2,',');
 // 			END_IF;
 // 		END_FOR;
-// 		dw_tmp := DNS_CLIENT.IP4; (* IP eintragen *)
-// 		w_tmp := URL_DATA.PORT; (* Port Nummer des Datenkanals *)
-// 		snd_text := CONCAT('PORT ',str2); (* FTP Server in den aktiv-mode schalten *)
+// 		dw_tmp := DNS_CLIENT.IP4; (* enter IP *)
+// 		w_tmp := URL_DATA.PORT; (* port number of the data channel *)
+// 		snd_text := CONCAT('PORT ',str2); (* switch FTP server to active mode *)
 // 		next_step := 80;
 // 	ELSE
-// 		snd_text := 'PASV';  (* FTP Server in den passiv-mode schalten *)
+// 		snd_text := 'PASV';  (* switch FTP server to passive mode *)
 // 		next_step := 70;
 // 	END_IF;
-// 	step := 999; (* Warten auf next_step *)
+// 	step := 999; (* wait for next_step *)
 //
 // 70:	IF rcv_state = 227 THEN (* 227 = Entered Passive Mode (213,202,225,43,212,186) *)
 // 		idx1 := FIND(rcv_text , '(' );
@@ -4187,8 +4187,8 @@ END_FUNCTION_BLOCK
 // 				str2 := ELEMENT_GET(SEP:=BYTE#44,POS:=idx1,ELEMENT:=str1);
 // 				byar[idx1] := STRING_TO_BYTE(str2);
 // 			END_FOR;
-// 			dw_tmp := DWORD_OF_BYTE(byar[0],byar[1],byar[2],byar[3]); (* IP Adresse des Datenkanals *)
-// 			w_tmp := WORD_OF_BYTE(byar[4],byar[5]); (* Port Nummer des Datenkanals *)
+// 			dw_tmp := DWORD_OF_BYTE(byar[0],byar[1],byar[2],byar[3]); (* IP address of the data channel *)
+// 			w_tmp := WORD_OF_BYTE(byar[4],byar[5]); (* port number of the data channel *)
 // 		END_IF;
 // 		step := 100;
 // 	END_IF;
@@ -4197,53 +4197,53 @@ END_FUNCTION_BLOCK
 // 		step := 100;
 // 	END_IF;
 //
-// 100:IP_C2.C_MODE := SEL(FTP_ACTIV,BYTE#0,BYTE#2); (* Aktiv = Mode 2: TCP+PASSIV+PORT / passiv = Mode 0: TCP+ACTIV+PORT *)
-// 	IP_C2.C_IP := dw_tmp; (* IP Adresse des Datenkanals *)
-// 	IP_C2.C_PORT := w_tmp; (* Port Nummer des Datenkanals *)
-//   	IP_C2.TIME_RESET := TRUE; (* Zeitueberwachung rücksetzen *)
-//   	IP_C2.C_ENABLE := TRUE; (* Verbindungsaufbau freigeben *)
-// 	IP_C2.R_OBSERVE := FALSE; (* Empfangsueberwachung *)
+// 100:IP_C2.C_MODE := SEL(FTP_ACTIV,BYTE#0,BYTE#2); (* active = mode 2: TCP+PASSIVE+PORT / passive = mode 0: TCP+ACTIVE+PORT *)
+// 	IP_C2.C_IP := dw_tmp; (* IP address of the data channel *)
+// 	IP_C2.C_PORT := w_tmp; (* port number of the data channel *)
+//   	IP_C2.TIME_RESET := TRUE; (* reset timeout monitoring *)
+//   	IP_C2.C_ENABLE := TRUE; (* enable connection setup *)
+// 	IP_C2.R_OBSERVE := FALSE; (* receive monitoring *)
 // 	R_BUF2.SIZE := UINT#0;
 // 	step := 120;
 //
-// 120:IF IP_C2.C_STATE > BYTE#127 THEN (* FTP Datenkanal aufgebaut *)
-// 		IF FTP_DOWNLOAD THEN (* File von FTP empfangen *)
-// 			IP_C2.MAILBOX[3] := BYTE#1; (* IP Empfang sperren *)
+// 120:IF IP_C2.C_STATE > BYTE#127 THEN (* FTP data channel established *)
+// 		IF FTP_DOWNLOAD THEN (* receive file from FTP *)
+// 			IP_C2.MAILBOX[3] := BYTE#1; (* block IP receive *)
 // 			step := 400;
 // 		ELSE
 // 			snd_text := 'STOR ';
 // 			next_step := 140;
-// 			snd_text := CONCAT(snd_text, ftp_path); (* STORE /PFAD/FILENAME *)
-// 			step := 999; (* Warten auf next_step *)
+// 			snd_text := CONCAT(snd_text, ftp_path); (* STORE /PATH/FILENAME *)
+// 			step := 999; (* wait for next_step *)
 // 		END_IF;
 // 	END_IF;
 //
-// (* ============== File an FTP senden ================ *)
+// (* ============== send file to FTP ================ *)
 //
 // 140:IF rcv_state = 125 OR rcv_state = 150 THEN (* 125 = Data connection already open / 150 = File status okay; about to open data connection *)
 // 		step := 160;
 // 	END_IF;
 //
-// 160:FSD.FILENAME := FILENAME; (* Dateiname *)
-// 	FSD.MODE := BYTE#1; (* vorhandene Datei zum lesen öffnen *)
-// 	FSD.OFFSET := UDINT#0; (* Start bei Dateianfang *)
-// 	S_BUF2.SIZE := UINT#65535; (* maximale länge einlesen *)
-// 	IP_C2.MAILBOX[2] := BYTE#1; (* IP Senden blockieren *)
+// 160:FSD.FILENAME := FILENAME; (* file name *)
+// 	FSD.MODE := BYTE#1; (* open existing file for reading *)
+// 	FSD.OFFSET := UDINT#0; (* start at beginning of file *)
+// 	S_BUF2.SIZE := UINT#65535; (* read maximum length *)
+// 	IP_C2.MAILBOX[2] := BYTE#1; (* block IP send *)
 // 	step := 200;
 //
 // 200:IF FSD.MODE = BYTE#0 AND FSD.ERROR = BYTE#0 THEN
-// 		IP_C2.MAILBOX[2] := BYTE#0; (* IP Senden erlauben *)
+// 		IP_C2.MAILBOX[2] := BYTE#0; (* allow IP send *)
 // 		step := 210;
 // 	END_IF;
 //
-// 210:IF S_BUF2.SIZE = UINT#0 THEN (* warten bis alle daten gesendet sind *)
+// 210:IF S_BUF2.SIZE = UINT#0 THEN (* wait until all data is sent *)
 // 		IF FSD.FILE_SIZE - FSD.OFFSET > UDINT#0 THEN
-// 			FSD.MODE := BYTE#1; (* vorhandene Datei zum lesen öffnen *)
-// 			S_BUF2.SIZE := UINT#65535; (* maximale länge einlesen *)
-// 			IP_C2.MAILBOX[2] := BYTE#1; (* IP Senden blockieren *)
+// 			FSD.MODE := BYTE#1; (* open existing file for reading *)
+// 			S_BUF2.SIZE := UINT#65535; (* read maximum length *)
+// 			IP_C2.MAILBOX[2] := BYTE#1; (* block IP send *)
 // 			step := 200;
 // 		ELSE
-// 			IP_C2.C_ENABLE := FALSE; (* FTP Datenkanal schliessen *)
+// 			IP_C2.C_ENABLE := FALSE; (* close FTP data channel *)
 // 			step := 300;
 // 		END_IF;
 // 	END_IF;
@@ -4255,8 +4255,8 @@ END_FUNCTION_BLOCK
 // 	END_IF;
 //
 // 320:IF rcv_state = 221 OR TON_WAIT.ET > timeout3  THEN (* 221 Service closing control connection *)
-// 		IP_C1.C_ENABLE := FALSE; (* FTP Steuerkanal schliessen *)
-// 		IF FILE_DELETE THEN (* Datei nach transfer löschen *)
+// 		IP_C1.C_ENABLE := FALSE; (* close FTP control channel *)
+// 		IF FILE_DELETE THEN (* delete file after transfer *)
 // 			FSD.MODE := BYTE#4; (* File Remove *)
 // 			step := 340;
 // 		ELSE
@@ -4268,44 +4268,44 @@ END_FUNCTION_BLOCK
 // 		step := 900;
 // 	END_IF;
 //
-// (*  ============== File vom FTP Empfangen  ============== *)
+// (*  ============== receive file from FTP  ============== *)
 //
 // 400:snd_text := 'RETR ';
 // 	next_step := 410;
-// 	snd_text := CONCAT(snd_text, ftp_path); (* RETR /PFAD/FILENAME *)
-// 	step := 999; (* Warten auf next_step *)
+// 	snd_text := CONCAT(snd_text, ftp_path); (* RETR /PATH/FILENAME *)
+// 	step := 999; (* wait for next_step *)
 //
 // 410:IF rcv_state = 125 OR rcv_state = 150 THEN (* 125 = Data connection already open / 150 = File status okay; about to open data connection *)
-// 		IP_C2.R_OBSERVE := TRUE; (* Empfangsueberwachung *)
+// 		IP_C2.R_OBSERVE := TRUE; (* receive monitoring *)
 // 		step := 420;
 // 	END_IF;
 //
-// 420:FSD.FILENAME := FILENAME; (* Dateiname *)
-// 	FSD.MODE := BYTE#3; (* Datei neu anlegen *)
-// 	FSD.OFFSET := UDINT#0; (* Start bei Dateianfang *)
+// 420:FSD.FILENAME := FILENAME; (* file name *)
+// 	FSD.MODE := BYTE#3; (* create new file *)
+// 	FSD.OFFSET := UDINT#0; (* start at beginning of file *)
 // 	step := 460;
 //
-// 440:IF R_BUF2.SIZE > UINT#0 THEN (* warten bis daten empfangen wurden *)
-// 		IP_C2.MAILBOX[3] := BYTE#1; (* IP Empfang blockieren bis Daten in Datei geschrieben wurden *)
-// 		FSD.MODE := BYTE#3; (* Daten in Datei schreiben *)
+// 440:IF R_BUF2.SIZE > UINT#0 THEN (* wait until data has been received *)
+// 		IP_C2.MAILBOX[3] := BYTE#1; (* block IP receive until data has been written to file *)
+// 		FSD.MODE := BYTE#3; (* write data to file *)
 // 		step := 460;
-// 	ELSIF FSD.FILE_SIZE = ftp_file_size THEN (* Verbindung abgebaut ? , oder 226 = Closing data connection. Requested file action successful *)
-// 		IP_C2.C_ENABLE := FALSE; (* FTP Datenkanal schliessen *)
+// 	ELSIF FSD.FILE_SIZE = ftp_file_size THEN (* connection closed?, or 226 = Closing data connection. Requested file action successful *)
+// 		IP_C2.C_ENABLE := FALSE; (* close FTP data channel *)
 // 		ip_c2_red_disable := TRUE;
 // 		step := 700;
 // 	END_IF;
 //
-// 460:IF FSD.MODE = BYTE#0 AND FSD.ERROR = BYTE#0 THEN (* warten bis Daten geschreiben wurden *)
-// 		R_BUF2.SIZE := UINT#0; (* Daten löschen *)
-// 		IP_C2.MAILBOX[3] := BYTE#0; (* IP Empfang wieder erlauben *)
+// 460:IF FSD.MODE = BYTE#0 AND FSD.ERROR = BYTE#0 THEN (* wait until data has been written *)
+// 		R_BUF2.SIZE := UINT#0; (* delete data *)
+// 		IP_C2.MAILBOX[3] := BYTE#0; (* allow IP receive again *)
 // 		step := 440;
 // 	END_IF;
 //
 // (* ================================================== *)
 //
 // 700:IF rcv_state = 226 OR  TON_WAIT.ET > timeout3 THEN (* 226 Closing control connection. Requested file action successful  *)
-// 		IF FTP_DOWNLOAD AND FILE_DELETE THEN (* FTP Download und File löschen ? *)
-// 			snd_text := CONCAT('DELE ', ftp_path); (* DELE /PFAD/FILENAME *)
+// 		IF FTP_DOWNLOAD AND FILE_DELETE THEN (* FTP download and delete file? *)
+// 			snd_text := CONCAT('DELE ', ftp_path); (* DELE /PATH/FILENAME *)
 // 			next_step := 720;
 // 		ELSE
 // 			step := 740;
@@ -4319,11 +4319,11 @@ END_FUNCTION_BLOCK
 // 740:snd_text := 'QUIT';
 // 	ip_c1_red_disable := TRUE;
 // 	next_step := 760;
-// 	step := 999; (* Warten auf next_step *)
+// 	step := 999; (* wait for next_step *)
 //
 // 760:IF rcv_state = 221 OR TON_WAIT.ET > timeout3 THEN (* 221 Service closing control connection  *)
-// 		IP_C1.C_ENABLE := FALSE; (* FTP Steuerkanal schliessen *)
-// 		IF NOT FTP_DOWNLOAD AND FILE_DELETE THEN (* FTP Upload und Datei nach transfer löschen *)
+// 		IP_C1.C_ENABLE := FALSE; (* close FTP control channel *)
+// 		IF NOT FTP_DOWNLOAD AND FILE_DELETE THEN (* FTP upload and delete file after transfer *)
 // 			FSD.MODE := BYTE#4; (* File Remove *)
 // 			step := 780;
 // 		ELSE
@@ -4340,10 +4340,10 @@ END_FUNCTION_BLOCK
 // 900:DONE := TRUE;
 // 	step := 980;
 //
-// 980:IP_C1.C_ENABLE := FALSE; (* FTP Steuerkanal schliessen *)
-// 	IP_C2.C_ENABLE := FALSE; (* FTP Datenkanal schliessen *)
-// 	IP_C2.MAILBOX[2] := BYTE#0; (* IP Senden wieder erlauben *)
-// 	IP_C2.MAILBOX[3] := BYTE#0; (* IP Empfang wieder erlauben *)
+// 980:IP_C1.C_ENABLE := FALSE; (* close FTP control channel *)
+// 	IP_C2.C_ENABLE := FALSE; (* close FTP data channel *)
+// 	IP_C2.MAILBOX[2] := BYTE#0; (* allow IP send again *)
+// 	IP_C2.MAILBOX[3] := BYTE#0; (* allow IP receive again *)
 // 	S_BUF1.SIZE := UINT#0;
 // 	S_BUF2.SIZE := UINT#0;
 // 	R_BUF1.SIZE := UINT#0;
@@ -4351,36 +4351,36 @@ END_FUNCTION_BLOCK
 // 	ftp_file_size := UDINT#0;
 // 	snd_step := 0;
 // 	next_step := 0;
-// 	FSD.MODE := BYTE#5; (* Datei schliessen *)
+// 	FSD.MODE := BYTE#5; (* close file *)
 // 	step := 990;
 //
 // 990:IF IP_C1.C_STATE = BYTE#0 AND IP_C2.C_STATE = BYTE#0 AND FSD.FILE_OPEN = FALSE THEN
 // 		step := 0;
 // 	END_IF;
 //
-// 999: ; (* Dummy Schritt, warten bis neuer schritt durch "next_step" aktiv wird *)
+// 999: ; (* dummy step, wait until a new step becomes active through "next_step" *)
 //
 // END_CASE;
 //
 // (* ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ *)
 //
 // IF step >= 30 THEN
-// 	IF R_BUF1.SIZE > UINT#0 THEN (* Daten wurden empfangen ? *)
+// 	IF R_BUF1.SIZE > UINT#0 THEN (* data received? *)
 // 		idx1 := UINT_TO_INT(R_BUF1.SIZE);
-// 		REPEAT (* zeilenterminierung erkennen und echtes TEXT-Ende bestimmen *)
+// 		REPEAT (* detect line termination and determine real end of TEXT *)
 // 			idx1 := idx1 - 1;
 // 		UNTIL idx1 = 0 OR R_BUF1.BUFFER[idx1] >= BYTE#32 (* TRUE = EXIT *)
 // 		END_REPEAT;
-// 		idx1 := idx1 + 1; (* index auf SIZE umrechnen *)
+// 		idx1 := idx1 + 1; (* convert index to SIZE *)
 // 		rcv_text := BUFFER_TO_STRING(PT:=REF(R_BUF1.BUFFER),SIZE:=idx1,START:=0,STOP:=STRING_LENGTH-1);
-// 		IF LEN(rcv_text) >= 3 THEN (* Statuscode prüfen und auswerten *)
+// 		IF LEN(rcv_text) >= 3 THEN (* check and evaluate status code *)
 // 			str1 := LEFT(rcv_text,3);
-// 			IF IS_NUM(STR:=str1) THEN (* enthält nur Zahlen ? *)
+// 			IF IS_NUM(STR:=str1) THEN (* contains only digits? *)
 // 				rcv_state := STRING_TO_INT(str1);
 // 			END_IF;
 // 			IP_C1.R_OBSERVE := FALSE;
 // 		END_IF;
-// 		R_BUF1.SIZE := UINT#0; (* daten löschen *)
+// 		R_BUF1.SIZE := UINT#0; (* delete data *)
 //
 // 	        (*####################  DEBUG-MESSAGE  ###################################*)
 // 	        (*IF _debug_enable THEN
@@ -4393,7 +4393,7 @@ END_FUNCTION_BLOCK
 // 	END_IF;
 // END_IF;
 //
-// (* automatisches Datensenden *)
+// (* automatic data sending *)
 //
 // CASE snd_step OF
 //
@@ -4405,29 +4405,29 @@ END_FUNCTION_BLOCK
 // 	          LOG_MSG();
 // 	        END_IF;*)
 // 	        (*########################################################################*)
-// 		_STRING_TO_BUFFER(str:=snd_text,pos:=0,pt:=REF(S_BUF1.BUFFER),size:=SIZEOF(S_BUF1.BUFFER)); (* String in puffer kopieren *)
+// 		_STRING_TO_BUFFER(str:=snd_text,pos:=0,pt:=REF(S_BUF1.BUFFER),size:=SIZEOF(S_BUF1.BUFFER)); (* copy string into buffer *)
 // 		idx1 := LEN(snd_text);
 // 		S_BUF1.BUFFER[idx1] := BYTE#16#0D;
 // 		idx1 := idx1 + 1;
 // 		S_BUF1.BUFFER[idx1] := BYTE#16#0A;
 // 		idx1 := idx1 + 1;
-// 		S_BUF1.SIZE := INT_TO_UINT(idx1); (* Sendelänge eintragen *)
-// 		R_BUF1.SIZE := UINT#0; (* Empfangsbuffer rücksetzen *)
+// 		S_BUF1.SIZE := INT_TO_UINT(idx1); (* enter send length *)
+// 		R_BUF1.SIZE := UINT#0; (* reset receive buffer *)
 // 		IP_C1.R_OBSERVE := TRUE;
-// 		rcv_state := 9999; (* letzen FTP Status löschen *)
+// 		rcv_state := 9999; (* clear last FTP status *)
 // 		snd_text := '';
 // 		snd_step := 10;
 // 	END_IF;
 //
-// 10:	IF S_BUF1.SIZE = UINT#0 THEN (* warten bis alle daten gesendet sind *)
+// 10:	IF S_BUF1.SIZE = UINT#0 THEN (* wait until all data is sent *)
 // 		step := next_step;
 // 		snd_step := 0;
 // 	END_IF;
 //
 // END_CASE;
 //
-// (* Globale Fehlerbehandlung für Haupt-Routine *)
-// IF ERROR_T = BYTE#0 AND step > 20 THEN (* noch kein Fehler gespeichert und Hauptroutine aktiv *)
+// (* global error handling for main routine *)
+// IF ERROR_T = BYTE#0 AND step > 20 THEN (* no error stored yet and main routine active *)
 //
 // 	IF IP_C1.ERROR > DWORD#0 AND IP_C1.C_ENABLE AND NOT IP_C1.TIME_RESET THEN  (* IP Control 1 *)
 // 		IF ip_c1_red_disable = FALSE OR IP_C1.ERROR <> DWORD#16#FD000000 THEN
@@ -4448,14 +4448,14 @@ END_FUNCTION_BLOCK
 // 	IF FSD.MODE = BYTE#0 THEN
 // 		IF FSD.ERROR > BYTE#0 THEN
 // 			ERROR_C := BYTE_TO_DWORD(FSD.ERROR);
-// 			ERROR_T := BYTE#4; (* Dateizugriff *)
+// 			ERROR_T := BYTE#4; (* file access *)
 // 			step := 980;
 // 		END_IF;
 // 	END_IF;
 // END_IF;
 //
-// IF TON_WAIT.Q THEN (* Ablaufstörung - Schrittkette *)
-// 	ERROR_C := SHL(INT_TO_DWORD(step),16) OR INT_TO_DWORD(rcv_state); (* aktuellen Schritt und letzten FTP Status eintragen *)
+// IF TON_WAIT.Q THEN (* sequence fault - step chain *)
+// 	ERROR_C := SHL(INT_TO_DWORD(step),16) OR INT_TO_DWORD(rcv_state); (* enter current step and last FTP status *)
 // 	ERROR_T := BYTE#5;
 // 	step := 980;
 // END_IF;
@@ -4463,8 +4463,8 @@ END_FUNCTION_BLOCK
 // (* ######################################################## *)
 //
 // DNS_CLIENT(IP_C:=IP_C1, S_BUF:=S_BUF1, R_BUF:=R_BUF1, DOMAIN:=URL_DATA.DOMAIN, IP4_DNS:= DNS_IP4, ACTIVATE:=step=10); (* DNS-Client *)
-// IPC1(IP:= DWORD#0, PORT:= WORD#0 , TIME_OUT:= TIMEOUT, IP_C:= IP_C1, S_BUF:= S_BUF1, R_BUF:= R_BUF1); (* FTP Steuerkanal *)
-// IPC2(IP:= DWORD#0, PORT:= WORD#0 , TIME_OUT:= TIMEOUT, IP_C:= IP_C2, S_BUF:= S_BUF2, R_BUF:= R_BUF2); (* FTP Datenkanal *)
+// IPC1(IP:= DWORD#0, PORT:= WORD#0 , TIME_OUT:= TIMEOUT, IP_C:= IP_C1, S_BUF:= S_BUF1, R_BUF:= R_BUF1); (* FTP control channel *)
+// IPC2(IP:= DWORD#0, PORT:= WORD#0 , TIME_OUT:= TIMEOUT, IP_C:= IP_C2, S_BUF:= S_BUF2, R_BUF:= R_BUF2); (* FTP data channel *)
 //
 // TON_WAIT(IN:=step = last_step AND step > 0,PT:=timeout2);
 // last_step := step;
@@ -4472,16 +4472,16 @@ END_FUNCTION_BLOCK
 // BUSY := step <> 0;
 //
 // IF FTP_DOWNLOAD THEN (* FILE_SERVER *)
-// 	FS(FSD:=FSD,PT:=R_BUF2); (* Datei von FTP empfangen *)
+// 	FS(FSD:=FSD,PT:=R_BUF2); (* receive file from FTP *)
 // ELSE
-// 	FS(FSD:=FSD,PT:=S_BUF2); (* Datei an FTP senden *)
+// 	FS(FSD:=FSD,PT:=S_BUF2); (* send file to FTP *)
 // END_IF;
 // END_FUNCTION_BLOCK
 
 // Commented out for beedance: it uses CHR_TO_STRING, which is commented out.
 // FUNCTION_BLOCK GET_WAN_IP
 // VAR_IN_OUT
-// 	IP_C : IP_C; (* IP_Control Verwaltungsstruktur *)
+// 	IP_C : IP_C; (* IP_Control management structure *)
 // 	S_BUF : NETWORK_BUFFER;
 // 	R_BUF : NETWORK_BUFFER;
 // END_VAR
@@ -4519,7 +4519,7 @@ END_FUNCTION_BLOCK
 // 		ERROR_T := BYTE#0;
 // 	END_IF;
 //
-// 20: (* URL for DNS UND HTTP-GET *)
+// 20: (* URL for DNS AND HTTP-GET *)
 // 	URL_DATA := STRING_TO_URL(STR:='checkip.dyndns.com',DEFAULT_PROTOCOL:='',DEFAULT_PATH:='');
 // 	state := 40;
 //
@@ -4527,7 +4527,7 @@ END_FUNCTION_BLOCK
 // 	IF DNS_CLIENT.DONE THEN
 // 		state := 60;
 // 	ELSIF (DNS_CLIENT.ERROR > DWORD#00) THEN
-// 		(* Fehlerbehandlung *)
+// 		(* error handling *)
 // 		ERROR_C := DNS_CLIENT.ERROR;
 // 		ERROR_T := BYTE#01;
 // 		state := 100;
@@ -4537,19 +4537,19 @@ END_FUNCTION_BLOCK
 // 	IF HTTP_GET.DONE THEN
 // 		state := 80;
 // 	ELSIF (HTTP_GET.ERROR > DWORD#00) THEN
-// 		(* Fehlerbehandlung *)
+// 		(* error handling *)
 // 		ERROR_C := HTTP_GET.ERROR;
 // 		ERROR_T := BYTE#02;
 // 		state := 100;
 // 	END_IF;
 //
 // 80:
-// 	(* Als Antwort wird folgende HTML Seite empfangen , hier muss die IP-Adresse herauskopiert werden *)
+// 	(* the following HTML page is received as the response; the IP address must be copied out of it *)
 // 	(* <html><head><title>Current IP Check</title></head><body>Current IP Address: 85.127.217.33</body></html> *)
 // 	st_ip := '';
 // 	p1 := 0;
 // 	FOR i1 := UINT_TO_INT(HTTP_GET.BODY_START) TO UINT_TO_INT(HTTP_GET.BODY_STOP) DO
-// 		IF R_BUF.BUFFER[i1] = BYTE#58 THEN (* suche ':' *)
+// 		IF R_BUF.BUFFER[i1] = BYTE#58 THEN (* search ':' *)
 // 			p1 := i1 + 2;
 // 			EXIT;
 // 		END_IF;
@@ -4558,7 +4558,7 @@ END_FUNCTION_BLOCK
 // 	p3 := p1 + 15;
 // 	IF p1 > 0 AND p3 < UINT_TO_INT(HTTP_GET.BODY_STOP) THEN
 // 		FOR p2 := p1 TO p3 DO
-// 			IF R_BUF.BUFFER[p2] <> BYTE#60 THEN (* suche '<' *)
+// 			IF R_BUF.BUFFER[p2] <> BYTE#60 THEN (* search '<' *)
 // 				st_ip := CONCAT(st_ip,CHR_TO_STRING(C:=R_BUF.BUFFER[p2]));
 // 			ELSE
 // 				EXIT;
@@ -4573,7 +4573,7 @@ END_FUNCTION_BLOCK
 // 		NEW_IP4 := WAN_IP4 <> wan_ip4_last;
 // 		wan_ip4_last := WAN_IP4;
 // 	ELSE
-// 		ERROR_C := DWORD#01; (* keine gültige IP gefunden *)
+// 		ERROR_C := DWORD#01; (* no valid IP found *)
 // 		ERROR_T := BYTE#03;
 // 	END_IF;
 // 	state := 100;
@@ -4595,7 +4595,7 @@ END_FUNCTION_BLOCK
 // 			IP4_DNS:=DWORD#00,
 // 			ACTIVATE:=state=40 (* DNS Start *)
 // 			);
-// (* nicht oder nicht direkt verwendete Parameter *)
+// (* parameters not used, or not used directly *)
 // (* DWORD :=DNS_CLIENT.IP4;
 //    BOOL  :=DNS_CLIENT.DONE;
 //    BYTE  :=DNS_CLIENT.ERROR; *)
@@ -4608,12 +4608,12 @@ END_FUNCTION_BLOCK
 // 			R_BUF:=R_BUF,
 // 			IP4:=DNS_CLIENT.IP4,
 // 			GET:=state=60,
-// 			MODE:=BYTE#2, (* HTTP 1.1 mit persistenter Verbindung *)
+// 			MODE:=BYTE#2, (* HTTP 1.1 with persistent connection *)
 // 			UNLOCK_BUF:=state=100,
 // 			URL_DATA:=URL_DATA
 // 			);
 //
-// (* nicht oder nicht direkt verwendete Parameter *)
+// (* parameters not used, or not used directly *)
 // (*STRING := HTTP_GET.HTTP_STATUS;
 //   UINT :=HTTP_GET.HEADER_START;
 //   UINT :=HTTP_GET.HEADER_STOP;
@@ -4766,7 +4766,7 @@ END_FUNCTION_BLOCK
 // FUNCTION_BLOCK HTTP_GET
 // VAR_IN_OUT
 // 	URL_DATA : url;
-// 	IP_C : IP_C; (* IP_Control Verwaltungsstruktur *)
+// 	IP_C : IP_C; (* IP_Control management structure *)
 // 	S_BUF : NETWORK_BUFFER;
 // 	R_BUF : NETWORK_BUFFER;
 // END_VAR
@@ -4819,9 +4819,9 @@ END_FUNCTION_BLOCK
 //
 // CASE state OF
 // 00:	DONE := FALSE;
-// 	IF GET AND NOT GET_LAST THEN (* auf positive Flanke SET warten *)
+// 	IF GET AND NOT GET_LAST THEN (* wait for rising edge on SET *)
 // 		state := 10;
-// 		ip4_stored := IP4; (* aktuelle IP4 speichern *)
+// 		ip4_stored := IP4; (* store current IP4 *)
 // 		total_size := 0;
 // 		HEADER_START := UINT#0;
 // 		HEADER_STOP := UINT#0;
@@ -4829,17 +4829,17 @@ END_FUNCTION_BLOCK
 // 		BODY_STOP := UINT#0;
 // 		HTTP_STATUS := '';
 // 		ERROR := DWORD#0;
-// 		ip_state := BYTE#1; (* Anmelden *)
+// 		ip_state := BYTE#1; (* register *)
 // 		authentication := FALSE;
 // 		delimiter2b := '$0D$0A';
 // 		delimiter4b := '$0D$0A$0D$0A';
 //
-// 		(* LOGIN Parameter vorhanden *)
-// 		(* LOGIN Parameter vorhanden *)
+// 		(* LOGIN parameters present *)
+// 		(* LOGIN parameters present *)
 // 		IF URL_DATA.USER <> '' AND URL_DATA.PASSWORD <> '' THEN
 // 			b64_str1 := CONCAT(URL_DATA.USER,':');
 // 			b64_str1 := CONCAT(b64_str1,URL_DATA.PASSWORD); (* USER:PASSWORD *)
-// 			b64_start := TRUE; (* BASE64 kodierung von Username *)
+// 			b64_start := TRUE; (* BASE64 encoding of username *)
 // 			authentication := TRUE;
 // 			state := 5;
 // 		ELSE
@@ -4854,73 +4854,73 @@ END_FUNCTION_BLOCK
 // 	        	(*########################################################################*)
 // 	END_IF;
 //
-// 5:	IF b64_start AND b64_done THEN (* warten auf base64 konvertierung *)
+// 5:	IF b64_start AND b64_done THEN (* wait for base64 conversion *)
 // 		b64_start := FALSE;
 // 		state := 10;
 // 	END_IF;
 //
-// 10:	IF ip_state = BYTE#3 THEN (* Bei IP_Control anmelden und auf freigabe warten *)
+// 10:	IF ip_state = BYTE#3 THEN (* register with IP_Control and wait for release *)
 // 		idx := 0;
 // 		text := CONCAT('GET ',URL_DATA.PATH);
-// 		_STRING_TO_BUFFER(STR:=text,POS:=idx,PT:=REF(S_BUF.BUFFER),SIZE:=SIZEOF(S_BUF.BUFFER)); (* GET path in buffer kopieren *)
+// 		_STRING_TO_BUFFER(STR:=text,POS:=idx,PT:=REF(S_BUF.BUFFER),SIZE:=SIZEOF(S_BUF.BUFFER)); (* copy GET path into buffer *)
 // 		idx := idx + LEN(text);
 //
 // 		IF LEN(URL_DATA.QUERY) > 0 THEN
 // 			S_BUF.BUFFER[idx] := 63; (* ASCII '?' *)
 // 			idx := idx + 1;
-// 			_STRING_TO_BUFFER(STR:=URL_DATA.QUERY,POS:=idx,PT:=REF(S_BUF.BUFFER),SIZE:=SIZEOF(S_BUF.BUFFER)); (* QUERY in buffer kopieren *)
+// 			_STRING_TO_BUFFER(STR:=URL_DATA.QUERY,POS:=idx,PT:=REF(S_BUF.BUFFER),SIZE:=SIZEOF(S_BUF.BUFFER)); (* copy QUERY into buffer *)
 // 			idx := idx + LEN(URL_DATA.QUERY);
 // 		END_IF;
 //
-// 		IF MODE >= BYTE#2 THEN (* gewünschte HTTP Version uebergeben *)
+// 		IF MODE >= BYTE#2 THEN (* pass requested HTTP version *)
 // 			text := ' HTTP/1.1';
 // 		ELSE
 // 			text := ' HTTP/1.0';
 // 		END_IF;
 // 		text := CONCAT(text,delimiter2b);
-// 		_STRING_TO_BUFFER(STR:=text,POS:=idx,PT:=REF(S_BUF.BUFFER),SIZE:=SIZEOF(S_BUF.BUFFER)); (* HTTP Version in buffer kopieren *)
+// 		_STRING_TO_BUFFER(STR:=text,POS:=idx,PT:=REF(S_BUF.BUFFER),SIZE:=SIZEOF(S_BUF.BUFFER)); (* copy HTTP version into buffer *)
 // 		idx := idx + LEN(text);
 //
-// 		IF MODE = BYTE#1 THEN (* HTTP/1.0 mit persistenter Verbindung gewünscht *)
-// 			text := CONCAT('Connection: Keep-Alive',delimiter2b); (* workaround für pcworx -> kein $0D$0A als Stringkonstante möglich *)
-// 		ELSIF MODE = BYTE#3 THEN (* HTTP/1.1 ohne persistenter Verbindung gewünscht *)
-// 			text := CONCAT('Connection: Close',delimiter2b); (* workaround für pcworx -> kein $0D$0A als Stringkonstante möglich *)
+// 		IF MODE = BYTE#1 THEN (* HTTP/1.0 with persistent connection requested *)
+// 			text := CONCAT('Connection: Keep-Alive',delimiter2b); (* workaround for pcworx -> $0D$0A not possible as a string constant *)
+// 		ELSIF MODE = BYTE#3 THEN (* HTTP/1.1 without persistent connection requested *)
+// 			text := CONCAT('Connection: Close',delimiter2b); (* workaround for pcworx -> $0D$0A not possible as a string constant *)
 // 		ELSE
 // 			text := '';
 // 		END_IF;
 //
-// 		(* Zusatz Parameter übernehmen *)
+// 		(* take additional parameters *)
 // 		text := CONCAT(text,URL_DATA.HEADER);
-// 		_STRING_TO_BUFFER(STR:=text,POS:=idx,PT:=REF(S_BUF.BUFFER),SIZE:=SIZEOF(S_BUF.BUFFER)); (* HTTP Version in buffer kopieren *)
+// 		_STRING_TO_BUFFER(STR:=text,POS:=idx,PT:=REF(S_BUF.BUFFER),SIZE:=SIZEOF(S_BUF.BUFFER)); (* copy HTTP version into buffer *)
 // 		idx := idx + LEN(text);
 //
 // 		IF authentication THEN
 // 			text := CONCAT('Authorization: Basic ',b64_str2);
-// 			text := CONCAT(text,delimiter2b); (* workaround für pcworx -> kein $0D$0A als Stringkonstante möglich *)
-// 			_STRING_TO_BUFFER(STR:=text,POS:=idx,PT:=REF(S_BUF.BUFFER),SIZE:=SIZEOF(S_BUF.BUFFER)); (* HTTP Host in buffer kopieren *)
+// 			text := CONCAT(text,delimiter2b); (* workaround for pcworx -> $0D$0A not possible as a string constant *)
+// 			_STRING_TO_BUFFER(STR:=text,POS:=idx,PT:=REF(S_BUF.BUFFER),SIZE:=SIZEOF(S_BUF.BUFFER)); (* copy HTTP host into buffer *)
 // 			idx := idx + LEN(text);
 // 		END_IF;
 //
 // 		text := CONCAT('Host: ',URL_DATA.DOMAIN);
-// 		text := CONCAT(text,delimiter4b); (* workaround für pcworx -> kein $0D$0A als Stringkonstante möglich *)
-// 		_STRING_TO_BUFFER(STR:=text,POS:=idx,PT:=REF(S_BUF.BUFFER),SIZE:=SIZEOF(S_BUF.BUFFER)); (* HTTP Host in buffer kopieren *)
+// 		text := CONCAT(text,delimiter4b); (* workaround for pcworx -> $0D$0A not possible as a string constant *)
+// 		_STRING_TO_BUFFER(STR:=text,POS:=idx,PT:=REF(S_BUF.BUFFER),SIZE:=SIZEOF(S_BUF.BUFFER)); (* copy HTTP host into buffer *)
 // 		idx := idx + LEN(text);
 //
-// 		(* IP Datenverkehr einrichten *)
+// 		(* set up IP data traffic *)
 // 		IF FIND(';HTTPS;https;Https;', CONCAT(URL_DATA.PROTOCOL,';')) > 1 THEN
-// 			IP_C.C_PORT := SEL(URL_DATA.PORT = WORD#0,URL_DATA.PORT,WORD#443); (* Portnummer eintragen *)
-// 			IP_C.MAILBOX[16] := BYTE#1; (* SSL Mode freigeben *)
+// 			IP_C.C_PORT := SEL(URL_DATA.PORT = WORD#0,URL_DATA.PORT,WORD#443); (* enter port number *)
+// 			IP_C.MAILBOX[16] := BYTE#1; (* enable SSL mode *)
 // 		ELSE
-// 			IP_C.C_PORT := SEL(URL_DATA.PORT = WORD#0,URL_DATA.PORT,WORD#80);  (* Portnummer eintragen *)
+// 			IP_C.C_PORT := SEL(URL_DATA.PORT = WORD#0,URL_DATA.PORT,WORD#80);  (* enter port number *)
 // 		END_IF;
 //
-// 		IP_C.C_IP := ip4_stored; (* IP eintragen *)
-// 		IP_C.C_MODE := BYTE#0; (* Mode: TCP+AKTIV+PORT+IP *)
-// 		IP_C.C_ENABLE := TRUE; (* Verbindungsaufbau freigeben *)
-// 		IP_C.TIME_RESET := TRUE; (* Zeitueberwachung rücksetzen *)
-// 		IP_C.R_OBSERVE := TRUE; (* Datenempfang ueberwachen *)
-// 		S_BUF.SIZE := INT_TO_UINT(idx); (* Sendelänge eintragen *)
-// 		R_BUF.SIZE := UINT#0; (* Empfangslänge rücksetzen *)
+// 		IP_C.C_IP := ip4_stored; (* enter IP *)
+// 		IP_C.C_MODE := BYTE#0; (* Mode: TCP+ACTIVE+PORT+IP *)
+// 		IP_C.C_ENABLE := TRUE; (* enable connection setup *)
+// 		IP_C.TIME_RESET := TRUE; (* reset timeout monitoring *)
+// 		IP_C.R_OBSERVE := TRUE; (* monitor data reception *)
+// 		S_BUF.SIZE := INT_TO_UINT(idx); (* enter send length *)
+// 		R_BUF.SIZE := UINT#0; (* reset receive length *)
 //
 // 		state := 30;
 // 	        	(*####################  DEBUG-MESSAGE  ###################################*)
@@ -4937,23 +4937,23 @@ END_FUNCTION_BLOCK
 //
 // 	IF S_BUF.SIZE = UINT#0 THEN
 // 		IF total_size = 0 THEN
-// 			IF R_BUF.SIZE > UINT#15 THEN; (* länge der empfangenen Daten prüfen *)
+// 			IF R_BUF.SIZE > UINT#15 THEN; (* check length of received data *)
 //
-// 				(* HTTP HEADER Ende suchen -> durch $0D$A$0D$A erkennbar bei DEC RT-11,CP/M,MS-DOS,Windows *)
+// 				(* search end of HTTP HEADER -> recognizable by $0D$A$0D$A on DEC RT-11,CP/M,MS-DOS,Windows *)
 // 				del_end := '$0D$0A$0D$0A';
 // 				del_pos := BUFFER_SEARCH(PT:=REF(R_BUF.BUFFER),SIZE:=R_BUF.SIZE,STR:=del_end,POS:=0,IGN:=FALSE);
 //
-// 				(* kein Ende gefunden ? -> andere Ende-Codierung suchen *)
+// 				(* no end found? -> search other end encoding *)
 // 				IF del_pos = 0 THEN
 // 					del_end := '$0A$0A';
-// 					(* HTTP HEADER Ende suchen -> durch $0A$0A erkennbar bei Multics, Unix-Derivate,Mac OS X *)
+// 					(* search end of HTTP HEADER -> recognizable by $0A$0A on Multics, Unix derivatives, Mac OS X *)
 // 					del_pos := BUFFER_SEARCH(PT:=REF(R_BUF.BUFFER),SIZE:=R_BUF.SIZE,STR:=del_end,POS:=0,IGN:=FALSE);
 // 				END_IF;
 //
 // 				IF del_pos > 0 THEN
 // 					HEADER_START := UINT#0;
 // 					HEADER_STOP := INT_TO_UINT(del_pos + LEN(del_end) - 1);
-// 					TOTAL_SIZE := -1; (* HTTP Header empfangen aber noch keine gesamtlänge bekannt *)
+// 					TOTAL_SIZE := -1; (* HTTP header received but total length not known yet *)
 // 				END_IF;
 // 		                	(*####################  DEBUG-MESSAGE  ###################################*)
 // 		                	(*IF _debug_enable THEN
@@ -4965,29 +4965,29 @@ END_FUNCTION_BLOCK
 // 		                	END_IF;*)
 // 		                	(*########################################################################*)
 //
-// 				(* HTTP Statuscode auswerten: (kann 1.0 oder 1.1 sein *)
+// 				(* evaluate HTTP status code: (can be 1.0 or 1.1 *)
 // 				READ_HTTP(size:=HEADER_STOP,pos:=0,SRC:='',pt:=R_BUF.BUFFER);
 //
 // 				i := LEN(READ_HTTP.READ_HTTP);
 // 				IF i > 7 THEN
-// 					(* HTTP Version von HOST auswerten 1.0 oder 1.1 *)
+// 					(* evaluate HTTP version of HOST 1.0 or 1.1 *)
 // 					text:=MID(READ_HTTP.READ_HTTP,1,3);
 // 					http_1_1_host := text = '1';
 //
-// 					(* Code und Meldung isolieren *)
+// 					(* isolate code and message *)
 // 					HTTP_STATUS := RIGHT(READ_HTTP.READ_HTTP,i-4);
 // 				END_IF;
 //
-// 				(* positive HTTP Anfrage ? *)
+// 				(* positive HTTP request? *)
 // 				IF FIND(HTTP_STATUS,'200') > 0 THEN
 //
-// 					(* 'Content-Length: Wert einlesen auswerten *)
+// 					(* 'Content-Length: read and evaluate value *)
 // 					READ_HTTP(size:=HEADER_STOP,pos:=0,SRC:='CONTENT-LENGTH',pt:=R_BUF.BUFFER);
 // 					text:=READ_HTTP.READ_HTTP;
 //
 // 					IF LEN(text) >= 1 THEN
 // 						IF IS_NUM(str:=text) THEN
-// 							(* erwartete gesamtmenge an Bytes berechnen *)
+// 							(* calculate expected total number of bytes *)
 // 							total_size := STRING_TO_INT(text) + UINT_TO_INT(HEADER_STOP) + 1;
 //                            					(*####################  DEBUG-MESSAGE  ###################################*)
 //                            					(*IF _debug_enable THEN
@@ -5002,16 +5002,16 @@ END_FUNCTION_BLOCK
 // 						END_IF;
 // 					END_IF;
 // 				ELSE
-// 					ERROR := DWORD#16#000000FC; (* Fehler durch HTTP-Statuscodes *)
+// 					ERROR := DWORD#16#000000FC; (* error from HTTP status codes *)
 // 				END_IF;
 // 			END_IF;
-// 		(* 1. bei bekannter Content-Length wird nach erhalt der erwartenen Daten die verbindung beendet *)
-// 		(* 2. bei persistenter Verbindung muss bei unbekannter Datenmenge auf Receive-Timeout gewartet werden *)
-// 		(* 3. wenn nach datenempfang die verbindung vom host unterbrochen wird *)
+// 		(* 1. with a known Content-Length the connection is closed after the expected data is received *)
+// 		(* 2. with a persistent connection and unknown data amount, wait for the receive timeout *)
+// 		(* 3. if the host closes the connection after data was received *)
 // 		ELSIF (R_BUF.SIZE >= INT_TO_UINT(total_size)) OR
 // 			(R_BUF.SIZE > UINT#0 AND total_size < 0 AND ((rcv_timeout OR con_rdce) OR (IP_C.C_STATE = BYTE#1))) THEN
 //
-// 			IF R_BUF.SIZE - 1 > HEADER_STOP THEN (* BODY Daten vorhanden *)
+// 			IF R_BUF.SIZE - 1 > HEADER_STOP THEN (* BODY data present *)
 // 				BODY_START := HEADER_STOP + UINT#1;
 // 				BODY_STOP := R_BUF.SIZE - 1;
 // 		                	(*####################  DEBUG-MESSAGE  ###################################*)
@@ -5027,7 +5027,7 @@ END_FUNCTION_BLOCK
 // 			END_IF;
 //
 // 			DONE := TRUE;
-// 			IP_C.C_ENABLE := FALSE; (* Verbindung abbauen *)
+// 			IP_C.C_ENABLE := FALSE; (* close connection *)
 // 			state := 40;
 //             		(*####################  DEBUG-MESSAGE  ###################################*)
 //             		(*IF _debug_enable THEN
@@ -5040,19 +5040,19 @@ END_FUNCTION_BLOCK
 // 	END_IF;
 //
 // 	IF IP_C.ERROR <> DWORD#0 THEN
-// 		(* bei unbekannter Content-size ist nicht bekannt ob bzw wieviele Telegramme noch folgen werden *)
-// 		(* darum wird nach receive-timeout oder Remote disconnect error der fehler wieder ausgefiltert (logischer fehler) *)
+// 		(* with unknown content size it is not known whether or how many telegrams will still follow *)
+// 		(* so after a receive timeout or remote disconnect error the error is filtered out again (logical error) *)
 // 		IF rcv_timeout AND DONE THEN
-// 			IP_C.ERROR := IP_C.ERROR AND DWORD#16#FFFF_00FF; (* Fehler wieder rücksetzen *)
+// 			IP_C.ERROR := IP_C.ERROR AND DWORD#16#FFFF_00FF; (* reset error again *)
 // 		ELSIF con_rdce AND DONE THEN
-// 			IP_C.ERROR := IP_C.ERROR AND DWORD#16#00FF_FFFF; (* Fehler wieder rücksetzen *)
+// 			IP_C.ERROR := IP_C.ERROR AND DWORD#16#00FF_FFFF; (* reset error again *)
 // 		ELSE
 // 			ERROR := IP_C.ERROR;
 // 		END_IF;
 // 	END_IF;
 //
 // 	IF ERROR > DWORD#0 THEN
-// 		IP_C.C_ENABLE := FALSE; (* Verbindungsaufbau sperren *)
+// 		IP_C.C_ENABLE := FALSE; (* block connection setup *)
 // 		state := 40;
 // 	        	(*####################  DEBUG-MESSAGE  ###################################*)
 // 	        	(*IF _debug_enable THEN
@@ -5064,19 +5064,19 @@ END_FUNCTION_BLOCK
 // 	        	(*########################################################################*)
 // 	END_IF;
 //
-// 40:	IF (UNLOCK_BUF OR NOT DONE) THEN (* Warten auf Release und Verbindung beendet -> IP_ID vom Stack nehmen *)
-// 		IP_STATE := BYTE#4; (* Abmelden *)
+// 40:	IF (UNLOCK_BUF OR NOT DONE) THEN (* wait for release and connection closed -> remove IP_ID from stack *)
+// 		IP_STATE := BYTE#4; (* unregister *)
 // 		DONE := FALSE;
-// 		IP_C.MAILBOX[16] := BYTE#0; (* SSL Mode beenden *)
+// 		IP_C.MAILBOX[16] := BYTE#0; (* end SSL mode *)
 // 		state := 0;
 // 	END_IF;
 // END_CASE;
 //
-// get_last := GET; (* letzten Status sichern zur Flankenerkennung *)
+// get_last := GET; (* save last status for edge detection *)
 //
 // IP_FIFO(FIFO:=IP_C.FIFO,STATE:=ip_state,ID:=ip_id); (* IP_FIFO *)
 //
-// BASE64_ENCODE_STR(RUN:=b64_start,STR1:=b64_str1,STR2:=b64_str2); (* BASE64 kodierung *)
+// BASE64_ENCODE_STR(RUN:=b64_start,STR1:=b64_str1,STR2:=b64_str2); (* BASE64 encoding *)
 // b64_done:=BASE64_ENCODE_STR.DONE;
 //
 // (*####################  DEBUG-MESSAGE  ###################################*)
@@ -5126,7 +5126,7 @@ END_FUNCTION_BLOCK
 // END_VAR
 //
 // IF RUN > 0 THEN
-// 	IF state = 0 THEN (* Auswertung neu beginnen *)
+// 	IF state = 0 THEN (* restart evaluation *)
 //
 // 		pv := REF(VALUE);
 // 		pv^ := 0; (* VALUE = '' *)
@@ -5138,8 +5138,8 @@ END_FUNCTION_BLOCK
 // 		i := UDINT_TO_INT(OFFSET);
 // 		size := UINT_TO_INT(PT.SIZE) - 1;
 // 		RESULT := 0;
-// 		state := 5; (* Befehl in Arbeit (Busy) *)
-// 		step := 0; (* Auswertung neu beginnen *)
+// 		state := 5; (* command in progress (busy) *)
+// 		step := 0; (* restart evaluation *)
 //
 // 		(*####################  DEBUG-MESSAGE  ###################################*)
 // 		(*IF _debug_enable THEN
@@ -5150,22 +5150,22 @@ END_FUNCTION_BLOCK
 // 		(*########################################################################*)
 // 	END_IF;
 //
-// 	watchdog(IN:=FALSE,PT:=T#1ms); (* Timer neustarten *)
+// 	watchdog(IN:=FALSE,PT:=T#1ms); (* restart timer *)
 // 	watchdog.IN := TRUE;
 //
-// 	WHILE (state = 5) DO (* Schleife solange kein Ergebnis *)
+// 	WHILE (state = 5) DO (* loop as long as there is no result *)
 //
-// 		watchdog(); (* Timer aktualisieren *)
+// 		watchdog(); (* update timer *)
 //
-// 		IF watchdog.Q THEN (* watchdog ausgelöst *)
+// 		IF watchdog.Q THEN (* watchdog triggered *)
 // 			state := 5;
 // 			EXIT;
-// 		ELSIF i > size THEN (* kein weiteres zeichen vorhanden *)
-// 			state := 10; (* nichts gefunden - Daten-Ende erreicht *)
+// 		ELSIF i > size THEN (* no further character available *)
+// 			state := 10; (* nothing found - end of data reached *)
 // 			EXIT;
 // 		ELSE
 //
-// 			c := PT.BUFFER[i]; (* neues Zeichen aus Buffer lesen *)
+// 			c := PT.BUFFER[i]; (* read new character from buffer *)
 // 			eof := i + 1 = PT.SIZE; (* End of File *)
 //
 // 			k_add := 0;
@@ -5173,117 +5173,117 @@ END_FUNCTION_BLOCK
 //
 // 			CASE step OF
 //
-// 			0: (* noch kein Modus erkannt *)
-// 				IF c = 91 THEN (* mit "[" vergleichen *)
-// 					step := 200; (* Modus für Section aktivieren *)
-// 				ELSIF c = 59 OR c = 35 THEN (* mit ";" und '#' vergleichen *)
-// 					step := 100; (* Modus für Kommentar aktivieren *)
-// 				ELSIF c > 32 THEN (* Key erkannt *)
-// 					k_add := c; (* Zeichen ablegen *)
-// 					step := 300; (* Key auswertung starten *)
+// 			0: (* no mode detected yet *)
+// 				IF c = 91 THEN (* compare with "[" *)
+// 					step := 200; (* activate mode for section *)
+// 				ELSIF c = 59 OR c = 35 THEN (* compare with ";" and '#' *)
+// 					step := 100; (* activate mode for comment *)
+// 				ELSIF c > 32 THEN (* key detected *)
+// 					k_add := c; (* store character *)
+// 					step := 300; (* start key evaluation *)
 // 				END_IF;
-// 			100: (* Kommentar erkannt -> Zeilenende suchen *)
-// 				IF c < 32 THEN (* prüfe auf Steuerzeichen *)
-// 					state  := 3; (* Beenden -> Kommentar wurde gefunden *)
+// 			100: (* comment detected -> search end of line *)
+// 				IF c < 32 THEN (* check for control characters *)
+// 					state  := 3; (* exit -> comment was found *)
 // 				END_IF;
-// 			200: (* Sections-start erkannt -> Sectionsende suchen *)
-// 				IF c = 93 THEN (* mit "]" vergleichen *)
-// 					IF pk > REF(KEY) > 0 THEN (* innerhalb von [] muss sich mindestens ein Zeichen befinden *)
-// 						state  := 1; (* Beenden -> Section wurde gefunden *)
+// 			200: (* section start detected -> search section end *)
+// 				IF c = 93 THEN (* compare with "]" *)
+// 					IF pk > REF(KEY) > 0 THEN (* there must be at least one character inside [] *)
+// 						state  := 1; (* exit -> section was found *)
 // 					ELSE
 // 						pk := REF(KEY);
 // 						pk^ := 0; (* KEY = '' *)
-// 						step := 0; (* fehlerhafte Section-Zeile vorhanden -> weitersuchen *)
+// 						step := 0; (* faulty section line present -> continue searching *)
 // 					END_IF;
-// 				ELSIF c < 32 OR eof THEN (* Steuerzeichen - fehlerhafte Section-Zeile -> weitersuchen *)
+// 				ELSIF c < 32 OR eof THEN (* control character - faulty section line -> continue searching *)
 // 					pk := REF(KEY);
 // 					pk^ := 0; (* KEY = '' *)
 // 					step := 0;
 // 				ELSE
-// 					k_add := c; (* Zeichen ablegen *)
+// 					k_add := c; (* store character *)
 // 				END_IF;
-// 			300: (* Beginn: Key erkannt -> Name auswerten *)
-// 				IF c < 32 THEN (* Steuerzeichen - fehlerhafte Key-Zeile -> weitersuchen *)
+// 			300: (* begin: key detected -> evaluate name *)
+// 				IF c < 32 THEN (* control character - faulty key line -> continue searching *)
 // 					pk := REF(KEY);
 // 					pk^ := 0; (* KEY = '' *)
 // 					step := 0;
-// 				ELSIF c = 61 THEN (* prüfe auf '=' *)
+// 				ELSIF c = 61 THEN (* check for '=' *)
 // 					step := 330;
 // 				ELSE
-// 					k_add := c; (* Zeichen ablegen *)
+// 					k_add := c; (* store character *)
 // 				END_IF;
-// 			330: (* KeyValue beginn suchen *)
-// 				IF c < 32 THEN (* Steuerzeichen  *)
-// 					state := 2; (* Key ohne Value gefunden *)
+// 			330: (* search KeyValue start *)
+// 				IF c < 32 THEN (* control character  *)
+// 					state := 2; (* key without value found *)
 // 				ELSIF eof THEN
-// 					state := 2; (* Key ohne Value gefunden *)
-// 					v_add := c; (* Zeichen ablegen *)
+// 					state := 2; (* key without value found *)
+// 					v_add := c; (* store character *)
 // 				ELSE
-// 					v_add := c; (* Zeichen ablegen *)
+// 					v_add := c; (* store character *)
 // 					step := 350;
 // 				END_IF;
-// 			350: (* KeyValue Ende suchen *)
-// 				IF c < 32 THEN (* Steuerzeichen *)
-// 					state := 2; (* Key gefunden *)
+// 			350: (* search KeyValue end *)
+// 				IF c < 32 THEN (* control character *)
+// 					state := 2; (* key found *)
 // 				ELSIF eof THEN
-// 					v_add := c; (* Zeichen ablegen *)
-// 					state := 2; (* Key gefunden *)
+// 					v_add := c; (* store character *)
+// 					state := 2; (* key found *)
 // 				ELSE
-// 					v_add := c; (* Zeichen ablegen *)
+// 					v_add := c; (* store character *)
 // 				END_IF;
 // 			END_CASE;
 //
-// 			IF v_add > 0  AND pv < pve THEN (* Zeichen zu Value-String hinzufügen *)
-// 				pv^ := v_add; (* Zeichen eintragen *)
+// 			IF v_add > 0  AND pv < pve THEN (* add character to value string *)
+// 				pv^ := v_add; (* enter character *)
 // 				pv := pv + 1;
-// 				pv^ := 0; (* String-Terminierung eintragen *)
+// 				pv^ := 0; (* enter string termination *)
 // 			END_IF;
 //
-// 			IF k_add > 0 AND pk < pke THEN (* Zeichen zu Key-String hinzufügen *)
-// 				pk^ := k_add; (* Zeichen eintragen *)
+// 			IF k_add > 0 AND pk < pke THEN (* add character to key string *)
+// 				pk^ := k_add; (* enter character *)
 // 				pk := pk + 1;
-// 				pk^ := 0; (* String-Terminierung eintragen *)
+// 				pk^ := 0; (* enter string termination *)
 // 			END_IF;
 //
-// 			i := i + 1; (* Datenzeiger erhöhen *)
+// 			i := i + 1; (* increment data pointer *)
 //
 // 		END_IF;
 // 	END_WHILE;
 //
 // 	CASE state OF
-// 	01:	(* Section gefunden *)
-// 		IF RUN = 1 OR RUN = 3 THEN (* Section vorgewählt oder alles rückmelden *)
-// 			IF KEY = STR OR LEN(STR) = 0 THEN (* mit gesuchter Section vergleichen oder keine Section vorgegeben *)
-// 				RESULT := 1; (* Section gefunden *)
-// 				OFFSET := i; (* Offset uebernehmen *)
+// 	01:	(* section found *)
+// 		IF RUN = 1 OR RUN = 3 THEN (* section preselected or report everything *)
+// 			IF KEY = STR OR LEN(STR) = 0 THEN (* compare with searched section or no section specified *)
+// 				RESULT := 1; (* section found *)
+// 				OFFSET := i; (* take offset *)
 // 				RUN := 0;
 // 				state := 0;
 // 			END_IF;
 // 		ELSE
 // 			pk := REF(KEY);
 // 			pk^ := 0; (* KEY = '' *)
-// 			RESULT := 11; (* Key nicht gefunden , Section-Ende - Offset nicht verändern *)
+// 			RESULT := 11; (* key not found, section end - do not change offset *)
 // 			RUN := 0;
 // 			state := 0;
 // 		END_IF;
-// 	02:	(* Key gefunden *)
-// 		IF RUN = 2 OR RUN = 3 THEN (* Key vorgewählt oder alles rückmelden *)
-// 			IF KEY = STR OR LEN(STR) = 0 THEN (* mit gesuchten Key vergleichen *)
-// 				RESULT := 2; (* Key gefunden *)
-// 				OFFSET := i; (* Offset uebernehmen *)
+// 	02:	(* key found *)
+// 		IF RUN = 2 OR RUN = 3 THEN (* key preselected or report everything *)
+// 			IF KEY = STR OR LEN(STR) = 0 THEN (* compare with searched key *)
+// 				RESULT := 2; (* key found *)
+// 				OFFSET := i; (* take offset *)
 // 				RUN := 0;
 // 				state := 0;
 // 			END_IF;
 // 		END_IF;
-// 	03:	(* Kommenar gefunden *)
-// 		OFFSET := i; (* Offset uebernehmen *)
+// 	03:	(* comment found *)
+// 		OFFSET := i; (* take offset *)
 // 		state := 0;
 //
-// 	05:	RESULT := 5; (* in Arbeit *)
+// 	05:	RESULT := 5; (* in progress *)
 //
-// 	10:	(* Indexüberschreitung - Bufferende *)
-// 		RESULT := 10; (* nichts gefunden - Datenende erreicht *)
-// 		OFFSET := i; (* Offset uebernehmen *)
+// 	10:	(* index out of range - end of buffer *)
+// 		RESULT := 10; (* nothing found - end of data reached *)
+// 		OFFSET := i; (* take offset *)
 // 		RUN := 0;
 // 		state := 0;
 // 	END_CASE;
@@ -5353,7 +5353,7 @@ END_FUNCTION_BLOCK
 //
 // IF RUN > 0 THEN
 //
-// 	IF state = 0 THEN (* Auswertung neu beginnen *)
+// 	IF state = 0 THEN (* restart evaluation *)
 // 		pv := REF(VALUE);
 // 		pv^ := 0; (* VALUE = '' *)
 // 		pve := pv + INT_TO_DWORD(STRING_LENGTH);
@@ -5363,8 +5363,8 @@ END_FUNCTION_BLOCK
 //
 // 		i := OFFSET;
 // 		RESULT := 0;
-// 		state := 5; (* Befehl in Arbeit (Busy) *)
-// 		step := 0; (* Auswertung neu beginnen *)
+// 		state := 5; (* command in progress (busy) *)
+// 		step := 0; (* restart evaluation *)
 //
 // 		(*####################  DEBUG-MESSAGE  ###################################*)
 // 		(*IF _debug_enable THEN
@@ -5376,10 +5376,10 @@ END_FUNCTION_BLOCK
 //
 // 	END_IF;
 //
-// 	watchdog(IN:=FALSE,PT:=T#1ms); (* Timer neustarten *)
+// 	watchdog(IN:=FALSE,PT:=T#1ms); (* restart timer *)
 // 	watchdog.IN := TRUE;
 //
-// 	WHILE (state = 5) DO (* Schleife solange kein Ergebnis *)
+// 	WHILE (state = 5) DO (* loop as long as there is no result *)
 //
 // 		mode := 1;
 // 		FB(MODE:=mode,FSD:=fsd,PT:=PT,FILENAME:=FILENAME,POS:=i );
@@ -5402,13 +5402,13 @@ END_FUNCTION_BLOCK
 // 		END_IF;*)
 // 		(*########################################################################*)
 //
-// 		watchdog(); (* Timer aktualisieren *)
+// 		watchdog(); (* update timer *)
 //
-// 		IF mode > 0 OR watchdog.Q THEN (* Baustein noch aktiv, oder watchdog ausgelöst *)
+// 		IF mode > 0 OR watchdog.Q THEN (* block still active, or watchdog triggered *)
 // 			state := 5;
 // 			EXIT;
-// 		ELSIF e > 0 THEN (* File_error oder kein weiteres zeichen vorhanden *)
-// 			state := 10; (* nichts gefunden - Daten-Ende erreicht *)
+// 		ELSIF e > 0 THEN (* File_error or no further character available *)
+// 			state := 10; (* nothing found - end of data reached *)
 // 			EXIT;
 // 		ELSE
 //
@@ -5417,117 +5417,117 @@ END_FUNCTION_BLOCK
 //
 // 			CASE step OF
 //
-// 			0: (* noch kein Modus erkannt *)
-// 				IF c = 91 THEN (* mit "[" vergleichen *)
-// 					step := 200; (* Modus für Section aktivieren *)
-// 				ELSIF c = 59 OR c = 35 THEN (* mit ";" und '#' vergleichen *)
-// 					step := 100; (* Modus für Kommentar aktivieren *)
-// 				ELSIF c > 32 THEN (* Key erkannt *)
-// 					k_add := c; (* Zeichen ablegen *)
-// 					step := 300; (* Key auswertung starten *)
+// 			0: (* no mode detected yet *)
+// 				IF c = 91 THEN (* compare with "[" *)
+// 					step := 200; (* activate mode for section *)
+// 				ELSIF c = 59 OR c = 35 THEN (* compare with ";" and '#' *)
+// 					step := 100; (* activate mode for comment *)
+// 				ELSIF c > 32 THEN (* key detected *)
+// 					k_add := c; (* store character *)
+// 					step := 300; (* start key evaluation *)
 // 				END_IF;
-// 			100: (* Kommentar erkannt -> Zeilenende suchen *)
-// 				IF c < 32 THEN (* prüfe auf Steuerzeichen *)
-// 					state  := 3; (* Beenden -> Kommentar wurde gefunden *)
+// 			100: (* comment detected -> search end of line *)
+// 				IF c < 32 THEN (* check for control characters *)
+// 					state  := 3; (* exit -> comment was found *)
 // 				END_IF;
-// 			200: (* Sections-start erkannt -> Sectionsende suchen *)
-// 				IF c = 93 THEN (* mit "]" vergleichen *)
-// 					IF pk > REF(KEY) > 0 THEN (* innerhalb von [] muss sich mindestens ein Zeichen befinden *)
-// 						state  := 1; (* Beenden -> Section wurde gefunden *)
+// 			200: (* section start detected -> search section end *)
+// 				IF c = 93 THEN (* compare with "]" *)
+// 					IF pk > REF(KEY) > 0 THEN (* there must be at least one character inside [] *)
+// 						state  := 1; (* exit -> section was found *)
 // 					ELSE
 // 						pk := REF(KEY);
 // 						pk^ := 0; (* KEY = '' *)
-// 						step := 0; (* fehlerhafte Section-Zeile vorhanden -> weitersuchen *)
+// 						step := 0; (* faulty section line present -> continue searching *)
 // 					END_IF;
-// 				ELSIF c < 32 OR eof THEN (* Steuerzeichen - fehlerhafte Section-Zeile -> weitersuchen *)
+// 				ELSIF c < 32 OR eof THEN (* control character - faulty section line -> continue searching *)
 // 					pk := REF(KEY);
 // 					pk^ := 0; (* KEY = '' *)
 // 					step := 0;
 // 				ELSE
-// 					k_add := c; (* Zeichen ablegen *)
+// 					k_add := c; (* store character *)
 // 				END_IF;
-// 			300: (* Beginn: Key erkannt -> Name auswerten *)
-// 				IF c < 32 THEN (* Steuerzeichen - fehlerhafte Key-Zeile -> weitersuchen *)
+// 			300: (* begin: key detected -> evaluate name *)
+// 				IF c < 32 THEN (* control character - faulty key line -> continue searching *)
 // 					pk := REF(KEY);
 // 					pk^ := 0; (* KEY = '' *)
 // 					step := 0;
-// 				ELSIF c = 61 THEN (* prüfe auf '=' *)
+// 				ELSIF c = 61 THEN (* check for '=' *)
 // 					step := 330;
 // 				ELSE
-// 					k_add := c; (* Zeichen ablegen *)
+// 					k_add := c; (* store character *)
 // 				END_IF;
-// 			330: (* KeyValue beginn suchen *)
-// 				IF c < 32 THEN (* Steuerzeichen  *)
-// 					state := 2; (* Key ohne Value gefunden *)
+// 			330: (* search KeyValue start *)
+// 				IF c < 32 THEN (* control character  *)
+// 					state := 2; (* key without value found *)
 // 				ELSIF eof THEN
-// 					state := 2; (* Key ohne Value gefunden *)
-// 					v_add := c; (* Zeichen ablegen *)
+// 					state := 2; (* key without value found *)
+// 					v_add := c; (* store character *)
 // 				ELSE
-// 					v_add := c; (* Zeichen ablegen *)
+// 					v_add := c; (* store character *)
 // 					step := 350;
 // 				END_IF;
-// 			350: (* KeyValue Ende suchen *)
-// 				IF c < 32 THEN (* Steuerzeichen *)
-// 					state := 2; (* Key gefunden *)
+// 			350: (* search KeyValue end *)
+// 				IF c < 32 THEN (* control character *)
+// 					state := 2; (* key found *)
 // 				ELSIF eof THEN
-// 					v_add := c; (* Zeichen ablegen *)
-// 					state := 2; (* Key gefunden *)
+// 					v_add := c; (* store character *)
+// 					state := 2; (* key found *)
 // 				ELSE
-// 					v_add := c; (* Zeichen ablegen *)
+// 					v_add := c; (* store character *)
 // 				END_IF;
 // 			END_CASE;
 //
-// 			IF v_add > 0  AND pv < pve THEN (* Zeichen zu Value-String hinzufügen *)
-// 				pv^ := v_add; (* Zeichen eintragen *)
+// 			IF v_add > 0  AND pv < pve THEN (* add character to value string *)
+// 				pv^ := v_add; (* enter character *)
 // 				pv := pv + 1;
-// 				pv^ := 0; (* String-Terminierung eintragen *)
+// 				pv^ := 0; (* enter string termination *)
 // 			END_IF;
 //
-// 			IF k_add > 0 AND pk < pke THEN (* Zeichen zu Key-String hinzufügen *)
-// 				pk^ := k_add; (* Zeichen eintragen *)
+// 			IF k_add > 0 AND pk < pke THEN (* add character to key string *)
+// 				pk^ := k_add; (* enter character *)
 // 				pk := pk + 1;
-// 				pk^ := 0; (* String-Terminierung eintragen *)
+// 				pk^ := 0; (* enter string termination *)
 // 			END_IF;
 //
-// 			i := i + 1; (* Datenzeiger erhöhen *)
+// 			i := i + 1; (* increment data pointer *)
 //
 // 		END_IF;
 // 	END_WHILE;
 //
 // 	CASE state OF
-// 	01:	(* Section gefunden *)
-// 		IF RUN = 1 OR RUN = 3 THEN (* Section vorgewählt oder alles rückmelden *)
-// 			IF KEY = STR OR LEN(STR) = 0 THEN (* mit gesuchter Section vergleichen oder keine Section vorgegeben *)
-// 				RESULT := 1; (* Section gefunden *)
-// 				OFFSET := i; (* Offset uebernehmen *)
+// 	01:	(* section found *)
+// 		IF RUN = 1 OR RUN = 3 THEN (* section preselected or report everything *)
+// 			IF KEY = STR OR LEN(STR) = 0 THEN (* compare with searched section or no section specified *)
+// 				RESULT := 1; (* section found *)
+// 				OFFSET := i; (* take offset *)
 // 				RUN := 0;
 // 				state := 0;
 // 			END_IF;
 // 		ELSE
 // 			pk := REF(KEY);
 // 			pk^ := 0; (* KEY = '' *)
-// 			RESULT := 11; (* Key nicht gefunden , Section-Ende - Offset nicht verändern *)
+// 			RESULT := 11; (* key not found, section end - do not change offset *)
 // 			RUN := 0;
 // 			state := 0;
 // 		END_IF;
-// 	02:	(* Key gefunden *)
-// 		IF RUN = 2 OR RUN = 3 THEN (* Key vorgewählt oder alles rückmelden *)
-// 			IF KEY = STR OR LEN(STR) = 0 THEN (* mit gesuchten Key vergleichen *)
-// 				RESULT := 2; (* Key gefunden *)
-// 				OFFSET := i; (* Offset uebernehmen *)
+// 	02:	(* key found *)
+// 		IF RUN = 2 OR RUN = 3 THEN (* key preselected or report everything *)
+// 			IF KEY = STR OR LEN(STR) = 0 THEN (* compare with searched key *)
+// 				RESULT := 2; (* key found *)
+// 				OFFSET := i; (* take offset *)
 // 				RUN := 0;
 // 				state := 0;
 // 			END_IF;
 // 		END_IF;
-// 	03:	(* Kommenar gefunden *)
-// 		OFFSET := i; (* Offset uebernehmen *)
+// 	03:	(* comment found *)
+// 		OFFSET := i; (* take offset *)
 // 		state := 0;
 //
-// 	05:	RESULT := 5; (* in Arbeit *)
+// 	05:	RESULT := 5; (* in progress *)
 //
-// 	10:	(* Indexüberschreitung - Bufferende *)
-// 		RESULT := 10; (* nichts gefunden - Datenende erreicht *)
-// 		OFFSET := i; (* Offset uebernehmen *)
+// 	10:	(* index out of range - end of buffer *)
+// 		RESULT := 10; (* nothing found - end of data reached *)
+// 		OFFSET := i; (* take offset *)
 // 		RUN := 0;
 // 		state := 0;
 // 	END_CASE;
@@ -5561,7 +5561,7 @@ END_FUNCTION_BLOCK
 // Commented out for beedance: it uses FLOAT_TO_REAL, which is commented out.
 // FUNCTION_BLOCK IP2GEO
 // VAR_IN_OUT
-// 	IP_C : IP_C; (* IP_Control Verwaltungsstruktur *)
+// 	IP_C : IP_C; (* IP_Control management structure *)
 // 	S_BUF : NETWORK_BUFFER;
 // 	R_BUF : NETWORK_BUFFER;
 // 	GEO : IP2GEO_DATA;
@@ -5599,7 +5599,7 @@ END_FUNCTION_BLOCK
 // 		ERROR_T := BYTE#0;
 // 	END_IF;
 //
-// 20: (* URL for DNS UND HTTP-GET *)
+// 20: (* URL for DNS AND HTTP-GET *)
 // 	(* Example: http://ipinfodb.com/ip_query.php?ip=10.10.10.10 *)
 // 	(* Example: http://ipinfodb.com/ip_query.php?timezone=true&IP=*)
 // 	URL_DATA:=STRING_TO_URL(STR:='http://ipinfodb.com/ip_query.php?timezone=true&IP=',DEFAULT_PROTOCOL:='',DEFAULT_PATH:='');
@@ -5614,7 +5614,7 @@ END_FUNCTION_BLOCK
 // 	IF DNS_CLIENT.DONE THEN
 // 		state := 60;
 // 	ELSIF (DNS_CLIENT.ERROR > DWORD#00) THEN
-// 		(* Fehlerbehandlung *)
+// 		(* error handling *)
 // 		ERROR_C := DNS_CLIENT.ERROR;
 // 		ERROR_T := BYTE#01;
 // 		state := 100;
@@ -5629,22 +5629,22 @@ END_FUNCTION_BLOCK
 // 		CTRL.WATCHDOG := T#1ms;
 //
 // 	ELSIF (HTTP_GET.ERROR > DWORD#00) THEN
-// 		(* Fehlerbehandlung *)
+// 		(* error handling *)
 // 		ERROR_C := HTTP_GET.ERROR;
 // 		ERROR_T := BYTE#02;
 // 		state := 100;
 // 	END_IF;
 //
 // 80:
-// 	(* XML Daten seriell lesen *)
+// 	(* read XML data serially *)
 // 	XML_READER(CTRL:=CTRL,BUF:=R_BUF.BUFFER);
-// 	IF CTRL.TYP < 98 THEN (* nur auswerten wenn kein Watchdog durchlauf *)
-// 		(* automatische konvertierung in real und int ausführen *)
+// 	IF CTRL.TYP < 98 THEN (* evaluate only if not a watchdog pass *)
+// 		(* perform automatic conversion to real and int *)
 // 		value_int := 0;
 // 		value_real := 0.0;
 // 		IF LEN(CTRL.VALUE) <= 20 THEN
 // 			v_real :=FLOAT_TO_REAL(FLT:=CTRL.VALUE);
-// 			IF CHK_REAL(v_real) = 0 THEN (* !!! prüft auf gültigen REAL Wert, ansonsten stürzt Twincat ab !!!!  *)
+// 			IF CHK_REAL(v_real) = 0 THEN (* !!! checks for a valid REAL value, otherwise TwinCAT crashes !!!!  *)
 // 				value_real := v_real;
 // 				value_int := REAL_TO_INT(value_real);
 // 			END_IF;
@@ -5652,7 +5652,7 @@ END_FUNCTION_BLOCK
 //
 // 		CASE UINT_TO_INT(CTRL.COUNT) OF
 //
-// 		07: GEO.IP4 := IP4_DECODE(STR:=CTRL.VALUE); (* IP-Adresse *)
+// 		07: GEO.IP4 := IP4_DECODE(STR:=CTRL.VALUE); (* IP address *)
 // 		10: GEO.STATE := 'OK' = CTRL.VALUE; (* STATUS *)
 // 		13: GEO.COUNTRY_CODE := CTRL.VALUE; (* Country-Code *)
 // 		16: GEO.COUNTRY_NAME := CTRL.VALUE; (* Country-Name *)
@@ -5662,11 +5662,11 @@ END_FUNCTION_BLOCK
 // 		31: GEO.GEO_LATITUDE := value_real; (* Latitude *)
 // 		34: GEO.GEO_LONGITUDE := value_real; (* Longitude *)
 // 		37: GEO.TIME_ZONE_NAME := CTRL.VALUE; (* TimeZone Name *)
-// 		40: GEO.GMT_OFFSET := value_int; (* GMT OFFSET in Sekunden *)
-// 		43: GEO.IS_DST := value_int > 0; (* Sommerzeit aktiv *)
+// 		40: GEO.GMT_OFFSET := value_int; (* GMT OFFSET in seconds *)
+// 		43: GEO.IS_DST := value_int > 0; (* daylight saving time active *)
 // 		END_CASE;
 //
-// 	ELSIF CTRL.TYP = 99 THEN (* EXIT - letztes Element gelesen *)
+// 	ELSIF CTRL.TYP = 99 THEN (* EXIT - last element read *)
 // 		DONE := TRUE;
 // 		state := 100;
 // 	END_IF;
@@ -5690,7 +5690,7 @@ END_FUNCTION_BLOCK
 // 			ACTIVATE:=state=40 (* DNS Start *)
 // 			);
 //
-// (* nicht oder nicht direkt verwendete Parameter *)
+// (* parameters not used, or not used directly *)
 // (* 	DWORD :=DNS_CLIENT.IP4;
 // 	BOOL  :=DNS_CLIENT.DONE;
 // 	BYTE  :=DNS_CLIENT.ERROR; *)
@@ -5702,12 +5702,12 @@ END_FUNCTION_BLOCK
 // 			R_BUF:=R_BUF,
 // 			IP4:=DNS_CLIENT.IP4,
 // 			GET:=state=60,
-// 			MODE:=BYTE#2, (* HTTP 1.1 mit persistenter Verbindung *)
+// 			MODE:=BYTE#2, (* HTTP 1.1 with persistent connection *)
 // 			UNLOCK_BUF:=state=100,
 // 			URL_DATA:=URL_DATA
 // 			);
 //
-// (* nicht oder nicht direkt verwendete Parameter *)
+// (* parameters not used, or not used directly *)
 // (*	STRING := HTTP_GET.HTTP_STATUS;
 // 	UINT :=HTTP_GET.HEADER_START;
 // 	UINT :=HTTP_GET.HEADER_STOP;
@@ -5769,48 +5769,48 @@ END_FUNCTION
 
 FUNCTION_BLOCK IP_CONTROL
 VAR_IN_OUT
-	IP_C : IP_C; (* IP_Control Verwaltungsstruktur *)
-	S_BUF : NETWORK_BUFFER; (* Externer Sendbuffer *)
-	R_BUF : NETWORK_BUFFER; (* Externer Receivebuffer *)
+	IP_C : IP_C; (* IP_Control management structure *)
+	S_BUF : NETWORK_BUFFER; (* external send buffer *)
+	R_BUF : NETWORK_BUFFER; (* external receive buffer *)
 END_VAR
 VAR_INPUT
-	IP : DWORD; (* IP Adresse *)
-	PORT : WORD; (* Port Nummer *)
-	TIME_OUT : TIME; (* Ueberwachungszeit Connect / Send / Receive *)
+	IP : DWORD; (* IP address *)
+	PORT : WORD; (* port number *)
+	TIME_OUT : TIME; (* monitoring time connect / send / receive *)
 END_VAR
 VAR
-	c_time : UDINT; (* CONNECT-Time (Zeit bei nicht vorhandener Verbindung) *)
-	s_time : UDINT; (* SEND-Time    (Zeit seit letzten Datensenden) *)
-	r_time : UDINT; (* RECEIVE-Time (Zeit seit letztem Datenempfang) *)
+	c_time : UDINT; (* CONNECT time (time without a connection) *)
+	s_time : UDINT; (* SEND time    (time since last data sent) *)
+	r_time : UDINT; (* RECEIVE time (time since last data received) *)
 
-	c_enable : BOOL; (* Connect: freigabe *)
-	c_ip : DWORD; (* Connect: aktuelle IP-Adresse *)
+	c_enable : BOOL; (* Connect: enable *)
+	c_ip : DWORD; (* Connect: current IP address *)
 	c_ip_str : STRING(15);
-	c_port : WORD; (* Connect: aktuelle Port-Nummer *)
-	c_mode : BYTE; (* Connect: aktueller Mode UDP/TCP...... *)
+	c_port : WORD; (* Connect: current port number *)
+	c_mode : BYTE; (* Connect: current mode UDP/TCP...... *)
 	c_status : BYTE; (* Connect: Status (Errorcode) *)
-	c_ready : BOOL; (* Connect: Verbindung aufgebaut *)
-	c_ready_old : BOOL; (* Connect: letzter Zustand von c_ready für Flankenauswertung *)
+	c_ready : BOOL; (* Connect: connection established *)
+	c_ready_old : BOOL; (* Connect: last state of c_ready for edge evaluation *)
 
-	s_total : INT; (* Send: Gesamtanzahl Bytes zum senden *)
-	s_cur_pos : INT; (* Send: aktuelle Sendeposition *)
-	s_cur_size : INT; (* Send: aktuelle Sendegroesse *)
-	s_max_size : INT; (* Send: maximale Telegrammlänge fuer Senden *)
-	s_active : BOOL; (* Send: Daten senden ist aktiv *)
+	s_total : INT; (* Send: total number of bytes to send *)
+	s_cur_pos : INT; (* Send: current send position *)
+	s_cur_size : INT; (* Send: current send size *)
+	s_max_size : INT; (* Send: maximum telegram length for sending *)
+	s_active : BOOL; (* Send: data sending is active *)
 	s_status : BYTE; (* Send: Status (Errorcodes) *)
 	s_ip_str : STRING(15);
 	s_ip_exist : BOOL;
 
 	r_status : BYTE; (* Receive: Status (Errorcodes) *)
-	r_count : INT; (* Receive: Anzahl empfangener Bytes *)
-	r_offset : INT; (* Receive: aktuelle Position in externen Receivebuffer *)
-	r_max_size : INT; (* Receive: groesse des externen Empfangbuffers*)
+	r_count : INT; (* Receive: number of received bytes *)
+	r_offset : INT; (* Receive: current position in external receive buffer *)
+	r_max_size : INT; (* Receive: size of the external receive buffer*)
 
-	new_connection : BOOL; (* Neue Verbindungsparameter vorhanden *)
-	tx : DWORD; (* letzter zeitwert *)
-	error_time : DWORD; (* aktueller Timeout-Wert *)
+	new_connection : BOOL; (* new connection parameters available *)
+	tx : DWORD; (* last time value *)
+	error_time : DWORD; (* current timeout value *)
 
-	state: BYTE; (* schrittmerker für connect *)
+	state: BYTE; (* step flag for connect *)
 	bytes_received : DINT;
 	udp_mode : BOOL;
 
@@ -5856,7 +5856,7 @@ VAR CONSTANT
 	C_SND_WAIT2 : BYTE := 222;
 END_VAR
 
-(* Bei PLC reset oder Programm Download werden alle alten Verbindungen geschlossen *)
+(* on PLC reset or program download all old connections are closed *)
 IPCR();
 IF NOT IPCR.READY THEN RETURN; END_IF;
 
@@ -5867,16 +5867,16 @@ IF NOT IPCR.READY THEN RETURN; END_IF;
 tx := T_PLC_MS();
 
 IF IP_C.C_PORT = 0 THEN
-	IP_C.C_PORT := PORT; (* uebergebenen PORT durch parametrierten PORT ersetzen *)
+	IP_C.C_PORT := PORT; (* replace the given PORT with the configured PORT *)
 END_IF;
 IF IP_C.C_IP = 0 AND IP_C.C_MODE < 4 THEN
-	IP_C.C_IP := IP; (* uebergebene IP durch paramtrierte IP ersetzen *)
+	IP_C.C_IP := IP; (* replace the given IP with the configured IP *)
 END_IF;
 
-new_connection := c_ip <> IP_C.C_IP OR c_mode <> IP_C.C_MODE OR c_port <> IP_C.C_PORT; (* neue Verbindungs erwünscht ? *)
+new_connection := c_ip <> IP_C.C_IP OR c_mode <> IP_C.C_MODE OR c_port <> IP_C.C_PORT; (* new connection requested? *)
 c_enable := IP_C.C_ENABLE AND NOT new_connection;
 
-IF IP_C.C_ENABLE AND IP_C.ERROR = 0 AND state = STOP THEN (* Freigabe,kein Fehler,kein Socket offen *)
+IF IP_C.C_ENABLE AND IP_C.ERROR = 0 AND state = STOP THEN (* enabled, no error, no socket open *)
 	c_ip   := IP_C.C_IP;
 	c_mode := IP_C.C_MODE;
 	c_port := IP_C.C_PORT;
@@ -5884,7 +5884,7 @@ IF IP_C.C_ENABLE AND IP_C.ERROR = 0 AND state = STOP THEN (* Freigabe,kein Fehle
 	udp_mode := C_MODE.0; (* Mode 1,3,5 = udp *)
 
 	error_time := TIME_TO_DWORD(MAX(T#200ms,TIME_OUT));
-	IP_C.TIME_RESET := TRUE; (* Alle Timer ruecksetzen *)
+	IP_C.TIME_RESET := TRUE; (* reset all timers *)
 	r_max_size := SIZEOF(R_BUF.BUFFER);
 	s_max_size := SIZEOF(S_BUF.BUFFER);
 
@@ -5896,7 +5896,7 @@ IF IP_C.C_ENABLE AND IP_C.ERROR = 0 AND state = STOP THEN (* Freigabe,kein Fehle
 		state := TS_INIT; (* Mode: 2,4 = TCP SERVER *)
 	END_IF;
 
-	IF c_mode < 5 THEN (* Empfänger-IP vorgeben *)
+	IF c_mode < 5 THEN (* set receiver IP *)
 		s_ip_str := c_ip_str;
 		s_ip_exist := TRUE;
 	ELSE
@@ -5912,15 +5912,15 @@ END_IF;
 (*####################  DEBUG-MESSAGE  ###################################*)
 (*########################################################################*)
 
-IF IP_C.TIME_RESET THEN (* Alle Timer ruecksetzen *)
-	IP_C.TIME_RESET := FALSE; (* Reset rücksetzen *)
-	c_time := tx; (* Connect Timer ruecksetzen *)
-	s_time := tx; (* Send Timer ruecksetzen *)
-	r_time := tx; (* Receive Timer ruecksetzen *)
+IF IP_C.TIME_RESET THEN (* reset all timers *)
+	IP_C.TIME_RESET := FALSE; (* clear reset *)
+	c_time := tx; (* reset connect timer *)
+	s_time := tx; (* reset send timer *)
+	r_time := tx; (* reset receive timer *)
 
-	c_status := BYTE#0; (* letzten Connect Fehler rücksetzen *)
-	s_status := BYTE#0; (* letzten Send Fehler rücksetzen *)
-	r_status := BYTE#0; (* letzten Receive Fehler rücksetzen *)
+	c_status := BYTE#0; (* reset last connect error *)
+	s_status := BYTE#0; (* reset last send error *)
+	r_status := BYTE#0; (* reset last receive error *)
 END_IF;
 
 (* ---------------------------------------------- *)
@@ -5931,7 +5931,7 @@ UDP_INIT: (* UDP_CLIENT + SERVER *)
 
 	fbCreate(bExecute := FALSE);
 	fbCreate(	bExecute := TRUE , sSrvNetId := sSrvNetId, sLocalHost := sLocalHost, nLocalPort := SEL(c_mode = 1,c_port,0) , tTimeOut := TIME_OUT);
-	fbCreate.bExecute := FALSE; (* vorbelegung *)
+	fbCreate.bExecute := FALSE; (* presetting *)
 	state := UDP_INIT_WAIT;
 
 UDP_INIT_WAIT:
@@ -5949,15 +5949,15 @@ UDP_INIT_WAIT:
 	END_IF;
 
 (* ---------------------------------------------- *)
-TC_INIT: (* TCP-CLIENT (AKTIV) *)
+TC_INIT: (* TCP CLIENT (ACTIVE) *)
 	fbConnect(bExecute := FALSE);
 	fbConnect(bExecute := TRUE, sSrvNetId := sSrvNetId, sRemoteHost := c_ip_str, nRemotePort := c_port, tTimeout := TIME_OUT);
-	fbConnect.bExecute := FALSE; (* vorbelegung *)
+	fbConnect.bExecute := FALSE; (* presetting *)
 	state := TC_CONNECT;
 
 (* ---------------------------------------------- *)
 TC_CONNECT:
-	IF NOT c_enable OR c_status = 255 THEN (* keine freigabe oder connect timeout *)
+	IF NOT c_enable OR c_status = 255 THEN (* not enabled or connect timeout *)
 		state := C_CLOSE;
 	END_IF;
 
@@ -5965,7 +5965,7 @@ TC_CONNECT:
 	IF NOT fbConnect.bBusy THEN
 		IF fbConnect.bError THEN
 			nErrID := fbConnect.nErrId;
-			state :=TC_INIT; (* Nochmals versuchen *)
+			state :=TC_INIT; (* try again *)
 		ELSE
 			socket := fbConnect.hSocket;
 			c_ready := TRUE; (* Connected *)
@@ -5973,7 +5973,7 @@ TC_CONNECT:
 		END_IF;
 	END_IF;
 (* ---------------------------------------------- *)
-TS_INIT: (* TCP-SERVER (PASSIV) *)
+TS_INIT: (* TCP SERVER (PASSIVE) *)
 	fbListen(bExecute := FALSE);
 	fbListen(bExecute := TRUE , sSrvNetId:= sSrvNetId , sLocalHost:= sLocalHost , nLocalPort:= c_port , tTimeout:= TIME_OUT);
 	fbListen.bExecute := FALSE;
@@ -6002,7 +6002,7 @@ TS_ACCEPT_WAIT:
 	fbAccept();
 	IF NOT fbAccept.bBusy THEN
 
-		state := TS_ACCEPT; (* vorbelegung  *)
+		state := TS_ACCEPT; (* presetting  *)
 
 		IF fbAccept.bError THEN
 			c_status := 4; (* FB_SocketAccept failed *)
@@ -6012,7 +6012,7 @@ TS_ACCEPT_WAIT:
 			IF fbAccept.bAccepted THEN
 				socket := fbAccept.hSocket;
 				IF socket.remoteAddr.sAddr  <> c_ip_str AND c_mode <> 4 THEN
-					state := C_CLOSE; (* Remote ablehnen - Verbindung beenden *)
+					state := C_CLOSE; (* reject remote - close connection *)
 				ELSE
 					state := C_WAIT;
 					c_ready := TRUE; (* Connected *)
@@ -6035,7 +6035,7 @@ C_CLOSE:
 C_CLOSE_WAIT:
 	fbClose();
 	IF NOT fbClose.bBusy THEN
-		socket := TCPADS_NULL_HSOCKET; (* Socket rücksetzen *)
+		socket := TCPADS_NULL_HSOCKET; (* reset socket *)
 		nErrId:= SEL(fbClose.bError,0,fbClose.nErrId);
 		state:= C_CLOSE2;
 	END_IF;
@@ -6053,14 +6053,14 @@ C_CLOSE2:
 C_CLOSE_WAIT2:
 	fbClose();
 	IF NOT fbClose.bBusy THEN
-		server := TCPADS_NULL_HSOCKET; (* Socket rücksetzen *)
+		server := TCPADS_NULL_HSOCKET; (* reset socket *)
 		nErrId:= SEL(fbClose.bError,0,fbClose.nErrId);
 		state:= STOP;
 	END_IF;
 
 (* ---------------------------------------------- *)
 
-C_WAIT: (* Warten auf Anforderung für Beenden *)
+C_WAIT: (* wait for request to close *)
 	IF NOT c_enable OR NOT c_ready THEN
 		state:= C_CLOSE;
 	ELSIF S_BUF.SIZE > 0 AND IP_C.MAILBOX[2] = 0 AND s_ip_exist THEN
@@ -6071,10 +6071,10 @@ C_WAIT: (* Warten auf Anforderung für Beenden *)
 
 (* ---------------------------------------------- *)
 
-C_REC: (* Daten empfangen *)
+C_REC: (* receive data *)
 	IF R_BUF.SIZE >= INT_TO_UINT(r_max_size) THEN
 		R_BUF.SIZE := UINT#0;
-		r_status := 254; (* Empfangsbuffer wegen Überlauf rückgesetzt *)
+		r_status := 254; (* receive buffer reset due to overflow *)
 	END_IF;
 
 	r_offset := SEL(udp_mode,UINT_TO_INT(R_BUF.SIZE),0);
@@ -6084,7 +6084,7 @@ C_REC: (* Daten empfangen *)
 	IF udp_mode THEN
 		fbReceiveFrom(bExecute := FALSE );
 		fbReceiveFrom(bExecute:= TRUE, sSrvNetId := sSrvNetId, hSocket:= socket, cbLen := r_count, pDest:= REF(R_BUF.BUFFER), tTimeout:= TIME_OUT);
-		fbReceiveFrom.bExecute := FALSE; (* Vorbelegung *)
+		fbReceiveFrom.bExecute := FALSE; (* presetting *)
 	ELSE
 		fbReceive(bExecute:= FALSE);
 		fbReceive(bExecute:= TRUE, sSrvNetId := sSrvNetId , hSocket:= socket , cbLen:= r_count, pDest:= REF(R_BUF.BUFFER[r_offset]) , tTimeout:= TIME_OUT);
@@ -6109,7 +6109,7 @@ C_REC_WAIT:
 					END_IF;
 				END_IF;
 				state := C_WAIT;
-			ELSIF fbReceiveFrom.nErrId = 16#80072746 THEN (* Verbindung vom Remote beendet *)
+			ELSIF fbReceiveFrom.nErrId = 16#80072746 THEN (* connection closed by remote *)
 				c_status := 253;
 				c_ready := FALSE;
 				state := C_WAIT;
@@ -6125,7 +6125,7 @@ C_REC_WAIT:
 				IF fbReceive.nRecBytes > 0 THEN
 					bytes_received := fbReceive.nRecBytes;
 				END_IF;
-			ELSIF fbReceive.nErrId = 16#8004 THEN (* Verbindung vom Remote beendet *)
+			ELSIF fbReceive.nErrId = 16#8004 THEN (* connection closed by remote *)
 				c_status := 253;
 				c_ready := FALSE;
 			ELSE
@@ -6136,8 +6136,8 @@ C_REC_WAIT:
 	END_IF;
 
 	IF bytes_received > 0 THEN
-		r_time := tx; (* Receive Timer ruecksetzen *)
-		R_BUF.SIZE := INT_TO_UINT(r_offset + DINT_TO_UINT(bytes_received)); (* aktuelle buffersize eintragen *)
+		r_time := tx; (* reset receive timer *)
+		R_BUF.SIZE := INT_TO_UINT(r_offset + DINT_TO_UINT(bytes_received)); (* enter current buffer size *)
 		IP_C.MAILBOX[1] := IP_C.MAILBOX[1] + 1; (* Receive Info *)
 		IF IP_C.MAILBOX[1] = 0 THEN IP_C.MAILBOX[1] := 1; END_IF;
     		(*####################  DEBUG-MESSAGE  ###################################*)
@@ -6149,20 +6149,20 @@ C_SND:
 	IF S_BUF.SIZE > 0 THEN
 		IF c_ready AND c_enable THEN
 			IF NOT s_active THEN
-				s_total := LIMIT(0,UINT_TO_INT(S_BUF.SIZE),r_max_size); (* Gesamtanzahl an Bytes limitieren und uebergeben *)
+				s_total := LIMIT(0,UINT_TO_INT(S_BUF.SIZE),r_max_size); (* limit and pass total number of bytes *)
 				s_cur_pos  := 0;
 				s_cur_size := 0;
-				s_active := TRUE; (* Sende-Betrieb aktivieren *)
+				s_active := TRUE; (* activate send mode *)
 			END_IF;
 
-			s_cur_pos := s_cur_pos + s_cur_size; (* neue Sende-Datenposition bestimmen *)
-			IF s_total > s_cur_pos THEN (* weitere Daten zum senden vorhanden ? *)
+			s_cur_pos := s_cur_pos + s_cur_size; (* determine new send data position *)
+			IF s_total > s_cur_pos THEN (* more data to send? *)
 				s_cur_size := s_total - s_cur_pos;
-				s_cur_size := LIMIT(0, s_cur_size, s_max_size); (* Telegrammlänge begrenzen *)
-				s_time := tx; (* Send Timer ruecksetzen *)
-				r_time := tx; (* Receive Timer ruecksetzen *)
+				s_cur_size := LIMIT(0, s_cur_size, s_max_size); (* limit telegram length *)
+				s_time := tx; (* reset send timer *)
+				r_time := tx; (* reset receive timer *)
 				state := C_SND_WAIT1;
-			ELSE (* keine weitere Sendedaten vorhanden -> Senden beenden *)
+			ELSE (* no more send data -> stop sending *)
 				s_active := FALSE;
 				S_BUF.SIZE := 0;
 				state := C_WAIT;
@@ -6213,30 +6213,30 @@ END_CASE;
 (* ---------------------------------------------- *)
 
 IF c_ready THEN
-	IF NOT c_ready_old THEN (* Verbindung aufgebaut - positive Flanke erkannt *)
+	IF NOT c_ready_old THEN (* connection established - rising edge detected *)
 		IP_C.C_STATE := 254;
-		IP_C.TIME_RESET := TRUE; (* Alle Timer ruecksetzen *)
+		IP_C.TIME_RESET := TRUE; (* reset all timers *)
     		(*####################  DEBUG-MESSAGE  ###################################*)
 		(*########################################################################*)
 	ELSE
-		IP_C.C_STATE := 255; (* Verbindung ist aufgebaut *)
+		IP_C.C_STATE := 255; (* connection is established *)
 	END_IF;
 ELSE
-	IF c_ready_old THEN (* Verbindung abgebaut - negative Flanke erkannt *)
+	IF c_ready_old THEN (* connection closed - falling edge detected *)
 		IP_C.C_STATE := 1;
-		IP_C.MAILBOX[1] := 0; (* Receive Info rücksetzen *)
-		IP_C.MAILBOX[2] := 0; (* Send-Pause rücksetzen *)
-		IP_C.MAILBOX[3] := 0; (* Receive-Pause rücksetzen *)
+		IP_C.MAILBOX[1] := 0; (* reset receive info *)
+		IP_C.MAILBOX[2] := 0; (* reset send pause *)
+		IP_C.MAILBOX[3] := 0; (* reset receive pause *)
 		IF NOT new_connection THEN
-			s_active := FALSE; (* Sendeaktivitäten stoppen *)
-			S_BUF.SIZE := 0; (* Sendelänge löschen *)
-			(*IP_C.TIME_RESET := TRUE; *) (* Alle Timer ruecksetzen *)
+			s_active := FALSE; (* stop send activities *)
+			S_BUF.SIZE := 0; (* clear send length *)
+			(*IP_C.TIME_RESET := TRUE; *) (* reset all timers *)
 		END_IF;
     		(*####################  DEBUG-MESSAGE  ###################################*)
 		(*########################################################################*)
 
 	ELSE
-		IP_C.C_STATE := 0; (* Verbindung ist abgebaut *)
+		IP_C.C_STATE := 0; (* connection is closed *)
 	END_IF;
 END_IF;
 
@@ -6249,13 +6249,13 @@ IF IP_C.R_OBSERVE = FALSE OR s_active THEN
 END_IF;
 
 IF c_status = 0 AND tx - c_time > error_time AND c_enable AND NOT c_ready AND c_mode < 2 THEN (* Connect Timeout *)
-	c_status := 255; (* Timeout-Fehler ausgeben *)
+	c_status := 255; (* output timeout error *)
 END_IF;
 IF s_status = 0 AND tx - s_time > error_time AND s_active THEN (* Send Timeout *)
-	s_status := 255; (* Timeout-Fehler ausgeben *)
+	s_status := 255; (* output timeout error *)
 END_IF;
 IF r_status = 0 AND tx - r_time > error_time AND c_ready AND IP_C.R_OBSERVE THEN (* Receive Timeout *)
-	r_status := 255; (* Timeout-Fehler ausgeben *)
+	r_status := 255; (* output timeout error *)
 END_IF;
 
 IP_C.ERROR := DWORD_OF_BYTE(c_status,s_status,r_status,0);
@@ -6266,48 +6266,48 @@ END_FUNCTION_BLOCK
 
 FUNCTION_BLOCK IP_CONTROL2
 VAR_IN_OUT
-	IP_C : IP_C; (* IP_Control Verwaltungsstruktur *)
-	S_BUF : NETWORK_BUFFER_SHORT; (* Externer Sendbuffer *)
-	R_BUF : NETWORK_BUFFER_SHORT; (* Externer Receivebuffer *)
+	IP_C : IP_C; (* IP_Control management structure *)
+	S_BUF : NETWORK_BUFFER_SHORT; (* external send buffer *)
+	R_BUF : NETWORK_BUFFER_SHORT; (* external receive buffer *)
 END_VAR
 VAR_INPUT
-	IP : DWORD; (* IP Adresse *)
-	PORT : WORD; (* Port Nummer *)
-	TIME_OUT : TIME; (* Ueberwachungszeit Connect / Send / Receive *)
+	IP : DWORD; (* IP address *)
+	PORT : WORD; (* port number *)
+	TIME_OUT : TIME; (* monitoring time connect / send / receive *)
 END_VAR
 VAR
-	c_time : UDINT; (* CONNECT-Time (Zeit bei nicht vorhandener Verbindung) *)
-	s_time : UDINT; (* SEND-Time    (Zeit seit letzten Datensenden) *)
-	r_time : UDINT; (* RECEIVE-Time (Zeit seit letztem Datenempfang) *)
+	c_time : UDINT; (* CONNECT time (time without a connection) *)
+	s_time : UDINT; (* SEND time    (time since last data sent) *)
+	r_time : UDINT; (* RECEIVE time (time since last data received) *)
 
-	c_enable : BOOL; (* Connect: freigabe *)
-	c_ip : DWORD; (* Connect: aktuelle IP-Adresse *)
+	c_enable : BOOL; (* Connect: enable *)
+	c_ip : DWORD; (* Connect: current IP address *)
 	c_ip_str : STRING(15);
-	c_port : WORD; (* Connect: aktuelle Port-Nummer *)
-	c_mode : BYTE; (* Connect: aktueller Mode UDP/TCP...... *)
+	c_port : WORD; (* Connect: current port number *)
+	c_mode : BYTE; (* Connect: current mode UDP/TCP...... *)
 	c_status : BYTE; (* Connect: Status (Errorcode) *)
-	c_ready : BOOL; (* Connect: Verbindung aufgebaut *)
-	c_ready_old : BOOL; (* Connect: letzter Zustand von c_ready für Flankenauswertung *)
+	c_ready : BOOL; (* Connect: connection established *)
+	c_ready_old : BOOL; (* Connect: last state of c_ready for edge evaluation *)
 
-	s_total : INT; (* Send: Gesamtanzahl Bytes zum senden *)
-	s_cur_pos : INT; (* Send: aktuelle Sendeposition *)
-	s_cur_size : INT; (* Send: aktuelle Sendegroesse *)
-	s_max_size : INT; (* Send: maximale Telegrammlänge fuer Senden *)
-	s_active : BOOL; (* Send: Daten senden ist aktiv *)
+	s_total : INT; (* Send: total number of bytes to send *)
+	s_cur_pos : INT; (* Send: current send position *)
+	s_cur_size : INT; (* Send: current send size *)
+	s_max_size : INT; (* Send: maximum telegram length for sending *)
+	s_active : BOOL; (* Send: data sending is active *)
 	s_status : BYTE; (* Send: Status (Errorcodes) *)
 	s_ip_str : STRING(15);
 	s_ip_exist : BOOL;
 
 	r_status : BYTE; (* Receive: Status (Errorcodes) *)
-	r_count : INT; (* Receive: Anzahl empfangener Bytes *)
-	r_offset : INT; (* Receive: aktuelle Position in externen Receivebuffer *)
-	r_max_size : INT; (* Receive: groesse des externen Empfangbuffers*)
+	r_count : INT; (* Receive: number of received bytes *)
+	r_offset : INT; (* Receive: current position in external receive buffer *)
+	r_max_size : INT; (* Receive: size of the external receive buffer*)
 
-	new_connection : BOOL; (* Neue Verbindungsparameter vorhanden *)
-	tx : DWORD; (* letzter zeitwert *)
-	error_time : DWORD; (* aktueller Timeout-Wert *)
+	new_connection : BOOL; (* new connection parameters available *)
+	tx : DWORD; (* last time value *)
+	error_time : DWORD; (* current timeout value *)
 
-	state: BYTE; (* schrittmerker für connect *)
+	state: BYTE; (* step flag for connect *)
 	bytes_received : DINT;
 	udp_mode : BOOL;
 
@@ -6353,7 +6353,7 @@ VAR CONSTANT
 	C_SND_WAIT2 : BYTE := 222;
 END_VAR
 
-(* Bei PLC reset oder Programm Download werden alle alten Verbindungen geschlossen *)
+(* on PLC reset or program download all old connections are closed *)
 IPCR();
 IF NOT IPCR.READY THEN RETURN; END_IF;
 
@@ -6364,16 +6364,16 @@ IF NOT IPCR.READY THEN RETURN; END_IF;
 tx := T_PLC_MS();
 
 IF IP_C.C_PORT = 0 THEN
-	IP_C.C_PORT := PORT; (* uebergebenen PORT durch parametrierten PORT ersetzen *)
+	IP_C.C_PORT := PORT; (* replace the given PORT with the configured PORT *)
 END_IF;
 IF IP_C.C_IP = 0 AND IP_C.C_MODE < 4 THEN
-	IP_C.C_IP := IP; (* uebergebene IP durch paramtrierte IP ersetzen *)
+	IP_C.C_IP := IP; (* replace the given IP with the configured IP *)
 END_IF;
 
-new_connection := c_ip <> IP_C.C_IP OR c_mode <> IP_C.C_MODE OR c_port <> IP_C.C_PORT; (* neue Verbindungs erwünscht ? *)
+new_connection := c_ip <> IP_C.C_IP OR c_mode <> IP_C.C_MODE OR c_port <> IP_C.C_PORT; (* new connection requested? *)
 c_enable := IP_C.C_ENABLE AND NOT new_connection;
 
-IF IP_C.C_ENABLE AND IP_C.ERROR = 0 AND state = STOP THEN (* Freigabe,kein Fehler,kein Socket offen *)
+IF IP_C.C_ENABLE AND IP_C.ERROR = 0 AND state = STOP THEN (* enabled, no error, no socket open *)
 	c_ip   := IP_C.C_IP;
 	c_mode := IP_C.C_MODE;
 	c_port := IP_C.C_PORT;
@@ -6381,7 +6381,7 @@ IF IP_C.C_ENABLE AND IP_C.ERROR = 0 AND state = STOP THEN (* Freigabe,kein Fehle
 	udp_mode := C_MODE.0; (* Mode 1,3,5 = udp *)
 
 	error_time := TIME_TO_DWORD(MAX(T#200ms,TIME_OUT));
-	IP_C.TIME_RESET := TRUE; (* Alle Timer ruecksetzen *)
+	IP_C.TIME_RESET := TRUE; (* reset all timers *)
 	r_max_size := SIZEOF(R_BUF.BUFFER);
 	s_max_size := SIZEOF(S_BUF.BUFFER);
 
@@ -6393,7 +6393,7 @@ IF IP_C.C_ENABLE AND IP_C.ERROR = 0 AND state = STOP THEN (* Freigabe,kein Fehle
 		state := TS_INIT; (* Mode: 2,4 = TCP SERVER *)
 	END_IF;
 
-	IF c_mode < 5 THEN (* Empfänger-IP vorgeben *)
+	IF c_mode < 5 THEN (* set receiver IP *)
 		s_ip_str := c_ip_str;
 		s_ip_exist := TRUE;
 	ELSE
@@ -6409,15 +6409,15 @@ END_IF;
 (* ---------------------- Debug-Message ----------------------------*)
 (* -----------------------------------------------------------------------------*)
 
-IF IP_C.TIME_RESET THEN (* Alle Timer ruecksetzen *)
-	IP_C.TIME_RESET := FALSE; (* Reset rücksetzen *)
-	c_time := tx; (* Connect Timer ruecksetzen *)
-	s_time := tx; (* Send Timer ruecksetzen *)
-	r_time := tx; (* Receive Timer ruecksetzen *)
+IF IP_C.TIME_RESET THEN (* reset all timers *)
+	IP_C.TIME_RESET := FALSE; (* clear reset *)
+	c_time := tx; (* reset connect timer *)
+	s_time := tx; (* reset send timer *)
+	r_time := tx; (* reset receive timer *)
 
-	c_status := BYTE#0; (* letzten Connect Fehler rücksetzen *)
-	s_status := BYTE#0; (* letzten Send Fehler rücksetzen *)
-	r_status := BYTE#0; (* letzten Receive Fehler rücksetzen *)
+	c_status := BYTE#0; (* reset last connect error *)
+	s_status := BYTE#0; (* reset last send error *)
+	r_status := BYTE#0; (* reset last receive error *)
 END_IF;
 
 (* ---------------------------------------------- *)
@@ -6428,7 +6428,7 @@ UDP_INIT: (* UDP_CLIENT + SERVER *)
 
 	fbCreate(bExecute := FALSE);
 	fbCreate(	bExecute := TRUE , sSrvNetId := sSrvNetId, sLocalHost := sLocalHost, nLocalPort := SEL(c_mode = 1,c_port,0) , tTimeOut := TIME_OUT);
-	fbCreate.bExecute := FALSE; (* vorbelegung *)
+	fbCreate.bExecute := FALSE; (* presetting *)
 	state := UDP_INIT_WAIT;
 
 UDP_INIT_WAIT:
@@ -6446,15 +6446,15 @@ UDP_INIT_WAIT:
 	END_IF;
 
 (* ---------------------------------------------- *)
-TC_INIT: (* TCP-CLIENT (AKTIV) *)
+TC_INIT: (* TCP CLIENT (ACTIVE) *)
 	fbConnect(bExecute := FALSE);
 	fbConnect(bExecute := TRUE, sSrvNetId := sSrvNetId, sRemoteHost := c_ip_str, nRemotePort := c_port, tTimeout := TIME_OUT);
-	fbConnect.bExecute := FALSE; (* vorbelegung *)
+	fbConnect.bExecute := FALSE; (* presetting *)
 	state := TC_CONNECT;
 
 (* ---------------------------------------------- *)
 TC_CONNECT:
-	IF NOT c_enable OR c_status = 255 THEN (* keine freigabe oder connect timeout *)
+	IF NOT c_enable OR c_status = 255 THEN (* not enabled or connect timeout *)
 		state := C_CLOSE;
 	END_IF;
 
@@ -6462,7 +6462,7 @@ TC_CONNECT:
 	IF NOT fbConnect.bBusy THEN
 		IF fbConnect.bError THEN
 			nErrID := fbConnect.nErrId;
-			state :=TC_INIT; (* Nochmals versuchen *)
+			state :=TC_INIT; (* try again *)
 		ELSE
 			socket := fbConnect.hSocket;
 			c_ready := TRUE; (* Connected *)
@@ -6470,7 +6470,7 @@ TC_CONNECT:
 		END_IF;
 	END_IF;
 (* ---------------------------------------------- *)
-TS_INIT: (* TCP-SERVER (PASSIV) *)
+TS_INIT: (* TCP SERVER (PASSIVE) *)
 	fbListen(bExecute := FALSE);
 	fbListen(bExecute := TRUE , sSrvNetId:= sSrvNetId , sLocalHost:= sLocalHost , nLocalPort:= c_port , tTimeout:= TIME_OUT);
 	fbListen.bExecute := FALSE;
@@ -6499,7 +6499,7 @@ TS_ACCEPT_WAIT:
 	fbAccept();
 	IF NOT fbAccept.bBusy THEN
 
-		state := TS_ACCEPT; (* vorbelegung  *)
+		state := TS_ACCEPT; (* presetting  *)
 
 		IF fbAccept.bError THEN
 			c_status := 4; (* FB_SocketAccept failed *)
@@ -6509,7 +6509,7 @@ TS_ACCEPT_WAIT:
 			IF fbAccept.bAccepted THEN
 				socket := fbAccept.hSocket;
 				IF socket.remoteAddr.sAddr  <> c_ip_str AND c_mode <> 4 THEN
-					state := C_CLOSE; (* Remote ablehnen - Verbindung beenden *)
+					state := C_CLOSE; (* reject remote - close connection *)
 				ELSE
 					state := C_WAIT;
 					c_ready := TRUE; (* Connected *)
@@ -6532,7 +6532,7 @@ C_CLOSE:
 C_CLOSE_WAIT:
 	fbClose();
 	IF NOT fbClose.bBusy THEN
-		socket := TCPADS_NULL_HSOCKET; (* Socket rücksetzen *)
+		socket := TCPADS_NULL_HSOCKET; (* reset socket *)
 		nErrId:= SEL(fbClose.bError,0,fbClose.nErrId);
 		state:= C_CLOSE2;
 	END_IF;
@@ -6550,14 +6550,14 @@ C_CLOSE2:
 C_CLOSE_WAIT2:
 	fbClose();
 	IF NOT fbClose.bBusy THEN
-		server := TCPADS_NULL_HSOCKET; (* Socket rücksetzen *)
+		server := TCPADS_NULL_HSOCKET; (* reset socket *)
 		nErrId:= SEL(fbClose.bError,0,fbClose.nErrId);
 		state:= STOP;
 	END_IF;
 
 (* ---------------------------------------------- *)
 
-C_WAIT: (* Warten auf Anforderung für Beenden *)
+C_WAIT: (* wait for request to close *)
 	IF NOT c_enable OR NOT c_ready THEN
 		state:= C_CLOSE;
 	ELSIF S_BUF.SIZE > 0 AND IP_C.MAILBOX[2] = 0 AND s_ip_exist THEN
@@ -6568,10 +6568,10 @@ C_WAIT: (* Warten auf Anforderung für Beenden *)
 
 (* ---------------------------------------------- *)
 
-C_REC: (* Daten empfangen *)
+C_REC: (* receive data *)
 	IF R_BUF.SIZE >= INT_TO_UINT(r_max_size) THEN
 		R_BUF.SIZE := UINT#0;
-		r_status := 254; (* Empfangsbuffer wegen Überlauf rückgesetzt *)
+		r_status := 254; (* receive buffer reset due to overflow *)
 	END_IF;
 
 	r_offset := SEL(udp_mode,UINT_TO_INT(R_BUF.SIZE),0);
@@ -6581,7 +6581,7 @@ C_REC: (* Daten empfangen *)
 	IF udp_mode THEN
 		fbReceiveFrom(bExecute := FALSE );
 		fbReceiveFrom(bExecute:= TRUE, sSrvNetId := sSrvNetId, hSocket:= socket, cbLen := r_count, pDest:= REF(R_BUF.BUFFER), tTimeout:= TIME_OUT);
-		fbReceiveFrom.bExecute := FALSE; (* Vorbelegung *)
+		fbReceiveFrom.bExecute := FALSE; (* presetting *)
 	ELSE
 		fbReceive(bExecute:= FALSE);
 		fbReceive(bExecute:= TRUE, sSrvNetId := sSrvNetId , hSocket:= socket , cbLen:= r_count, pDest:= REF(R_BUF.BUFFER[r_offset]) , tTimeout:= TIME_OUT);
@@ -6606,7 +6606,7 @@ C_REC_WAIT:
 					END_IF;
 				END_IF;
 				state := C_WAIT;
-			ELSIF fbReceiveFrom.nErrId = 16#80072746 THEN (* Verbindung vom Remote beendet *)
+			ELSIF fbReceiveFrom.nErrId = 16#80072746 THEN (* connection closed by remote *)
 				c_status := 253;
 				c_ready := FALSE;
 				state := C_WAIT;
@@ -6622,7 +6622,7 @@ C_REC_WAIT:
 				IF fbReceive.nRecBytes > 0 THEN
 					bytes_received := fbReceive.nRecBytes;
 				END_IF;
-			ELSIF fbReceive.nErrId = 16#8004 THEN (* Verbindung vom Remote beendet *)
+			ELSIF fbReceive.nErrId = 16#8004 THEN (* connection closed by remote *)
 				c_status := 253;
 				c_ready := FALSE;
 			ELSE
@@ -6633,8 +6633,8 @@ C_REC_WAIT:
 	END_IF;
 
 	IF bytes_received > 0 THEN
-		r_time := tx; (* Receive Timer ruecksetzen *)
-		R_BUF.SIZE := INT_TO_UINT(r_offset + DINT_TO_UINT(bytes_received)); (* aktuelle buffersize eintragen *)
+		r_time := tx; (* reset receive timer *)
+		R_BUF.SIZE := INT_TO_UINT(r_offset + DINT_TO_UINT(bytes_received)); (* enter current buffer size *)
 		IP_C.MAILBOX[1] := IP_C.MAILBOX[1] + 1; (* Receive Info *)
 		IF IP_C.MAILBOX[1] = 0 THEN IP_C.MAILBOX[1] := 1; END_IF;
 		(* ---------------------- Debug-Message ----------------------------*)
@@ -6646,20 +6646,20 @@ C_SND:
 	IF S_BUF.SIZE > 0 THEN
 		IF c_ready AND c_enable THEN
 			IF NOT s_active THEN
-				s_total := LIMIT(0,UINT_TO_INT(S_BUF.SIZE),r_max_size); (* Gesamtanzahl an Bytes limitieren und uebergeben *)
+				s_total := LIMIT(0,UINT_TO_INT(S_BUF.SIZE),r_max_size); (* limit and pass total number of bytes *)
 				s_cur_pos  := 0;
 				s_cur_size := 0;
-				s_active := TRUE; (* Sende-Betrieb aktivieren *)
+				s_active := TRUE; (* activate send mode *)
 			END_IF;
 
-			s_cur_pos := s_cur_pos + s_cur_size; (* neue Sende-Datenposition bestimmen *)
-			IF s_total > s_cur_pos THEN (* weitere Daten zum senden vorhanden ? *)
+			s_cur_pos := s_cur_pos + s_cur_size; (* determine new send data position *)
+			IF s_total > s_cur_pos THEN (* more data to send? *)
 				s_cur_size := s_total - s_cur_pos;
-				s_cur_size := LIMIT(0, s_cur_size, s_max_size); (* Telegrammlänge begrenzen *)
-				s_time := tx; (* Send Timer ruecksetzen *)
-				r_time := tx; (* Receive Timer ruecksetzen *)
+				s_cur_size := LIMIT(0, s_cur_size, s_max_size); (* limit telegram length *)
+				s_time := tx; (* reset send timer *)
+				r_time := tx; (* reset receive timer *)
 				state := C_SND_WAIT1;
-			ELSE (* keine weitere Sendedaten vorhanden -> Senden beenden *)
+			ELSE (* no more send data -> stop sending *)
 				s_active := FALSE;
 				S_BUF.SIZE := 0;
 				state := C_WAIT;
@@ -6710,30 +6710,30 @@ END_CASE;
 (* ---------------------------------------------- *)
 
 IF c_ready THEN
-	IF NOT c_ready_old THEN (* Verbindung aufgebaut - positive Flanke erkannt *)
+	IF NOT c_ready_old THEN (* connection established - rising edge detected *)
 		IP_C.C_STATE := 254;
-		IP_C.TIME_RESET := TRUE; (* Alle Timer ruecksetzen *)
+		IP_C.TIME_RESET := TRUE; (* reset all timers *)
 		(* ---------------------- Debug-Message ----------------------------*)
 		(* -----------------------------------------------------------------------------*)
 	ELSE
-		IP_C.C_STATE := 255; (* Verbindung ist aufgebaut *)
+		IP_C.C_STATE := 255; (* connection is established *)
 	END_IF;
 ELSE
-	IF c_ready_old THEN (* Verbindung abgebaut - negative Flanke erkannt *)
+	IF c_ready_old THEN (* connection closed - falling edge detected *)
 		IP_C.C_STATE := 1;
-		IP_C.MAILBOX[1] := 0; (* Receive Info rücksetzen *)
-		IP_C.MAILBOX[2] := 0; (* Send-Pause rücksetzen *)
-		IP_C.MAILBOX[3] := 0; (* Receive-Pause rücksetzen *)
+		IP_C.MAILBOX[1] := 0; (* reset receive info *)
+		IP_C.MAILBOX[2] := 0; (* reset send pause *)
+		IP_C.MAILBOX[3] := 0; (* reset receive pause *)
 		IF NOT new_connection THEN
-			s_active := FALSE; (* Sendeaktivitäten stoppen *)
-			S_BUF.SIZE := 0; (* Sendelänge löschen *)
-			(* IP_C.TIME_RESET := TRUE; *) (* Alle Timer ruecksetzen *)
+			s_active := FALSE; (* stop send activities *)
+			S_BUF.SIZE := 0; (* clear send length *)
+			(* IP_C.TIME_RESET := TRUE; *) (* reset all timers *)
 		END_IF;
 		(* ---------------------- Debug-Message ----------------------------*)
 		(* -----------------------------------------------------------------------------*)
 
 	ELSE
-		IP_C.C_STATE := 0; (* Verbindung ist abgebaut *)
+		IP_C.C_STATE := 0; (* connection is closed *)
 	END_IF;
 END_IF;
 
@@ -6746,13 +6746,13 @@ IF IP_C.R_OBSERVE = FALSE OR s_active THEN
 END_IF;
 
 IF c_status = 0 AND tx - c_time > error_time AND c_enable AND NOT c_ready AND c_mode < 2 THEN (* Connect Timeout *)
-	c_status := 255; (* Timeout-Fehler ausgeben *)
+	c_status := 255; (* output timeout error *)
 END_IF;
 IF s_status = 0 AND tx - s_time > error_time AND s_active THEN (* Send Timeout *)
-	s_status := 255; (* Timeout-Fehler ausgeben *)
+	s_status := 255; (* output timeout error *)
 END_IF;
 IF r_status = 0 AND tx - r_time > error_time AND c_ready AND IP_C.R_OBSERVE THEN (* Receive Timeout *)
-	r_status := 255; (* Timeout-Fehler ausgeben *)
+	r_status := 255; (* output timeout error *)
 END_IF;
 
 IP_C.ERROR := DWORD_OF_BYTE(c_status,s_status,r_status,0);
@@ -6782,7 +6782,7 @@ CASE TCP_SERVER_RESET OF
 		RETURN;
 	END_IF;
 
-0:	TCP_SERVER_RESET := 1; (* Reset ist aktiv *)
+0:	TCP_SERVER_RESET := 1; (* reset is active *)
 	step := 1;
 
 END_CASE;
@@ -6797,7 +6797,7 @@ CASE step OF
 2:	fbSocketCloseAll(bExecute:= FALSE);
 	IF fbSocketCloseAll.bBusy = FALSE THEN
 		step := 0;
-		TCP_SERVER_RESET := 2; (* Reset durchgeführt , Bereit zur Verwendung *)
+		TCP_SERVER_RESET := 2; (* reset done, ready for use *)
 	END_IF;
 
 END_CASE;
@@ -6820,39 +6820,39 @@ IF NOT FIFO.INIT THEN
 	FIFO.NR := 1;
 	FIFO.EMPTY := TRUE;
 	FIFO.FULL := FALSE;
-	FIFO.TOP := 128; (* Arraygroesse 1 bis x *)
-	FIFO.MAX_ID := BYTE#1; (* maximale anzahl von Anmeldungen einer ID *)
+	FIFO.TOP := 128; (* array size 1 to x *)
+	FIFO.MAX_ID := BYTE#1; (* maximum number of registrations of an ID *)
 END_IF;
 
-(* wenn keine ID vorhanden dann die naechste freie ID zuteilen *)
+(* if no ID is present, assign the next free ID *)
 IF ID = BYTE#00 THEN
 	IF FIFO.ID < INT_TO_BYTE(FIFO.TOP) THEN
 		ID := USINT_TO_BYTE(BYTE_TO_USINT(FIFO.ID) + USINT#1); (* ID +1 *)
-		FIFO.ID := ID; (* ID eintragen *)
+		FIFO.ID := ID; (* enter ID *)
 	    	(*####################  DEBUG-MESSAGE  ###################################*)
 	    	(*########################################################################*)
 	ELSIF STATE < BYTE#200 THEN
 		(*####################  DEBUG-MESSAGE  ###################################*)
 		(*########################################################################*)
 
-		(* sollte nie passieren ! -> es sind zuviele teilnehmer angemeldet *)
-		(* es wird keine Nummer vergeben und alle anfragen werden negativ beantwortet *)
+		(* should never happen! -> too many participants are registered *)
+		(* no number is assigned and all requests are answered negatively *)
 		STATE := BYTE#255;
 		RETURN;
 	END_IF;
 END_IF;
 
-IF STATE = BYTE#1 AND NOT FIFO.FULL THEN (* Anmelden *)
-	(* nur eintragen wenn maximale anzahl nicht ueberschritten wurde *)
+IF STATE = BYTE#1 AND NOT FIFO.FULL THEN (* register *)
+	(* enter only if the maximum number was not exceeded *)
 	tmp := BYTE_TO_INT(ID);
 	IF FIFO.Y[tmp] < FIFO.MAX_ID THEN
-		FIFO.Y[tmp] := USINT_TO_BYTE(BYTE_TO_USINT(FIFO.Y[tmp]) + USINT#1); (* IP_ID Zähler +1 *)
-		tmp := FIFO.NW; (* geht bei mir leider nicht anders *)
+		FIFO.Y[tmp] := USINT_TO_BYTE(BYTE_TO_USINT(FIFO.Y[tmp]) + USINT#1); (* IP_ID counter +1 *)
+		tmp := FIFO.NW; (* unfortunately no other way works for me *)
 		FIFO.X[tmp] := ID;
 		IF FIFO.NW = FIFO.TOP THEN FIFO.NW := 1; ELSE FIFO.NW := FIFO.NW + 1; END_IF;
 		FIFO.FULL := FIFO.NW = FIFO.NR;
 		FIFO.EMPTY := FALSE;
-		STATE := BYTE#2; (* weiterschalten auf "Warten auf Freigabe" *)
+		STATE := BYTE#2; (* advance to "wait for release" *)
 		(*####################  DEBUG-MESSAGE  ###################################*)
 		(*########################################################################*)
 
@@ -6860,17 +6860,17 @@ IF STATE = BYTE#1 AND NOT FIFO.FULL THEN (* Anmelden *)
 END_IF;
 
 IF STATE = BYTE#2 AND NOT FIFO.EMPTY THEN (* check current stack element *)
-	tmp := FIFO.NR; (* geht bei mir leider nicht anders *)
+	tmp := FIFO.NR; (* unfortunately no other way works for me *)
 	IF ID = FIFO.X[tmp] THEN
-	STATE := BYTE#3; (* weiterschalten auf "Zugriffsfreigabe" *)
+	STATE := BYTE#3; (* advance to "access release" *)
 	END_IF;
 END_IF;
 
 IF STATE = BYTE#4 AND NOT FIFO.EMPTY THEN (* remove from stack *)
-	tmp := FIFO.NR; (* geht bei mir leider nicht anders *)
+	tmp := FIFO.NR; (* unfortunately no other way works for me *)
 	IF ID = FIFO.X[tmp] THEN
-		tmp := BYTE_TO_INT(ID); (* geht bei mir leider nicht anders *)
-		FIFO.Y[tmp] := USINT_TO_BYTE(BYTE_TO_USINT(FIFO.Y[tmp]) - USINT#1); (* ID Zähler -1 *)
+		tmp := BYTE_TO_INT(ID); (* unfortunately no other way works for me *)
+		FIFO.Y[tmp] := USINT_TO_BYTE(BYTE_TO_USINT(FIFO.Y[tmp]) - USINT#1); (* ID counter -1 *)
 		IF FIFO.NR = FIFO.TOP THEN FIFO.NR := 1; ELSE FIFO.NR := FIFO.NR + 1; END_IF;
 		FIFO.EMPTY := FIFO.NR = FIFO.NW;
 		FIFO.FULL := FALSE;
@@ -6884,7 +6884,7 @@ END_FUNCTION_BLOCK
 // Commented out for beedance: it reads or writes the bytes of a STRING through a pointer; a beedance reference (REF_TO) refers to a whole variable of its type.
 // FUNCTION_BLOCK IRTRANS_DECODE
 // VAR_IN_OUT
-// 	IP_C : IP_C; (* IP_Control Verwaltungsstruktur *)
+// 	IP_C : IP_C; (* IP_Control management structure *)
 // 	R_BUF : NETWORK_BUFFER_SHORT;
 // END_VAR
 // VAR_OUTPUT
@@ -7034,7 +7034,7 @@ END_FUNCTION_BLOCK
 
 FUNCTION_BLOCK IRTRANS_SERVER
 VAR_IN_OUT
-	IP_C : IP_C; (* IP_Control Verwaltungsstruktur *)
+	IP_C : IP_C; (* IP_Control management structure *)
 	S_BUF : NETWORK_BUFFER_SHORT;
 	R_BUF : NETWORK_BUFFER_SHORT;
 END_VAR
@@ -7051,15 +7051,15 @@ VAR
 END_VAR
 
 IF NOT IP_C.C_ENABLE THEN
-	(* IP Datenverkehr einrichten *)
-	IP_C.C_PORT := WORD#0; (* Portnummer eintragen *)
-	IP_C.C_IP := DWORD#00; (* IP eintragen *)
+	(* set up IP data traffic *)
+	IP_C.C_PORT := WORD#0; (* enter port number *)
+	IP_C.C_IP := DWORD#00; (* enter IP *)
 	IP_C.C_MODE := SEL(UDP_TCP,5,4); (* 4 = Mode: TCP+PASSIV+PORT / 5 = Mode: UDP+PASSIV+PORT*)
-	IP_C.C_ENABLE := TRUE; (* Verbindungsaufbau freigeben *)
-	IP_C.R_OBSERVE := FALSE; (* Datenempfang ueberwachen *)
-	IP_C.TIME_RESET := TRUE; (* Zeitueberwachung rücksetzen *)
-	S_BUF.SIZE := UINT#0; (* Sendedaten rücksetzen *)
-	R_BUF.SIZE := UINT#0; (* Empfangsdaten rücksetzen *)
+	IP_C.C_ENABLE := TRUE; (* enable connection setup *)
+	IP_C.R_OBSERVE := FALSE; (* monitor data reception *)
+	IP_C.TIME_RESET := TRUE; (* reset timeout monitoring *)
+	S_BUF.SIZE := UINT#0; (* reset send data *)
+	R_BUF.SIZE := UINT#0; (* reset receive data *)
 END_IF;
 
 R_ENABLE := IP_C.C_STATE > 127;
@@ -7083,7 +7083,7 @@ END_FUNCTION_BLOCK
 // 	T_REPEAT : TIME;
 // END_VAR
 // VAR_IN_OUT
-// 	IP_C : IP_C; (* IP_Control Verwaltungsstruktur *)
+// 	IP_C : IP_C; (* IP_Control management structure *)
 // 	S_BUF : NETWORK_BUFFER_SHORT;
 // END_VAR
 // VAR_OUTPUT
@@ -7110,18 +7110,18 @@ END_FUNCTION_BLOCK
 // 	ELSE
 // 		lk := 0;
 // 		KEY := 0;
-// 		RETURN; (* beenden wenn kein Key aktiv *)
+// 		RETURN; (* exit if no key is active *)
 // 	END_IF;
 //
-// 	IF lk <> k OR T.Q THEN (* anderer Key oder repeat wartezeit abgelaufen *)
+// 	IF lk <> k OR T.Q THEN (* other key or repeat wait time elapsed *)
 // 		str := CONCAT('snd ',dev_code);
 // 		str := CONCAT(str,',');
 // 		str := CONCAT(str,skey);
 // 		size := LEN(str);
 // 		_STRING_TO_BUFFER(STR:=str, POS:=0, PT:=REF(S_BUF.BUFFER), SIZE:=size);
-// 		S_BUF.SIZE := size; (* Sendelänge eintragen *)
+// 		S_BUF.SIZE := size; (* enter send length *)
 // 		KEY := k;
-// 		lk := k; (* letzten Key speichern *)
+// 		lk := k; (* store last key *)
 // 		t(IN:=FALSE); (* Reset Time *)
 // 	END_IF;
 // END_IF;
@@ -7144,7 +7144,7 @@ END_FUNCTION_BLOCK
 // 	T_REPEAT : TIME;
 // END_VAR
 // VAR_IN_OUT
-// 	IP_C : IP_C; (* IP_Control Verwaltungsstruktur *)
+// 	IP_C : IP_C; (* IP_Control management structure *)
 // 	S_BUF : NETWORK_BUFFER_SHORT;
 // END_VAR
 // VAR_OUTPUT
@@ -7177,18 +7177,18 @@ END_FUNCTION_BLOCK
 // 	ELSE
 // 		lk := 0;
 // 		KEY := 0;
-// 		RETURN; (* beenden wenn kein Key aktiv *)
+// 		RETURN; (* exit if no key is active *)
 // 	END_IF;
 //
-// 	IF lk <> k OR T.Q THEN (* anderer Key oder repeat wartezeit abgelaufen *)
+// 	IF lk <> k OR T.Q THEN (* other key or repeat wait time elapsed *)
 // 		str := CONCAT('snd ',dev_code);
 // 		str := CONCAT(str,',');
 // 		str := CONCAT(str,skey);
 // 		size := LEN(str);
 // 		_STRING_TO_BUFFER(STR:=str, POS:=0, PT:=REF(S_BUF.BUFFER), SIZE:=size);
-// 		S_BUF.SIZE := size; (* Sendelänge eintragen *)
+// 		S_BUF.SIZE := size; (* enter send length *)
 // 		KEY := k;
-// 		lk := k; (* letzten Key speichern *)
+// 		lk := k; (* store last key *)
 // 		t(IN:=FALSE); (* Reset Time *)
 // 	END_IF;
 // END_IF;
@@ -7219,7 +7219,7 @@ END_FUNCTION_BLOCK
 // 	T_REPEAT : TIME;
 // END_VAR
 // VAR_IN_OUT
-// 	IP_C : IP_C; (* IP_Control Verwaltungsstruktur *)
+// 	IP_C : IP_C; (* IP_Control management structure *)
 // 	S_BUF : NETWORK_BUFFER_SHORT;
 // END_VAR
 // VAR_OUTPUT
@@ -7260,18 +7260,18 @@ END_FUNCTION_BLOCK
 // 	ELSE
 // 		lk := 0;
 // 		KEY := 0;
-// 		RETURN; (* beenden wenn kein Key aktiv *)
+// 		RETURN; (* exit if no key is active *)
 // 	END_IF;
 //
-// 	IF lk <> k OR T.Q THEN (* anderer Key oder repeat wartezeit abgelaufen *)
+// 	IF lk <> k OR T.Q THEN (* other key or repeat wait time elapsed *)
 // 		str := CONCAT('snd ',dev_code);
 // 		str := CONCAT(str,',');
 // 		str := CONCAT(str,skey);
 // 		size := LEN(str);
 // 		_STRING_TO_BUFFER(STR:=str, POS:=0, PT:=REF(S_BUF.BUFFER), SIZE:=size);
-// 		S_BUF.SIZE := size; (* Sendelänge eintragen *)
+// 		S_BUF.SIZE := size; (* enter send length *)
 // 		KEY := k;
-// 		lk := k; (* letzten Key speichern *)
+// 		lk := k; (* store last key *)
 // 		t(IN:=FALSE); (* Reset Time *)
 // 	END_IF;
 // END_IF;
@@ -7304,30 +7304,30 @@ END_FUNCTION
 // 	idX : INT;
 // END_VAR
 //
-// IF DWORD_TO_BYTE(SHL(LOG_CL.NEW_MSG_OPTION,16)) > LOG_CL.LEVEL THEN RETURN; END_IF; (* Logging freigegeben ?*)
+// IF DWORD_TO_BYTE(SHL(LOG_CL.NEW_MSG_OPTION,16)) > LOG_CL.LEVEL THEN RETURN; END_IF; (* logging enabled?*)
 //
 // FB_PRINT_SF(PRINTF_DATA := LOG_CL.PRINTF,STR := LOG_CL.NEW_MSG);
 //
-// IF LOG_CL.RESET THEN (* Logeinträge löschen *)
+// IF LOG_CL.RESET THEN (* delete log entries *)
 // 	LOG_CL.RESET := FALSE;
 // 	LOG_CL.RING_MODE := FALSE;
 // 	LOG_CL.IDX := 0;
-// 	LOG_CL.UPDATE_COUNT := LOG_CL.UPDATE_COUNT + UINT#1; (* UpdateCount erhöhen *)
+// 	LOG_CL.UPDATE_COUNT := LOG_CL.UPDATE_COUNT + UINT#1; (* increment UpdateCount *)
 // END_IF;
 //
-// IF LOG_CL.SIZE > 0 THEN (* size wert ist eingetragen *)
-// 	IF LEN(LOG_CL.NEW_MSG) > 0 THEN (* Meldung in Puffer eintragen *)
+// IF LOG_CL.SIZE > 0 THEN (* size value is entered *)
+// 	IF LEN(LOG_CL.NEW_MSG) > 0 THEN (* enter message into buffer *)
 // 		IF (LOG_CL.IDX >= LOG_CL.SIZE) THEN
-// 			LOG_CL.RING_MODE := TRUE; (* bei Überlauf = Ringbuffermodus *)
-// 			LOG_CL.IDX := 0; (* wieder auf arrayanfang positionieren *)
+// 			LOG_CL.RING_MODE := TRUE; (* on overflow = ring buffer mode *)
+// 			LOG_CL.IDX := 0; (* position at start of array again *)
 // 		END_IF;
 //
-// 		LOG_CL.UPDATE_COUNT := LOG_CL.UPDATE_COUNT + UINT#1; (* UpdateCount erhöhen *)
-// 		LOG_CL.IDX := LOG_CL.IDX + INT#1; (* nächste freie Position *)
-// 		idx := LOG_CL.IDX; (* lade aktuelle Log-Puffer Positition *)
-// 		LOG_CL.MSG[idx] := LOG_CL.NEW_MSG; (* neuen Log-String in puffer ablegen  *)
-// 		LOG_CL.MSG_OPTION[idx] := LOG_CL.NEW_MSG_OPTION; (* neue Log-String Option in puffer ablegen  *)
-// 		LOG_CL.NEW_MSG := ''; (* letzten Log-String löschen *)
+// 		LOG_CL.UPDATE_COUNT := LOG_CL.UPDATE_COUNT + UINT#1; (* increment UpdateCount *)
+// 		LOG_CL.IDX := LOG_CL.IDX + INT#1; (* next free position *)
+// 		idx := LOG_CL.IDX; (* load current log buffer position *)
+// 		LOG_CL.MSG[idx] := LOG_CL.NEW_MSG; (* store new log string in buffer  *)
+// 		LOG_CL.MSG_OPTION[idx] := LOG_CL.NEW_MSG_OPTION; (* store new log string option in buffer  *)
+// 		LOG_CL.NEW_MSG := ''; (* delete last log string *)
 // 	END_IF;
 // END_IF;
 // END_FUNCTION_BLOCK
@@ -7345,13 +7345,13 @@ VAR
 	update_pos : BOOL;
 END_VAR
 
-(* Scroll Button verarbeiten *)
+(* process scroll button *)
 IF LV.MOVE_TO_X <> 0 THEN
 	CASE LV.MOVE_TO_X OF
-	30000: pos := 1 ; (* älteste Meldung anzeigen *)
-	30001: pos := LC.SIZE; (* neueste Meldung anzeigen *)
-	30002: pos := pos + LV.COUNT; (* eine Seite nach unten blättern -> Richtung neuere Nachrichten *)
-	30003: pos := pos - LV.COUNT; (* eine Seite nach oben blättern -> Richtung ältere Nachrichten *)
+	30000: pos := 1 ; (* show oldest message *)
+	30001: pos := LC.SIZE; (* show newest message *)
+	30002: pos := pos + LV.COUNT; (* page down -> towards newer messages *)
+	30003: pos := pos - LV.COUNT; (* page up -> towards older messages *)
 	ELSE
 		pos := pos + LV.MOVE_TO_X;
 	END_CASE;
@@ -7359,12 +7359,12 @@ IF LV.MOVE_TO_X <> 0 THEN
 	LV.MOVE_TO_X := 0;
 END_IF;
 
-IF (LV.UPDATE_COUNT <> LC.UPDATE_COUNT) OR update_pos THEN (* Aktualisierung überwachen *)
+IF (LV.UPDATE_COUNT <> LC.UPDATE_COUNT) OR update_pos THEN (* monitor update *)
 	LV.UPDATE := TRUE;
 	LV.UPDATE_COUNT := LC.UPDATE_COUNT;
 	update_pos := FALSE;
 
-	(* pos prüfen und übernehmen *)
+	(* check and take pos *)
 	IF LC.RING_MODE THEN
 		pos := LIMIT(1,pos,LC.SIZE - LV.COUNT + 1);
 	ELSE
@@ -7375,10 +7375,10 @@ IF (LV.UPDATE_COUNT <> LC.UPDATE_COUNT) OR update_pos THEN (* Aktualisierung üb
 		END_IF;
 	END_IF;
 
-	(* idxBasis berechnen *)
+	(* calculate idxBasis *)
 	base := LC.IDX - pos - LV.COUNT + 1;
 	IF LC.RING_MODE THEN
-		(* Anzeige im Ringpuffermodus *)
+		(* display in ring buffer mode *)
 		FOR count:= 1 TO LV.COUNT DO
 			idx := base + count;
 			IF idx < 1 THEN
@@ -7387,11 +7387,11 @@ IF (LV.UPDATE_COUNT <> LC.UPDATE_COUNT) OR update_pos THEN (* Aktualisierung üb
 			LV.LINE_ARRAY[count] := idx;
 		END_FOR;
 	ELSE
-		(* Anzeige im Normalmodus *)
+		(* display in normal mode *)
 		FOR count:= 1 TO LV.COUNT DO
 			idx := base + count;
 			IF idx < 1 THEN
-				(* Leere Zeile ausgeben *)
+				(* output empty line *)
 				LV.LINE_ARRAY[count] := 0;
 			ELSE
 				LV.LINE_ARRAY[count] := idx;
@@ -7451,25 +7451,25 @@ END_VAR
 
 CASE state OF
 
-00: (* Warten auf Delay-Time *)
+00: (* wait for delay time *)
 	TON_1(IN:=ENABLE,PT:=DELAY);
 
 	IF TON_1.Q OR DELAY = T#0s THEN
 		TON_1(IN:=FALSE);
 		state := 20;
-		IP_STATE := BYTE#1; (* Anmelden *)
+		IP_STATE := BYTE#1; (* register *)
 	END_IF;
 
-20: (* Bei IP_Control anmelden *)
+20: (* register with IP_Control *)
 	IF IP_STATE = BYTE#3 THEN
-		(* IP Datenverkehr einrichten *)
-		IP_C.C_PORT := WORD#0; (* Port von IP_CONTROL verwenden *)
-		IP_C.C_IP := DWORD#0; (* IP von IP_CONTROL verwenden *)
+		(* set up IP data traffic *)
+		IP_C.C_PORT := WORD#0; (* use port from IP_CONTROL *)
+		IP_C.C_IP := DWORD#0; (* use IP from IP_CONTROL *)
 		IP_C.C_MODE := BOOL_TO_BYTE(UDP); (* Mode: 0=TCP+ACTIVE+IP , 1=UDP+ACTIVE+IP *)
-		IP_C.TIME_RESET := TRUE; (* Zeitueberwachung rücksetzen *)
-		IP_C.C_ENABLE := TRUE; (* Verbindungsaufbau freigeben *)
-		IP_C.R_OBSERVE := TRUE; (* Empfangsueberwachung *)
-		ERROR := DWORD#00; (* letzten Fehler rücksetzen *)
+		IP_C.TIME_RESET := TRUE; (* reset timeout monitoring *)
+		IP_C.C_ENABLE := TRUE; (* enable connection setup *)
+		IP_C.R_OBSERVE := TRUE; (* receive monitoring *)
+		ERROR := DWORD#00; (* reset last error *)
 
 		(******************************************************************)
 		CASE FC OF
@@ -7582,7 +7582,7 @@ CASE state OF
 				count := W_DATA_ADR + W_POINTS - 1;
 				FOR i := W_DATA_ADR TO count DO
 					idx1 := idx1 + 2;
-					idx2 := idx1 + 1; (* zweiter index für pcworx notwendig ! *)
+					idx2 := idx1 + 1; (* second index necessary for pcworx! *)
 					w_tmp := DATA[i];
 					S_BUF.BUFFER[idx1] := WORD_TO_BYTE(SHR(w_tmp,8));
 					S_BUF.BUFFER[idx2] := WORD_TO_BYTE(w_tmp);
@@ -7622,7 +7622,7 @@ CASE state OF
 				count := W_DATA_ADR + W_POINTS - 1;
 				FOR i := W_DATA_ADR TO count DO
 					idx1 := idx1 + 2;
-					idx2 := idx1 + 1; (* zweiter index für pcworx notwendig ! *)
+					idx2 := idx1 + 1; (* second index necessary for pcworx! *)
 					w_tmp := DATA[i];
 					S_BUF.BUFFER[idx1] := WORD_TO_BYTE(SHR(w_tmp,8));
 					S_BUF.BUFFER[idx2] := WORD_TO_BYTE(w_tmp);
@@ -7657,24 +7657,24 @@ CASE state OF
 			ERROR := DWORD#00000001; (* ILLEGAL FUNCTION *)
 		END_CASE;
 
-		(* Daten senden *)
+		(* send data *)
 		IF ERROR = DWORD#00 THEN
 			Transaction_ID := Transaction_ID + 1;
 			w_tmp := UINT_TO_WORD(S_BUF.SIZE - UINT#6);
 			(* ---- H E A D E R --------------------------------------------------------------- *)
 			S_BUF.BUFFER[0] := IP_ID; (* TRANSACTION-ID HI-Byte *)
 			S_BUF.BUFFER[1] := INT_TO_BYTE(Transaction_ID); (* TRANSACTION-ID LO-Byte *)
-			S_BUF.BUFFER[2] := BYTE#00; (* PROTOKOLL-ID HI-Byte *)
-			S_BUF.BUFFER[3] := BYTE#00; (* PROTOKOLL-ID LO-Byte *)
-			S_BUF.BUFFER[4] := WORD_TO_BYTE(SHR(w_tmp,8)); (* Laenge HI-Byte *)
-			S_BUF.BUFFER[5] := WORD_TO_BYTE(w_tmp); (* Laenge LO-Byte *)
+			S_BUF.BUFFER[2] := BYTE#00; (* PROTOCOL ID HI byte *)
+			S_BUF.BUFFER[3] := BYTE#00; (* PROTOCOL ID LO byte *)
+			S_BUF.BUFFER[4] := WORD_TO_BYTE(SHR(w_tmp,8)); (* length HI byte *)
+			S_BUF.BUFFER[5] := WORD_TO_BYTE(w_tmp); (* length LO byte *)
 			S_BUF.BUFFER[6] := UNIT_ID; (* UNIT *)
 			S_BUF.BUFFER[7] := INT_TO_BYTE(FC); (* FUNCTION-CODE *)
 			(*----- END OF HEADER --------------------------------------------------------------*)
-			R_BUF.SIZE := UINT#0; (* Empfangsbuffer löschen *)
+			R_BUF.SIZE := UINT#0; (* clear receive buffer *)
 			state := 30; (* wait for response *)
 		ELSE
-			IP_STATE := BYTE#4; (* Abmelden *)
+			IP_STATE := BYTE#4; (* unregister *)
 			state := 00;
 		END_IF;
 	END_IF;
@@ -7682,10 +7682,10 @@ CASE state OF
 30: (* response *)
 	IF IP_C.ERROR <> DWORD#00 THEN
 		ERROR := IP_C.ERROR;
-		IP_STATE := BYTE#4; (* Abmelden *)
+		IP_STATE := BYTE#4; (* unregister *)
 		state := 00;
 	ELSIF S_BUF.SIZE = UINT#0 AND R_BUF.SIZE > UINT#0 THEN
-		(* erwartete länge in sendebuffer nachträglich eintragen um vergleich zu ermöglichen *)
+		(* enter expected length into send buffer afterwards to allow comparison *)
 		w_tmp := INT_TO_WORD(Response + 3);
 		S_BUF.BUFFER[4] := WORD_TO_BYTE(SHR(w_tmp,8));
 		S_BUF.BUFFER[5] := WORD_TO_BYTE(w_tmp);
@@ -7696,7 +7696,7 @@ CASE state OF
 
 		IF R_BUF.SIZE >= UINT#9 AND R_BUF.BUFFER[7] > BYTE#128 THEN  (* Bit 7 = Error Message *)
 			ERROR := BYTE_TO_DWORD(R_BUF.BUFFER[8]);
-			IP_STATE := BYTE#4; (* Abmelden *)
+			IP_STATE := BYTE#4; (* unregister *)
 			state := 00;
 		ELSIF R_BUF.SIZE = INT_TO_UINT(Response + 9) AND i > comp THEN
 			mask := SHL(DWORD#1,FC);
@@ -7743,7 +7743,7 @@ CASE state OF
 			ERROR := DWORD#3; (* ILLEGAL DATA VALUE *)
 		END_IF;
 
-		IP_STATE := BYTE#4; (* Abmelden *)
+		IP_STATE := BYTE#4; (* unregister *)
 		state := 00;
 		R_BUF.SIZE := UINT#0;
 
@@ -7809,31 +7809,31 @@ last_cycle := tx;
 ip_error := IP_C.ERROR > DWORD#0;
 
 CASE state OF
-00: (* Warten auf Freigabe *)
+00: (* wait for release *)
 	IF ENABLE THEN
 		state := 10;
-		ip_state := BYTE#1; (* Anmelden *)
+		ip_state := BYTE#1; (* register *)
 	END_IF;
 
-10: (* Bei IP_Control anmelden und auf freigabe warten *)
+10: (* register with IP_Control and wait for release *)
 	IF ip_state = BYTE#3 THEN
 
-		(* IP Datenverkehr einrichten *)
-		IP_C.C_PORT := WORD#0; (* Port von IP_CONTROL verwenden *)
-		IP_C.C_IP := DWORD#0; (* IP von IP_CONTROL verwenden *)
+		(* set up IP data traffic *)
+		IP_C.C_PORT := WORD#0; (* use port from IP_CONTROL *)
+		IP_C.C_IP := DWORD#0; (* use IP from IP_CONTROL *)
 		IP_C.C_MODE := SEL(UDP,BYTE#4,BYTE#5); (* Mode: 4=TCP+PASSIV+PORT , 5=UDP+PASSIV+PORT *)
-		IP_C.TIME_RESET := TRUE; (* Zeitueberwachung rücksetzen *)
-		IP_C.C_ENABLE := TRUE; (* Verbindungsaufbau freigeben *)
-		IP_C.R_OBSERVE := TRUE; (* keine Empfangsueberwachung *)
+		IP_C.TIME_RESET := TRUE; (* reset timeout monitoring *)
+		IP_C.C_ENABLE := TRUE; (* enable connection setup *)
+		IP_C.R_OBSERVE := TRUE; (* no receive monitoring *)
 		state := 20;
 	END_IF;
 
 20:	IF NOT ip_error THEN
-		IF S_BUF.SIZE = UINT#0 AND R_BUF.SIZE > UINT#6 THEN	(* Datensenden nicht aktiv und Daten wurden empfangen *)
-			IF  R_BUF.SIZE = WORD_TO_UINT(WORD_OF_BYTE(R_BUF.BUFFER[4],R_BUF.BUFFER[5])) + UINT#6 THEN (* gültige Datenlänge *)
-				ERROR := DWORD#00; (* Error löschen *)
+		IF S_BUF.SIZE = UINT#0 AND R_BUF.SIZE > UINT#6 THEN	(* data sending not active and data was received *)
+			IF  R_BUF.SIZE = WORD_TO_UINT(WORD_OF_BYTE(R_BUF.BUFFER[4],R_BUF.BUFFER[5])) + UINT#6 THEN (* valid data length *)
+				ERROR := DWORD#00; (* clear error *)
 
-				(* Header kopieren *)
+				(* copy header *)
 				FOR i := 0 TO 13 DO
 					S_BUF.BUFFER[i] := R_BUF.BUFFER[i];
 				END_FOR;
@@ -7851,7 +7851,7 @@ CASE state OF
 					(*---------------------------------------------*)
 					CASE fc OF
 					1..2 : (* Read Coil Status / Read Input Status *)
-						count := 9; (* erstes Datenbyte *)
+						count := 9; (* first data byte *)
 						coils := BYTE#0;
 						mask := BYTE#1;
 						FOR i := 1 TO points DO
@@ -7884,12 +7884,12 @@ CASE state OF
 						count := adr1 + points - 1;
 						FOR i := adr1 TO count DO
 							idx1 := idx1 + 2;
-							idx2 := idx1 + 1; (* zweiter index für pcworx notwendig ! *)
+							idx2 := idx1 + 1; (* second index necessary for pcworx! *)
 							w_tmp := DATA[i];
 							S_BUF.BUFFER[idx1] := WORD_TO_BYTE(SHR(w_tmp,8));
 							S_BUF.BUFFER[idx2] := WORD_TO_BYTE(w_tmp);
 						END_FOR;
-						S_BUF.BUFFER[8] := SHL(INT_TO_BYTE(points),1); (* Anzahl Register in Bytes *)
+						S_BUF.BUFFER[8] := SHL(INT_TO_BYTE(points),1); (* number of registers in bytes *)
 						S_BUF.SIZE := INT_TO_UINT(idx2 + 1);
 					(*--------------------------------------------------*)
 					5 : (* Force Single Coil *)
@@ -7947,7 +7947,7 @@ CASE state OF
 							count := adr2 + points2 - 1;
 							FOR i := adr2 TO count DO
 								idx1 := idx1 + 2;
-	 							idx2 := idx1 + 1; (* zweiter index für pcworx notwendig ! *)
+	 							idx2 := idx1 + 1; (* second index necessary for pcworx! *)
 								Data[i] := WORD_OF_BYTE(R_BUF.BUFFER[idx1],R_BUF.BUFFER[idx2]);
 							END_FOR;
 
@@ -7956,12 +7956,12 @@ CASE state OF
 							count := adr1 + points - 1;
 							FOR i := adr1 TO count DO
 								idx1 := idx1 + 2;
-								idx2 := idx1 + 1; (* zweiter index für pcworx notwendig ! *)
+								idx2 := idx1 + 1; (* second index necessary for pcworx! *)
 								w_tmp := DATA[i];
 								S_BUF.BUFFER[idx1] := WORD_TO_BYTE(SHR(w_tmp,8));
 								S_BUF.BUFFER[idx2] := WORD_TO_BYTE(w_tmp);
 							END_FOR;
-							S_BUF.BUFFER[8] := SHL(INT_TO_BYTE(points),1); (* Anzahl Register in Bytes *)
+							S_BUF.BUFFER[8] := SHL(INT_TO_BYTE(points),1); (* number of registers in bytes *)
 							S_BUF.SIZE := INT_TO_UINT(idx2 + 1);
 
 						END_IF;
@@ -7974,13 +7974,13 @@ CASE state OF
 			END_IF;
 
 			IF ERROR > DWORD#0 THEN
-				S_BUF.BUFFER[7] := S_BUF.BUFFER[7] OR BYTE#2#1000_0000; (* Fehlerbit setzen *)
+				S_BUF.BUFFER[7] := S_BUF.BUFFER[7] OR BYTE#2#1000_0000; (* set error bit *)
 				S_BUF.BUFFER[8] := DWORD_TO_BYTE(ERROR);
 				S_BUF.SIZE := UINT#9;
 			END_IF;
 
 			S_BUF.BUFFER[4] := BYTE#0; (* high Byte *)
-			S_BUF.BUFFER[5] := UINT_TO_BYTE(S_BUF.SIZE - UINT#6); (* Längenfeld eintragen - nur low byte *)
+			S_BUF.BUFFER[5] := UINT_TO_BYTE(S_BUF.SIZE - UINT#6); (* enter length field - low byte only *)
 
 		END_IF;
 	ELSE
@@ -7992,10 +7992,10 @@ CASE state OF
 		IP_C.TIME_RESET := TRUE; (* Error Reset *)
 	END_IF;
 
-	R_BUF.SIZE := UINT#0; (* Empfangsdaten zerstören *)
+	R_BUF.SIZE := UINT#0; (* destroy receive data *)
 
 	IF ENABLE = FALSE OR t.Q THEN
-	    ip_state := BYTE#4; (* Abmelden *)
+	    ip_state := BYTE#4; (* unregister *)
 		state := 00;
 		IP_C.C_ENABLE := FALSE;
 	END_IF;
@@ -8058,31 +8058,31 @@ last_cycle := tx;
 ip_error := IP_C.ERROR > DWORD#0;
 
 CASE state OF
-00: (* Warten auf Freigabe *)
+00: (* wait for release *)
 	IF ENABLE THEN
 		state := 10;
-		ip_state := BYTE#1; (* Anmelden *)
+		ip_state := BYTE#1; (* register *)
 	END_IF;
 
-10: (* Bei IP_Control anmelden und auf freigabe warten *)
+10: (* register with IP_Control and wait for release *)
 	IF ip_state = BYTE#3 THEN
 
-		(* IP Datenverkehr einrichten *)
-		IP_C.C_PORT := WORD#0; (* Port von IP_CONTROL verwenden *)
-		IP_C.C_IP := DWORD#0; (* IP von IP_CONTROL verwenden *)
+		(* set up IP data traffic *)
+		IP_C.C_PORT := WORD#0; (* use port from IP_CONTROL *)
+		IP_C.C_IP := DWORD#0; (* use IP from IP_CONTROL *)
 		IP_C.C_MODE := SEL(UDP,BYTE#4,BYTE#5); (* Mode: 4=TCP+PASSIV+PORT , 5=UDP+PASSIV+PORT *)
-		IP_C.TIME_RESET := TRUE; (* Zeitueberwachung rücksetzen *)
-		IP_C.C_ENABLE := TRUE; (* Verbindungsaufbau freigeben *)
-		IP_C.R_OBSERVE := FALSE; (* keine Empfangsueberwachung *)
+		IP_C.TIME_RESET := TRUE; (* reset timeout monitoring *)
+		IP_C.C_ENABLE := TRUE; (* enable connection setup *)
+		IP_C.R_OBSERVE := FALSE; (* no receive monitoring *)
 		state := 20;
 	END_IF;
 
 20:	IF NOT ip_error THEN
-		IF S_BUF.SIZE = UINT#0 AND R_BUF.SIZE > UINT#6 THEN	(* Datensenden nicht aktiv und Daten wurden empfangen *)
-			IF  R_BUF.SIZE = WORD_TO_UINT(WORD_OF_BYTE(R_BUF.BUFFER[4],R_BUF.BUFFER[5])) + UINT#6 THEN (* gültige Datenlänge *)
-				ERROR := DWORD#00; (* Error löschen *)
+		IF S_BUF.SIZE = UINT#0 AND R_BUF.SIZE > UINT#6 THEN	(* data sending not active and data was received *)
+			IF  R_BUF.SIZE = WORD_TO_UINT(WORD_OF_BYTE(R_BUF.BUFFER[4],R_BUF.BUFFER[5])) + UINT#6 THEN (* valid data length *)
+				ERROR := DWORD#00; (* clear error *)
 
-				(* Header kopieren *)
+				(* copy header *)
 				FOR i := 0 TO 13 DO
 					S_BUF.BUFFER[i] := R_BUF.BUFFER[i];
 				END_FOR;
@@ -8100,7 +8100,7 @@ CASE state OF
 					(*---------------------------------------------*)
 					CASE fc OF
 					1..2 : (* Read Coil Status / Read Input Status *)
-						count := 9; (* erstes Datenbyte *)
+						count := 9; (* first data byte *)
 						coils := BYTE#0;
 						mask := BYTE#1;
 						FOR i := 1 TO points DO
@@ -8133,12 +8133,12 @@ CASE state OF
 						count := adr1 + points - 1;
 						FOR i := adr1 TO count DO
 							idx1 := idx1 + 2;
-							idx2 := idx1 + 1; (* zweiter index für pcworx notwendig ! *)
+							idx2 := idx1 + 1; (* second index necessary for pcworx! *)
 							w_tmp := DATA[i];
 							S_BUF.BUFFER[idx1] := WORD_TO_BYTE(SHR(w_tmp,8));
 							S_BUF.BUFFER[idx2] := WORD_TO_BYTE(w_tmp);
 						END_FOR;
-						S_BUF.BUFFER[8] := SHL(INT_TO_BYTE(points),1); (* Anzahl Register in Bytes *)
+						S_BUF.BUFFER[8] := SHL(INT_TO_BYTE(points),1); (* number of registers in bytes *)
 						S_BUF.SIZE := INT_TO_UINT(idx2 + 1);
 					(*--------------------------------------------------*)
 					5 : (* Force Single Coil *)
@@ -8196,7 +8196,7 @@ CASE state OF
 							count := adr2 + points2 - 1;
 							FOR i := adr2 TO count DO
 								idx1 := idx1 + 2;
-	 							idx2 := idx1 + 1; (* zweiter index für pcworx notwendig ! *)
+	 							idx2 := idx1 + 1; (* second index necessary for pcworx! *)
 								Data[i] := WORD_OF_BYTE(R_BUF.BUFFER[idx1],R_BUF.BUFFER[idx2]);
 							END_FOR;
 
@@ -8205,12 +8205,12 @@ CASE state OF
 							count := adr1 + points - 1;
 							FOR i := adr1 TO count DO
 								idx1 := idx1 + 2;
-								idx2 := idx1 + 1; (* zweiter index für pcworx notwendig ! *)
+								idx2 := idx1 + 1; (* second index necessary for pcworx! *)
 								w_tmp := DATA[i];
 								S_BUF.BUFFER[idx1] := WORD_TO_BYTE(SHR(w_tmp,8));
 								S_BUF.BUFFER[idx2] := WORD_TO_BYTE(w_tmp);
 							END_FOR;
-							S_BUF.BUFFER[8] := SHL(INT_TO_BYTE(points),1); (* Anzahl Register in Bytes *)
+							S_BUF.BUFFER[8] := SHL(INT_TO_BYTE(points),1); (* number of registers in bytes *)
 							S_BUF.SIZE := INT_TO_UINT(idx2 + 1);
 
 						END_IF;
@@ -8223,13 +8223,13 @@ CASE state OF
 			END_IF;
 
 			IF ERROR > DWORD#0 THEN
-				S_BUF.BUFFER[7] := S_BUF.BUFFER[7] OR BYTE#2#1000_0000; (* Fehlerbit setzen *)
+				S_BUF.BUFFER[7] := S_BUF.BUFFER[7] OR BYTE#2#1000_0000; (* set error bit *)
 				S_BUF.BUFFER[8] := DWORD_TO_BYTE(ERROR);
 				S_BUF.SIZE := UINT#9;
 			END_IF;
 
 			S_BUF.BUFFER[4] := BYTE#0; (* high Byte *)
-			S_BUF.BUFFER[5] := UINT_TO_BYTE(S_BUF.SIZE - UINT#6); (* Längenfeld eintragen - nur low byte *)
+			S_BUF.BUFFER[5] := UINT_TO_BYTE(S_BUF.SIZE - UINT#6); (* enter length field - low byte only *)
 
 		END_IF;
 	ELSE
@@ -8241,10 +8241,10 @@ CASE state OF
 		IP_C.TIME_RESET := TRUE; (* Error Reset *)
 	END_IF;
 
-	R_BUF.SIZE := UINT#0; (* Empfangsdaten zerstören *)
+	R_BUF.SIZE := UINT#0; (* destroy receive data *)
 
 	IF ENABLE = FALSE THEN
-	    ip_state := BYTE#4; (* Abmelden *)
+	    ip_state := BYTE#4; (* unregister *)
 		state := 00;
 	END_IF;
 END_CASE;
@@ -8306,7 +8306,7 @@ FOR i := 1 TO 10 DO
 		vsize := VMAP[i].V_SIZE;
 		padr := VMAP[i].P_ADR;
 
-		IF (mask AND DWORD#2#00000000_00000000_10000000_00100110) <> DWORD#0 THEN (* FC 1,2,5,15 für Bit-Access *)
+		IF (mask AND DWORD#2#00000000_00000000_10000000_00100110) <> DWORD#0 THEN (* FC 1,2,5,15 for bit access *)
 			i_tmp := WORD_TO_INT(SHR(INT_TO_WORD(V_ADR + V_CNT -1),4))+1;
 			IF i_tmp <= SIZE AND i_tmp <= vsize THEN
 				w_tmp := INT_TO_WORD(V_ADR);
@@ -8315,10 +8315,10 @@ FOR i := 1 TO 10 DO
 				ERROR := BYTE#0;
 				EXIT;
 			END_IF;
-		ELSIF (mask AND DWORD#2#00000000_11000001_00000000_01011000) <> DWORD#0 THEN (* FC 3,4,6,16,22,23 für Register-Access *)
-			IF V_ADR >= vadr AND V_ADR + V_CNT <= vadr + vsize THEN (* gültiger virtueller bereich *)
-				P_ADR := V_ADR - vadr + padr; (* reale Adresse berechnen *)
-				IF P_ADR + V_CNT <= SIZE THEN (* bereichsueberschreitung ? *)
+		ELSIF (mask AND DWORD#2#00000000_11000001_00000000_01011000) <> DWORD#0 THEN (* FC 3,4,6,16,22,23 for register access *)
+			IF V_ADR >= vadr AND V_ADR + V_CNT <= vadr + vsize THEN (* valid virtual range *)
+				P_ADR := V_ADR - vadr + padr; (* calculate real address *)
+				IF P_ADR + V_CNT <= SIZE THEN (* out of range? *)
 					ERROR := BYTE#0;
 					EXIT;
 				END_IF;
@@ -8331,7 +8331,7 @@ FOR i := 1 TO 10 DO
 END_FOR;
 
 IF ERROR = BYTE#0 THEN
-	IF (mask AND DWORD#2#00000000_11000001_10000000_01100000) <> DWORD#0 THEN (* FC 5,6,15,16,22,23 Schreib-zugriff *)
+	IF (mask AND DWORD#2#00000000_11000001_10000000_01100000) <> DWORD#0 THEN (* FC 5,6,15,16,22,23 write access *)
 		VMAP[i].TIME_OUT := T#1ms;
 	END_IF;
 END_IF;
@@ -8404,7 +8404,7 @@ END_FUNCTION
 // 		b64d_run := TRUE;
 // 	END_IF;
 //
-// 5: IF B64D_DONE THEN (* IPAD Zyklus *)
+// 5: IF B64D_DONE THEN (* IPAD cycle *)
 // 		b64d_run := FALSE;
 // 		xpad := 16#36;
 // 		md5_str1 := PASSWORD;
@@ -8415,7 +8415,7 @@ END_FUNCTION
 // 	END_IF;
 //
 // 10: IF md5_mode = 3 THEN (* OPAD Zyklus *)
-// 		md5_first := md5; (* md5 array vom IPAD sichern *)
+// 		md5_first := md5; (* save md5 array of IPAD *)
 // 		xpad := 16#5C;
 // 		size := 64 + 16;
 // 		md5_mode := 1;
@@ -8434,7 +8434,7 @@ END_FUNCTION
 // 		AUTH_KEY := str_192;
 // 		b64e_run := FALSE;
 // 		RUN := FALSE;
-// 		step := 0; (* alles beendet !! *)
+// 		step := 0; (* all finished !! *)
 // 	END_IF;
 //
 // END_CASE;
@@ -8444,11 +8444,11 @@ END_FUNCTION
 //
 // 1:	n2 := LEN(md5_str1) - 1;
 // 	pt := REF(md5_str1);
-// 	FOR n1 := 0 TO n2 DO (* string in buf kopieren *)
+// 	FOR n1 := 0 TO n2 DO (* copy string into buf *)
 // 		buf[n1] := pt^ XOR xpad;
 // 		pt := pt + 1;
 // 	END_FOR;
-// 	FOR n1 := n2 + 1 TO 63 DO (* mit ipad füllen *)
+// 	FOR n1 := n2 + 1 TO 63 DO (* fill with ipad *)
 // 		buf[n1] := xpad;
 // 	END_FOR;
 //
@@ -8461,7 +8461,7 @@ END_FUNCTION
 // 		ELSE
 // 			n2 := LEN(md5_str2) - 1;
 // 			pt := REF(md5_str2);
-// 			FOR n1 := 0 TO n2 DO (* string in buf kopieren *)
+// 			FOR n1 := 0 TO n2 DO (* copy string into buf *)
 // 				buf[n1] := pt^;
 // 				pt := pt + 1;
 // 			END_FOR;
@@ -8500,10 +8500,10 @@ END_FUNCTION
 // END_VAR
 //
 // CASE mode OF
-// 0:	(* Wait für Start *)
+// 0:	(* wait for start *)
 // 	IF RUN AND NOT run_last THEN
 // 		DONE := FALSE;
-// 		mode := 1; (* Initialisierung *)
+// 		mode := 1; (* initialization *)
 // 		size := LEN(STR);
 // 	END_IF;
 //
@@ -8553,7 +8553,7 @@ END_VAR
 
 CASE MODE OF
 
-1:	(* Initialisierung der Hash-Werte *)
+1:	(* initialization of the hash values *)
 	hash[0] := DWORD#16#67452301;
 	hash[1] := DWORD#16#EFCDAB89;
 	hash[2] := DWORD#16#98BADCFE;
@@ -8566,7 +8566,7 @@ CASE MODE OF
 	SIZE := MIN(64,End);
 	MODE := 2;
 
-2:	(* Fuell-Bytes anhängen *)
+2:	(* append padding bytes *)
 	FOR n := UDINT_TO_INT(SIZE) TO 63 DO
 		BUF[n] := 0;
 	END_FOR;
@@ -8579,14 +8579,14 @@ CASE MODE OF
 	POS := POS + SIZE;
 	SIZE := MIN(64,End - POS);
 
-	n := 0;	(* Byte-Array in DWORD-Array umkopieren *)
+	n := 0;	(* copy byte array into DWORD array *)
 	FOR n1 := 0 TO 15 DO
 		x[n1] := DWORD_OF_BYTE(BUF[n+3],BUF[n+2],BUF[n+1],BUF[n]); (* Little Endian Format *)
 		n := n + 4;
 	END_FOR;
 
-	IF block = 0 THEN (* am Ende des letzten Blocks die Datenlänge eintragen *)
-		x[14] := SHL(UDINT_TO_DWORD(End),3); (* Anzahl Datenbits im Little-Endian Format eintragen *)
+	IF block = 0 THEN (* enter the data length at the end of the last block *)
+		x[14] := SHL(UDINT_TO_DWORD(End),3); (* enter number of data bits in little-endian format *)
 		MODE := 3;
 	ELSE
 		block := block - 1;
@@ -8674,7 +8674,7 @@ END_CASE;
 
 IF MODE = 3 THEN
 	z := 0;
-	FOR n := 0 TO 3 DO (* von Little-Endian auf Big-Endian format konvertieren und DWORD auf BYTE-Array *)
+	FOR n := 0 TO 3 DO (* convert from little-endian to big-endian format and DWORD to BYTE array *)
 		FOR n1 := 0 TO 3 DO
 			MD5[z] := DWORD_TO_BYTE(hash[n]);
 			hash[n] := ROR(hash[n],8);
@@ -8753,7 +8753,7 @@ END_FUNCTION_BLOCK
 // CASE step OF
 //
 // 0:	CASE sha_mode OF
-// 	0:	sha_mode := 1; (* Initialisierung *)
+// 	0:	sha_mode := 1; (* initialization *)
 // 		size := INT_TO_UDINT(LEN(PASSWORD));
 // 		i2 := UDINT_TO_INT(size) - 1;
 // 		FOR i := 0 TO 63 DO
@@ -8765,7 +8765,7 @@ END_FUNCTION_BLOCK
 // 		END_FOR;
 //
 // 	3:	scramble1 := SCRAMBLE;
-// 		sha_mode := 1; (* Initialisierung *)
+// 		sha_mode := 1; (* initialization *)
 // 		size := UDINT#20;
 // 		FOR i := 0 TO 19 DO
 // 			buf[i] := scramble1[i];
@@ -8774,7 +8774,7 @@ END_FUNCTION_BLOCK
 // 	END_CASE;
 //
 // 10:	IF sha_mode = 3 THEN
-// 		sha_mode := 1; (* Initialisierung *)
+// 		sha_mode := 1; (* initialization *)
 // 		scramble2 := SCRAMBLE;
 // 		size := UDINT#40;
 // 		FOR i := 0 TO 19 DO
@@ -8858,16 +8858,16 @@ END_FUNCTION_BLOCK
 // 		step := 980;
 // 	END_IF;
 //
-// 20:	(* MySQL Steuerkanal einrichten *)
+// 20:	(* set up MySQL control channel *)
 // 	IF URL_DATA.PORT = WORD#0 THEN
-// 		URL_DATA.PORT := WORD#3306; (* Standard Port *)
+// 		URL_DATA.PORT := WORD#3306; (* default port *)
 // 	END_IF;
-// 	IP_C.C_PORT := URL_DATA.PORT; (* Portnummer eintragen *)
-//   	IP_C.C_IP := DNS_CLIENT.IP4; (* IP eintragen *)
+// 	IP_C.C_PORT := URL_DATA.PORT; (* enter port number *)
+//   	IP_C.C_IP := DNS_CLIENT.IP4; (* enter IP *)
 //   	IP_C.C_MODE := BYTE#0; (* Mode: TCP+ACTIV+PORT *)
-//   	IP_C.TIME_RESET := TRUE; (* Zeitueberwachung rücksetzen *)
-//   	IP_C.C_ENABLE := TRUE; (* Verbindungsaufbau freigeben *)
-//   	IP_C.R_OBSERVE := TRUE; (* Empfangsueberwachung *)
+//   	IP_C.TIME_RESET := TRUE; (* reset timeout monitoring *)
+//   	IP_C.C_ENABLE := TRUE; (* enable connection setup *)
+//   	IP_C.R_OBSERVE := TRUE; (* receive monitoring *)
 // 	COM.R_BUF.SIZE := UINT#0;
 // 	COM.SQL_RCV_STATE := BYTE#0;
 // 	step := 30;
@@ -8875,12 +8875,12 @@ END_FUNCTION_BLOCK
 // 30:	IF COM.SQL_RCV_STATE = BYTE#1 THEN
 // 		INFO.SERVER_PROTOCOL_VERSION := COM.R_BUF.BUFFER[4];
 //
-// 		(* ende markierung von string server_version suchen *)
+// 		(* search end marker of string server_version *)
 // 		idx2 := UINT_TO_INT(COM.R_BUF.SIZE) - 1;
 // 		FOR idx1 := 5 TO idx2 DO
 // 			IF COM.R_BUF.BUFFER[idx1] = BYTE#0 THEN EXIT; END_IF;
 // 		END_FOR;
-// 		idx1 := idx1 + 5; (* terminierung und thread-id überspringen *)
+// 		idx1 := idx1 + 5; (* skip termination and thread id *)
 //
 // 		FOR idx2:=0 TO 7 DO	(* Byte 0-7 *)
 // 			scramble1_buffer[idx2] := COM.R_BUF.BUFFER[idx1];
@@ -8901,7 +8901,7 @@ END_FUNCTION_BLOCK
 // 			idx1 := idx1 + 1;
 // 		END_FOR;
 //
-// 		IF INFO.SERVER_PROTOCOL_VERSION < BYTE#10 THEN  (* Error: protocol version zu niedrig *)
+// 		IF INFO.SERVER_PROTOCOL_VERSION < BYTE#10 THEN  (* Error: protocol version too low *)
 // 			COM.ERROR_T := BYTE#2;
 // 			COM.ERROR_C := DWORD#1;
 // 			step := 980;
@@ -8920,7 +8920,7 @@ END_FUNCTION_BLOCK
 // 	END_IF;
 //
 // 50: (* Client Authentication Packet *)
-// 	(* Byte 0-3 werden später eingetragen *)
+// 	(* bytes 0-3 are entered later *)
 // 	COM.S_BUF.BUFFER[04] := BYTE_OF_DWORD(client_flags, BYTE#0); (* client_flags *)
 // 	COM.S_BUF.BUFFER[05] := BYTE_OF_DWORD(client_flags, BYTE#1);
 // 	COM.S_BUF.BUFFER[06] := BYTE_OF_DWORD(client_flags, BYTE#2);
@@ -8938,7 +8938,7 @@ END_FUNCTION_BLOCK
 // 		COM.S_BUF.BUFFER[idx1] := CODE(URL_DATA.USER, idx2);
 // 		idx1 := idx1 + 1;
 // 	END_FOR;
-// 	COM.S_BUF.BUFFER[idx1] := BYTE#0; (* String terminierung eintragen *)
+// 	COM.S_BUF.BUFFER[idx1] := BYTE#0; (* enter string termination *)
 // 	idx1 := idx1 + 1;
 // 	IF LEN(URL_DATA.PASSWORD) = 0 THEN
 // 		COM.S_BUF.BUFFER[idx1] := BYTE#0; (* scramble_buff length *)
@@ -8949,7 +8949,7 @@ END_FUNCTION_BLOCK
 // 			COM.S_BUF.BUFFER[idx1] := scramble2_buffer[idx2];
 // 		END_FOR;
 // 	END_IF;
-// 	COM.S_BUF.SIZE  := INT_TO_UINT(idx1 + 1); (* Sendelänge eintragen *)
+// 	COM.S_BUF.SIZE  := INT_TO_UINT(idx1 + 1); (* enter send length *)
 //
 // 	step := 60;
 //
@@ -8960,7 +8960,7 @@ END_FUNCTION_BLOCK
 //
 // (* ================================================== *)
 //
-// 300:	step := SEL(COM.SQL_CON,700,310); (* Schritt-Selektion *)
+// 300:	step := SEL(COM.SQL_CON,700,310); (* step selection *)
 //
 // 310:	step := 300; (* dummy step *)
 //
@@ -8968,18 +8968,18 @@ END_FUNCTION_BLOCK
 //
 // 700: (* COM_QUIT *)
 // 	COM.S_BUF.BUFFER[04] := BYTE#1; (* 0x01 COM_QUIT mysql_close *)
-// 	COM.S_BUF.SIZE := UINT#5; (* Sendelänge eintragen *)
+// 	COM.S_BUF.SIZE := UINT#5; (* enter send length *)
 // 	COM.SQL_PACKET_NO := BYTE#255;
 // 	ip_c_red_disable := TRUE;
 // 	step := 710;
 //
-// 710:	IF IP_C.C_STATE = BYTE#0 THEN (* Verbindung durch SQL-Server beendet ? *)
+// 710:	IF IP_C.C_STATE = BYTE#0 THEN (* connection closed by SQL server? *)
 // 		step := 980;
 // 	END_IF;
 //
 // (* ================================================== *)
 //
-// 980:IP_C.C_ENABLE := FALSE; (* MYSQL Steuerkanal schliessen *)
+// 980:IP_C.C_ENABLE := FALSE; (* close MYSQL control channel *)
 // 	ip_c_red_disable := FALSE;
 // 	INFO.SQL_CONNECTED := FALSE;
 // 	COM.SQL_CON := FALSE;
@@ -9005,13 +9005,13 @@ END_FUNCTION_BLOCK
 // (* ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ *)
 //
 // IF step >= 30 THEN
-// 	IF COM.R_BUF.SIZE >= UINT#3 AND COM.SQL_RCV_STATE = BYTE#0 THEN (* Daten wurden empfangen ? *)
+// 	IF COM.R_BUF.SIZE >= UINT#3 AND COM.SQL_RCV_STATE = BYTE#0 THEN (* data received? *)
 // 		IF DWORD_TO_UINT(DWORD_OF_BYTE(BYTE#0, COM.R_BUF.BUFFER[2], COM.R_BUF.BUFFER[1], COM.R_BUF.BUFFER[0])) + UINT#4 = COM.R_BUF.SIZE THEN
 // 			COM.SQL_PACKET_NO := COM.R_BUF.BUFFER[3];
 // 			IF COM.R_BUF.BUFFER[4] = BYTE#16#FF THEN
-// 				idx2 := 13; (* Error String - Erstes Zeichen *)
-// 				idx3 := UINT_TO_INT(COM.R_BUF.SIZE) - 1; (* Error String - Letztes Zeichen *)
-// 				FOR idx1 := idx2 TO idx3 DO (* alle ' durch ´ ersetzen *)
+// 				idx2 := 13; (* error string - first character *)
+// 				idx3 := UINT_TO_INT(COM.R_BUF.SIZE) - 1; (* error string - last character *)
+// 				FOR idx1 := idx2 TO idx3 DO (* replace all ' with ´ *)
 // 					IF COM.R_BUF.BUFFER[idx1] = BYTE#39 THEN
 // 						COM.R_BUF.BUFFER[idx1] := BYTE#96;
 // 					END_IF;
@@ -9020,7 +9020,7 @@ END_FUNCTION_BLOCK
 // 				COM.ERROR_T := BYTE#3;
 // 				COM.ERROR_C := DWORD_OF_BYTE(BYTE#0,BYTE#0,COM.R_BUF.BUFFER[6], COM.R_BUF.BUFFER[5]);
 // 				COM.SQL_RCV_STATE := BYTE#2;
-// 				COM.R_BUF.SIZE := UINT#0; (* Empfangsbuffer nach Fehler rücksetzen *)
+// 				COM.R_BUF.SIZE := UINT#0; (* reset receive buffer after error *)
 // 				step := 980;
 // 			ELSE
 // 				COM.SQL_RCV_STATE := BYTE#1;
@@ -9038,7 +9038,7 @@ END_FUNCTION_BLOCK
 // 	END_IF;
 // END_IF;
 //
-// (* automatisches Datensenden *)
+// (* automatic data sending *)
 //
 // CASE snd_step OF
 //
@@ -9051,7 +9051,7 @@ END_FUNCTION_BLOCK
 // 		COM.S_BUF.BUFFER[3] := COM.SQL_PACKET_NO;
 //
 // 		IP_C.R_OBSERVE := TRUE;
-// 		COM.R_BUF.SIZE := UINT#0; (* Empfangsbuffer rücksetzen *)
+// 		COM.R_BUF.SIZE := UINT#0; (* reset receive buffer *)
 // 		COM.SQL_RCV_STATE := BYTE#0;
 //
 // 	        (*####################  DEBUG-MESSAGE  ###################################*)
@@ -9065,14 +9065,14 @@ END_FUNCTION_BLOCK
 // 		snd_step := 10;
 // 	END_IF;
 //
-// 10:	IF COM.S_BUF.SIZE = UINT#0 THEN (* warten bis alle daten gesendet sind *)
+// 10:	IF COM.S_BUF.SIZE = UINT#0 THEN (* wait until all data is sent *)
 // 		snd_step := 0;
 // 	END_IF;
 //
 // END_CASE;
 //
-// (* Globale Fehlerbehandlung für Haupt-Routine *)
-// IF COM.ERROR_T = BYTE#0 AND step > 20 THEN (* noch kein Fehler gespeichert und Hauptroutine aktiv *)
+// (* global error handling for main routine *)
+// IF COM.ERROR_T = BYTE#0 AND step > 20 THEN (* no error stored yet and main routine active *)
 // 	IF IP_C.ERROR > DWORD#0 AND IP_C.C_ENABLE AND NOT IP_C.TIME_RESET THEN  (* IP Control *)
 // 		IF ip_c_red_disable = FALSE OR IP_C.ERROR <> DWORD#16#FD000000 THEN
 // 			COM.ERROR_C := IP_C.ERROR;
@@ -9082,8 +9082,8 @@ END_FUNCTION_BLOCK
 // 	END_IF;
 // END_IF;
 //
-// IF TON_WAIT.Q THEN (* Ablaufstörung - Schrittkette *)
-// 	COM.ERROR_C := INT_TO_DWORD(step); (* aktuellen Schritt eintragen *)
+// IF TON_WAIT.Q THEN (* sequence fault - step chain *)
+// 	COM.ERROR_C := INT_TO_DWORD(step); (* enter current step *)
 // 	COM.ERROR_T := BYTE#5;
 // 	step := 980;
 // END_IF;
@@ -9091,7 +9091,7 @@ END_FUNCTION_BLOCK
 // (* ######################################################## *)
 //
 // DNS_CLIENT(IP_C:=IP_C, S_BUF:=COM.S_BUF, R_BUF:=COM.R_BUF, DOMAIN:=URL_DATA.DOMAIN, IP4_DNS:= COM.DNS_IP4, ACTIVATE:=step=10); (* DNS-Client *)
-// IPC(IP:= DWORD#0, PORT:= WORD#0 , TIME_OUT:= timeout1, IP_C:= IP_C, S_BUF:= COM.S_BUF, R_BUF:= COM.R_BUF); (* MYSQL Steuerkanal *)
+// IPC(IP:= DWORD#0, PORT:= WORD#0 , TIME_OUT:= timeout1, IP_C:= IP_C, S_BUF:= COM.S_BUF, R_BUF:= COM.R_BUF); (* MYSQL control channel *)
 //
 // TON_WAIT(IN:=step = last_step AND step > 0,PT:=timeout2);
 // last_step := step;
@@ -9140,7 +9140,7 @@ IF X.STATE > BYTE#0 AND X.ERROR_ID = BYTE#0 THEN
 	IF INT_TO_UINT(index + 3) > X.BUF_SIZE THEN
 		X.ERROR_ID := ID;
 	ELSE
-		IF X.STATE = BYTE#1 THEN (* Daten schreiben *)
+		IF X.STATE = BYTE#1 THEN (* write data *)
 			X.S_BUF.BUFFER[index] := ID; (* ID *)
 			index := index + 1;
 			X.S_BUF.BUFFER[index] := BYTE#4; (* TYPE BOOL8 *)
@@ -9148,7 +9148,7 @@ IF X.STATE > BYTE#0 AND X.ERROR_ID = BYTE#0 THEN
 			X.S_BUF.BUFFER[index] := BYTE_OF_BIT(IN1,IN2,IN3,IN4,IN5,IN6,IN7,IN8);
 			index := index + 1;
 
-		ELSIF X.STATE = BYTE#2 THEN (* Daten lesen *)
+		ELSIF X.STATE = BYTE#2 THEN (* read data *)
 			index2 := index + 1; (* PCWORX Workaround *)
 			IF X.R_BUF.BUFFER[index] <> ID OR X.R_BUF.BUFFER[index2] <> BYTE#4 THEN
 				X.ERROR_ID := ID;
@@ -9195,7 +9195,7 @@ END_IF;
 
 IF X.STATE > BYTE#0 AND X.ERROR_ID = BYTE#0 THEN
 	index := X.index; (* PCWORX Workaround *)
-	IF X.STATE = BYTE#1 THEN (* Daten schreiben *)
+	IF X.STATE = BYTE#1 THEN (* write data *)
 		size := SIZEOF(BUF_IN);
 		IF INT_TO_UINT(index + 3 + size) > X.BUF_SIZE THEN
 			X.ERROR_ID := ID;
@@ -9204,14 +9204,14 @@ IF X.STATE > BYTE#0 AND X.ERROR_ID = BYTE#0 THEN
 			index := index + 1;
 			X.S_BUF.BUFFER[index] := BYTE#20; (* TYPE BUFFER *)
 			index := index + 1;
-			X.S_BUF.BUFFER[index] := INT_TO_BYTE(size); (* Anzahl der Bytes *)
+			X.S_BUF.BUFFER[index] := INT_TO_BYTE(size); (* number of bytes *)
 				index := index + 1;
 			FOR index2 := 1 TO size DO
 				X.S_BUF.BUFFER[index] := BUF_IN[index2];
 				index := index + 1;
 			END_FOR;
 		END_IF;
-	ELSIF X.STATE = BYTE#2 THEN (* Daten lesen *)
+	ELSIF X.STATE = BYTE#2 THEN (* read data *)
 		index2 := index + 1; (* PCWORX Workaround *)
 		IF X.R_BUF.BUFFER[index] <> ID OR X.R_BUF.BUFFER[index2] <> BYTE#20 THEN
 			X.ERROR_ID := ID;
@@ -9249,14 +9249,14 @@ END_FUNCTION_BLOCK
 // END_VAR
 // VAR
 // 	IPC : IP_CONTROL;
-// 	IP_C : IP_C; (* IP_Control Verwaltungsstruktur *)
+// 	IP_C : IP_C; (* IP_Control management structure *)
 // 	step : INT;
 // 	activate_last : BOOL;
 // 	tscan : TON;
 // 	reset : BOOL;
 // END_VAR
 //
-// IF X.ERROR_ID > BYTE#0 THEN (* Schwere Fehler bei Variablenzuordnung vorhanden  !! *)
+// IF X.ERROR_ID > BYTE#0 THEN (* severe errors in variable assignment present  !! *)
 // 	X.STATE := BYTE#0;
 // 	ERROR := BYTE_TO_DWORD(X.ERROR_ID);
 // 	X.ERROR_ID := BYTE#0;
@@ -9269,8 +9269,8 @@ END_FUNCTION_BLOCK
 //
 //         (*  TCP + MASTER = C_MODE 0 (TCP + ACTIVE + PORT + IP) *)
 //         (*  UDP + MASTER = C_MODE 1 (UDP + ACTIVE + PORT + IP) *)
-//         (*  TCP + SLAVE  = C_MODE 2 (TCP + PASSIV + PORT + IP) *)
-//         (*  UDP + SLAVE  = C_MODE 3 (UDP + PASSIV + PORT + IP) *)
+//         (*  TCP + SLAVE  = C_MODE 2 (TCP + PASSIVE + PORT + IP) *)
+//         (*  UDP + SLAVE  = C_MODE 3 (UDP + PASSIVE + PORT + IP) *)
 // 	IF MASTER THEN
 // 		IP_C.C_MODE := BYTE#0;
 // 		step := 100;
@@ -9279,11 +9279,11 @@ END_FUNCTION_BLOCK
 // 		step := 200;
 // 	END_IF;
 //         IF UDP THEN IP_C.C_MODE := IP_C.C_MODE OR BYTE#1; END_IF;
-// 	  	IP_C.C_PORT := REMOTE_PORT; (* Portnummer eintragen *)
-// 	  	IP_C.C_IP := REMOTE_IP4; (* IP eintragen *)
-// 	  	IP_C.TIME_RESET := TRUE; (* Zeitueberwachung rücksetzen *)
-// 	  	IP_C.C_ENABLE := TRUE; (* Verbindungsaufbau freigeben *)
-// 	  	IP_C.R_OBSERVE := TRUE; (* Empfangsueberwachung *)
+// 	  	IP_C.C_PORT := REMOTE_PORT; (* enter port number *)
+// 	  	IP_C.C_IP := REMOTE_IP4; (* enter IP *)
+// 	  	IP_C.TIME_RESET := TRUE; (* reset timeout monitoring *)
+// 	  	IP_C.C_ENABLE := TRUE; (* enable connection setup *)
+// 	  	IP_C.R_OBSERVE := TRUE; (* receive monitoring *)
 // 		X.S_BUF.SIZE := UINT#0;
 // 		X.R_BUF.SIZE := UINT#0;
 // 		X.CYCLE := UDINT#0;
@@ -9293,8 +9293,8 @@ END_FUNCTION_BLOCK
 //
 // (* ++++++++++++++++++++++++++++++++++++++++++++++ *)
 //
-// 100:IF IP_C.C_STATE > BYTE#127 THEN (* Verbindung vorhanden *)
-// 		X.STATE := BYTE#1; (* Daten sammeln *)
+// 100:IF IP_C.C_STATE > BYTE#127 THEN (* connection present *)
+// 		X.STATE := BYTE#1; (* collect data *)
 // 		X.BUF_SIZE := SIZEOF(X.S_BUF.BUFFER);
 // 		X.S_BUF.BUFFER[0] := UDINT_TO_BYTE(X.CYCLE);
 // 		X.INDEX := 1;
@@ -9302,16 +9302,16 @@ END_FUNCTION_BLOCK
 // 	END_IF;
 //
 // 110:X.STATE := BYTE#0;
-// 	X.S_BUF.SIZE := INT_TO_UINT(X.INDEX); (* Datenlänge eintragen *)
+// 	X.S_BUF.SIZE := INT_TO_UINT(X.INDEX); (* enter data length *)
 // 	step := 120;
 //
-// 120:IF X.S_BUF.SIZE = UINT#0 AND X.R_BUF.SIZE >= UINT#1 THEN (* länge der empfangenen Daten prüfen *)
-// 		X.STATE := BYTE#2; (* Daten ausgeben *)
+// 120:IF X.S_BUF.SIZE = UINT#0 AND X.R_BUF.SIZE >= UINT#1 THEN (* check length of received data *)
+// 		X.STATE := BYTE#2; (* output data *)
 // 		X.BUF_SIZE := X.R_BUF.SIZE;
 // 		X.INDEX := 1;
 // 		X.ERROR_ID := BYTE#0;
 // 		X.CYCLE := X.CYCLE + UDINT#1;
-// 		ERROR := DWORD#0; (* nach erfolgreichen Zyklus letzten Fehlercode löschen *)
+// 		ERROR := DWORD#0; (* clear last error code after a successful cycle *)
 // 		RUN := TRUE;
 // 		step := 130;
 // 	END_IF;
@@ -9319,7 +9319,7 @@ END_FUNCTION_BLOCK
 // 130:X.STATE := BYTE#0;
 // 	X.R_BUF.SIZE := UINT#0;
 // 	IF NOT ACTIVATE THEN
-// 		step := 999; (* Beenden *)
+// 		step := 999; (* exit *)
 // 	ELSIF tscan.Q THEN
 // 		step := 100;
 // 	END_IF;
@@ -9327,34 +9327,34 @@ END_FUNCTION_BLOCK
 // (* ++++++++++++++++++++++++++++++++++++++++++++++ *)
 //
 // 200:IF X.R_BUF.SIZE >= UINT#1 THEN
-// 		X.STATE := BYTE#2; (* Daten ausgeben *)
+// 		X.STATE := BYTE#2; (* output data *)
 // 		X.BUF_SIZE := X.R_BUF.SIZE;
 // 		X.INDEX := 1;
 // 		step := 210;
 // 	END_IF;
 //
-// 210:X.STATE := BYTE#1; (* Daten sammeln *)
+// 210:X.STATE := BYTE#1; (* collect data *)
 // 	X.BUF_SIZE := SIZEOF(X.R_BUF.BUFFER);;
-// 	X.S_BUF.BUFFER[0] := X.R_BUF.BUFFER[0]; (* Cycle übernehmen *)
+// 	X.S_BUF.BUFFER[0] := X.R_BUF.BUFFER[0]; (* take cycle *)
 // 	X.INDEX := 1;
 // 	X.R_BUF.SIZE := UINT#0;
 // 	step := 220;
 //
 // 220:X.STATE := BYTE#0;
-// 	X.S_BUF.SIZE := INT_TO_UINT(X.INDEX); (* Datenlänge eintragen *)
+// 	X.S_BUF.SIZE := INT_TO_UINT(X.INDEX); (* enter data length *)
 // 	step := 230;
 //
 // 230:IF X.S_BUF.SIZE = UINT#0 THEN
-// 		ERROR := DWORD#0; (* nach erfolgreichen Zyklus letzten Fehlercode löschen *)
+// 		ERROR := DWORD#0; (* clear last error code after a successful cycle *)
 // 		RUN := TRUE;
 // 		IF NOT ACTIVATE THEN
-// 			step := 999; (* Beenden *)
+// 			step := 999; (* exit *)
 // 		ELSE
 // 			step := 200;
 // 		END_IF;
 // 	END_IF;
 //
-// 999:IP_C.C_ENABLE := FALSE; (* Beenden *)
+// 999:IP_C.C_ENABLE := FALSE; (* exit *)
 // 	RUN := FALSE;
 // 	step := 0;
 //
@@ -9371,7 +9371,7 @@ END_FUNCTION_BLOCK
 // 	step := 0;
 // END_IF;
 //
-// ACTIVATE_LAST := ACTIVATE; (* letzten Status sichern zur Flankenerkennung *)
+// ACTIVATE_LAST := ACTIVATE; (* save last status for edge detection *)
 // tscan(IN:= step <> 110 ,PT:=SCAN_TIME);
 // END_FUNCTION_BLOCK
 
@@ -9420,7 +9420,7 @@ IF X.STATE > BYTE#0 AND X.ERROR_ID = BYTE#0 THEN
 	IF INT_TO_UINT(index + 34) > X.BUF_SIZE THEN  (* ID (1) + TYPE (1) + 8 x DWORD (4) *)
 		X.ERROR_ID := ID;
 	ELSE
-		IF X.STATE = BYTE#1 THEN (* Daten schreiben *)
+		IF X.STATE = BYTE#1 THEN (* write data *)
 			ra[1] := IN1;
 			ra[2] := IN2;
 			ra[3] := IN3;
@@ -9441,7 +9441,7 @@ IF X.STATE > BYTE#0 AND X.ERROR_ID = BYTE#0 THEN
 				END_FOR;
 			END_FOR;
 
-		ELSIF X.STATE = BYTE#2 THEN (* Daten lesen *)
+		ELSIF X.STATE = BYTE#2 THEN (* read data *)
 			index2 := index + 1; (* PCWORX Workaround *)
 			IF X.R_BUF.BUFFER[index] <> ID OR X.R_BUF.BUFFER[index2] <> BYTE#13 THEN (* TYPE DWORD8 *)
 				X.ERROR_ID := ID;
@@ -9517,7 +9517,7 @@ END_FUNCTION_BLOCK
 // 	IF INT_TO_UINT(index + 34) > X.BUF_SIZE THEN (* ID (1) + TYPE (1) + 8 x REAL (4) *)
 // 		X.ERROR_ID := ID;
 // 	ELSE
-// 		IF X.STATE = BYTE#1 THEN (* Daten schreiben *)
+// 		IF X.STATE = BYTE#1 THEN (* write data *)
 // 			ra[1] := IN1;
 // 			ra[2] := IN2;
 // 			ra[3] := IN3;
@@ -9539,7 +9539,7 @@ END_FUNCTION_BLOCK
 // 				END_FOR;
 // 			END_FOR;
 //
-// 		ELSIF X.STATE = BYTE#2 THEN (* Daten lesen *)
+// 		ELSIF X.STATE = BYTE#2 THEN (* read data *)
 // 			index2 := index + 1; (* PCWORX Workaround *)
 // 			IF X.R_BUF.BUFFER[index] <> ID OR X.R_BUF.BUFFER[index2] <> BYTE#15 THEN (* TYPE REAL8 *)
 // 				X.ERROR_ID := ID;
@@ -9594,7 +9594,7 @@ END_FUNCTION_BLOCK
 //
 // IF X.STATE > BYTE#0 AND X.ERROR_ID = BYTE#0 THEN
 // 	index := X.index; (* PCWORX Workaround *)
-// 	IF X.STATE = BYTE#1 THEN (* Daten schreiben *)
+// 	IF X.STATE = BYTE#1 THEN (* write data *)
 // 		len_str := LEN(IN);
 // 		IF INT_TO_UINT(index + 3 + len_str) > X.BUF_SIZE THEN
 // 			X.ERROR_ID := ID;
@@ -9603,12 +9603,12 @@ END_FUNCTION_BLOCK
 // 			index := index + 1;
 // 			X.S_BUF.BUFFER[index] := BYTE#6; (* TYPE REAL *)
 // 			index := index + 1;
-// 			X.S_BUF.BUFFER[index] := INT_TO_BYTE(len_str); (* Anzahl der Bytes *)
+// 			X.S_BUF.BUFFER[index] := INT_TO_BYTE(len_str); (* number of bytes *)
 // 			index := index + 1;
 // 			_STRING_TO_BUFFER(STR:=IN,POS:=index,PT:=REF(X.S_BUF.BUFFER),SIZE:=X.BUF_SIZE);
 // 			index := index + len_str;
 // 		END_IF;
-// 	ELSIF X.STATE = BYTE#2 THEN (* Daten lesen *)
+// 	ELSIF X.STATE = BYTE#2 THEN (* read data *)
 // 		index2 := index + 1; (* PCWORX Workaround *)
 // 		IF X.R_BUF.BUFFER[index] <> ID OR X.R_BUF.BUFFER[index2] <> BYTE#6 THEN
 // 			X.ERROR_ID := ID;
@@ -9674,7 +9674,7 @@ END_FUNCTION_BLOCK
 // 	IF INT_TO_UINT(index + 34) > X.BUF_SIZE THEN  (* ID (1) + TYPE (1) + 8 x DWORD (4) *)
 // 		X.ERROR_ID := ID;
 // 	ELSE
-// 		IF X.STATE = BYTE#1 THEN (* Daten schreiben *)
+// 		IF X.STATE = BYTE#1 THEN (* write data *)
 // 			ra[1] := REAL_TO_DW(X:=IN_REAL1);
 // 			ra[2] := REAL_TO_DW(X:=IN_REAL2);
 // 			ra[3] := DINT_TO_DWORD(IN_DINT1);
@@ -9695,7 +9695,7 @@ END_FUNCTION_BLOCK
 // 				END_FOR;
 // 			END_FOR;
 //
-// 		ELSIF X.STATE = BYTE#2 THEN (* Daten lesen *)
+// 		ELSIF X.STATE = BYTE#2 THEN (* read data *)
 // 			index2 := index + 1; (* PCWORX Workaround *)
 // 			IF X.R_BUF.BUFFER[index] <> ID OR X.R_BUF.BUFFER[index2] <> BYTE#21 THEN (* TYPE X8 *)
 // 				X.ERROR_ID := ID;
@@ -9761,14 +9761,14 @@ END_FUNCTION
 // 		ELSE
 // 			c := CODE(STR:=STR,POS:=pos + 1);
 // 			IF ISC_NUM(INT_TO_BYTE(c)) THEN
-// 				c := c - 48; (* notwendig weil innerhalb einer indexangabe nur eine var stehen darf *)
-// 				PRINTF_DATA[10] := PRINTF_DATA[c]; (* Kommando 1-9 ergibt Parameterindex 1-9 *)
-// 				(* Parameter gegen Text tauschen *)
+// 				c := c - 48; (* necessary because only one var is allowed inside an index expression *)
+// 				PRINTF_DATA[10] := PRINTF_DATA[c]; (* command 1-9 gives parameter index 1-9 *)
+// 				(* replace parameter with text *)
 // 			END_IF;
 // 			IF LEN(PRINTF_DATA[10]) + LEN(STR) > LOG_SIZE THEN
 // 				PRINTF_DATA[10] := '..';
 // 			END_IF;
-// 			(* pcworx: aus und eingangsstring muss verschieden sein *)
+// 			(* pcworx: output and input string must be different *)
 // 			PRINTF_DATA[11] := STR;
 // 			STR := REPLACE(PRINTF_DATA[11],PRINTF_DATA[10],2,pos);
 // 		END_IF;
@@ -9803,7 +9803,7 @@ END_FUNCTION
 //
 // CASE MODE OF
 //
-// 1:	(* Initialisierung *)
+// 1:	(* initialization *)
 // 	b := LEN(KEY) - 1;
 // 	IF b < 0 OR SIZE < 1 THEN
 // 		MODE := 3;
@@ -9838,7 +9838,7 @@ END_FUNCTION
 // 	e := 0;
 // 	MODE := 2;
 //
-// 2:	(* Daten ver/entschlüsseln *)
+// 2:	(* encrypt/decrypt data *)
 //
 // 	b := UDINT_TO_INT(SIZE) - 1;
 // 	FOR a := 0 TO b DO
@@ -9883,10 +9883,10 @@ END_FUNCTION
 // stop := UINT_TO_INT(SIZE) - 1;
 //
 // IF LEN(SRC) = 0 THEN
-// 	(* wenn kein Suchbegriff vorhanden ist, dann den HTTP-STATUS auswerten *)
-// 	SRC := 'HTTP/'; (* neuer Suchbegriff *)
+// 	(* if there is no search term, evaluate the HTTP STATUS *)
+// 	SRC := 'HTTP/'; (* new search term *)
 // ELSE
-// 	(* gesuchten Parametertext ergänzen *)
+// 	(* append the searched parameter text *)
 // 	SRC := CONCAT(SRC,': ');
 // END_IF;
 //
@@ -9911,7 +9911,7 @@ END_FUNCTION
 // 		index := index + 1;
 // 	END_WHILE;
 //
-// 	s1 := s1 + LEN(SRC); (* 'suchbegriff: ' nicht mitkopieren *)
+// 	s1 := s1 + LEN(SRC); (* do not copy 'search term: ' *)
 //
 // 	(* copy string *)
 // 	READ_HTTP := BUFFER_TO_STRING(PT:=REF(PT),SIZE:=SIZE,START:=s1,STOP:=e1);
@@ -9943,10 +9943,10 @@ END_FUNCTION
 // END_VAR
 //
 // CASE mode OF
-// 0:	(* Wait für Start *)
+// 0:	(* wait for start *)
 // 	IF RUN AND NOT run_last THEN
 // 		DONE := FALSE;
-// 		mode := 1; (* Initialisierung *)
+// 		mode := 1; (* initialization *)
 // 		size := LEN(STR);
 // 	END_IF;
 //
@@ -10000,19 +10000,19 @@ END_VAR
 
 CASE MODE OF
 
-1:	(* Initialisierung der Hash-Werte *)
+1:	(* initialization of the hash values *)
 	hash[0] := DWORD#16#67452301;
 	hash[1] := DWORD#16#EFCDAB89;
 	hash[2] := DWORD#16#98BADCFE;
 	hash[3] := DWORD#16#10325476;
 	hash[4] := DWORD#16#C3D2E1F0;
 
-	(* Buffer initialisieren *)
+	(* initialize buffer *)
 	FOR n := 16 TO 79 DO
    		w[n] := DWORD#0;
 	END_FOR;
 
-	block := SHR(SIZE,6) + BOOL_TO_UDINT((UDINT_TO_BYTE(SIZE) AND 16#3F) > 55);	(* benötigte Blocks errechnen *)
+	block := SHR(SIZE,6) + BOOL_TO_UDINT((UDINT_TO_BYTE(SIZE) AND 16#3F) > 55);	(* calculate the required blocks *)
 
 	pad_1 := FALSE;
 	POS := 0;
@@ -10020,7 +10020,7 @@ CASE MODE OF
 	SIZE := MIN(64,End);
 	MODE := 2;
 
-2:	FOR n := UDINT_TO_INT(SIZE) TO 63 DO (* Fuell-Bytes anhängen *)
+2:	FOR n := UDINT_TO_INT(SIZE) TO 63 DO (* append padding bytes *)
 		BUF[n] := 0;
 	END_FOR;
 
@@ -10032,20 +10032,20 @@ CASE MODE OF
 	POS := POS + SIZE;
 	SIZE := MIN(64,End - POS);
 
-	n := 0;	(* Byte-Array in DWORD-Array umkopieren *)
+	n := 0;	(* copy byte array into DWORD array *)
 	FOR n1 := 0 TO 15 DO
 		w[n1] := DWORD_OF_BYTE(BUF[n],BUF[n+1],BUF[n+2],BUF[n+3]);
 		n := n + 4;
 	END_FOR;
 
-	IF block = 0 THEN (* am Ende des letzten Blocks die Datenlänge eintragen *)
-		w[15] := SHL(UDINT_TO_DWORD(End),3); (* Anzahl Datenbits eintragen *)
+	IF block = 0 THEN (* enter the data length at the end of the last block *)
+		w[15] := SHL(UDINT_TO_DWORD(End),3); (* enter the number of data bits *)
 		MODE := 3;
 	ELSE
 		block := block - 1;
 	END_IF;
 
-	FOR n := 16 TO 79 DO (* erweitern der 16 32-bit-Worte auf 80 32-bit-Worte *)
+	FOR n := 16 TO 79 DO (* extend the 16 32-bit words to 80 32-bit words *)
 		w[n] := ROL(w[n-3] XOR w[n-8] XOR w[n-14] XOR w[n-16],1);
 	END_FOR;
 
@@ -10078,7 +10078,7 @@ CASE MODE OF
 		a := x;
 	END_FOR;
 
-	(* aktuelle Hash-Werte zum letzten Wert addieren *)
+	(* add the current hash values to the last value *)
 	hash[0] := hash[0] + a;
 	hash[1] := hash[1] + b;
 	hash[2] := hash[2] + c;
@@ -10089,7 +10089,7 @@ END_CASE;
 
 IF MODE = 3 THEN
 	z := 0;
-	FOR n := 0 TO 4 DO (* konvertiere DWORD auf BYTE-Array *)
+	FOR n := 0 TO 4 DO (* convert DWORD to BYTE array *)
 		FOR n1 := 0 TO 3 DO
 			hash[n] := ROL(hash[n],8);
 			SHA1[z] := DWORD_TO_BYTE(hash[n]);
@@ -10146,7 +10146,7 @@ END_FUNCTION_BLOCK
 // 	FILES : STRING(STRING_LENGTH);
 // END_VAR
 // VAR
-// 	IP_C : IP_C; (* IP_Control Verwaltungsstruktur *)
+// 	IP_C : IP_C; (* IP_Control management structure *)
 // 	S_BUF : NETWORK_BUFFER;
 // 	R_BUF : NETWORK_BUFFER;
 // 	F_BUF : NETWORK_BUFFER;
@@ -10206,7 +10206,7 @@ END_FUNCTION_BLOCK
 // 	md5_password : STRING(64);
 // 	md5_b64_ts : STRING(64);
 // 	md5_auth_key : STRING(192);
-// 	ip_c_red_disable : BOOL; (* IP_CONTROL - Remote Disconnect Error unterdrücken *)
+// 	ip_c_red_disable : BOOL; (* IP_CONTROL - suppress remote disconnect error *)
 // 	ssl_mode :	BYTE;(*SSL/TLS Mode -   0 = off / 1 = SSL / 2 = TLS*)
 //
 // 	(*LOG_MSG : LOG_MSG;
@@ -10227,11 +10227,11 @@ END_FUNCTION_BLOCK
 // 		FSD.ERROR := BYTE#0;
 // 		file_delete := FALSE;
 // 		URL_DATA := STRING_TO_URL(STR:=SERVER,DEFAULT_PROTOCOL:='',DEFAULT_PATH:='/');
-// 		idx1 := FIND(URL_DATA.USER,'%'); (* % Zeichen auf @ ändern *)
+// 		idx1 := FIND(URL_DATA.USER,'%'); (* change % character to @ *)
 // 		IF idx1 > 0 THEN
 // 			URL_DATA.USER := REPLACE(URL_DATA.USER,'@',1,idx1);
 // 		END_IF;
-// 		esmtp := LEN(URL_DATA.PASSWORD) > 0; (* SMTP oder ExtendedSMTP *)
+// 		esmtp := LEN(URL_DATA.PASSWORD) > 0; (* SMTP or ExtendedSMTP *)
 // 		step := 10;
 // 	END_IF;
 //
@@ -10244,29 +10244,29 @@ END_FUNCTION_BLOCK
 // 		step := 980;
 // 	END_IF;
 //
-// 20:	(* SMTP Kommunikation einrichten *)
+// 20:	(* set up SMTP communication *)
 // 	IF FIND(';SSL;ssl;Ssl', URL_DATA.PROTOCOL) > 1 THEN
 // 		ssl_mode := BYTE#1;
-// 		IP_C.C_PORT := SEL(URL_DATA.PORT = WORD#0,URL_DATA.PORT,WORD#465); (* Portnummer eintragen *)
-// 		IP_C.MAILBOX[16] := BYTE#1; (* SSL Mode freigeben *)
+// 		IP_C.C_PORT := SEL(URL_DATA.PORT = WORD#0,URL_DATA.PORT,WORD#465); (* enter port number *)
+// 		IP_C.MAILBOX[16] := BYTE#1; (* enable SSL mode *)
 // 	ELSIF FIND(';TLS;tls;Tls', URL_DATA.PROTOCOL) > 1 THEN
 // 		ssl_mode := BYTE#2;
-// 		IP_C.C_PORT := SEL(URL_DATA.PORT = WORD#0,URL_DATA.PORT,WORD#587); (* Portnummer eintragen *)
-// 		IP_C.MAILBOX[16] := BYTE#0; (* noch kein SSL Mode*)
+// 		IP_C.C_PORT := SEL(URL_DATA.PORT = WORD#0,URL_DATA.PORT,WORD#587); (* enter port number *)
+// 		IP_C.MAILBOX[16] := BYTE#0; (* no SSL mode yet*)
 // 	ELSE
 // 		ssl_mode := BYTE#0;
-// 		IP_C.C_PORT := SEL(URL_DATA.PORT = WORD#0,URL_DATA.PORT,WORD#25); (* Portnummer eintragen *)
-// 		IP_C.MAILBOX[16] := BYTE#0; (* kein SSL Mode*)
+// 		IP_C.C_PORT := SEL(URL_DATA.PORT = WORD#0,URL_DATA.PORT,WORD#25); (* enter port number *)
+// 		IP_C.MAILBOX[16] := BYTE#0; (* no SSL mode*)
 // 	END_IF;
 //
-//   	IP_C.C_IP := DNS_CLIENT.IP4; (* IP eintragen *)
+//   	IP_C.C_IP := DNS_CLIENT.IP4; (* enter IP *)
 //   	IP_C.C_MODE := BYTE#0; (* Mode: TCP+ACTIV+PORT *)
-//   	IP_C.TIME_RESET := TRUE; (* Zeitueberwachung rücksetzen *)
-//   	IP_C.C_ENABLE := TRUE; (* Verbindungsaufbau freigeben *)
-//   	IP_C.R_OBSERVE := TRUE; (* Empfangsueberwachung *)
-// 	IP_C.MAILBOX[3] := BYTE#0; (* IP Empfang wieder freigeben *)
+//   	IP_C.TIME_RESET := TRUE; (* reset timeout monitoring *)
+//   	IP_C.C_ENABLE := TRUE; (* enable connection setup *)
+//   	IP_C.R_OBSERVE := TRUE; (* receive monitoring *)
+// 	IP_C.MAILBOX[3] := BYTE#0; (* re-enable IP receive *)
 // 	R_BUF.SIZE := UINT#0;
-// 	snd_enable := TRUE; (* sofortiges senden erlauben *)
+// 	snd_enable := TRUE; (* allow immediate sending *)
 // 	snd_idx := 0;
 // 	step := 30;
 //
@@ -10290,11 +10290,11 @@ END_FUNCTION_BLOCK
 // 40:
 // 	IF rcv_state = 250 THEN
 // 		(* 250 = Requested mail action okay, complete
-// 			1. bei manchen Providern wird bei SSL kein AUTH verfahren ausgeben.
-// 			2. Da die 250 xxx Meldungen vom manchen SMTP-Servern mit mehr als einem Telegramme versendet
-// 		       werden muss alternativ über Zeitüberwachung eine SSL Sonderbehandlung durchgeführt werden *)
+// 			1. some providers do not announce an AUTH method with SSL.
+// 			2. since some SMTP servers send the 250 xxx messages in more than one telegram,
+// 		       a special SSL handling must be done via timeout monitoring instead *)
 // 		IF ssl_mode >= BYTE#1 AND TON_WAIT.ET > T#1s THEN
-// 			rcv_text := '250-AUTH LOGIN'; (* AUTH vortäuschen *)
+// 			rcv_text := '250-AUTH LOGIN'; (* fake AUTH *)
 //
 //         	(*####################  DEBUG-MESSAGE  ###################################*)
 // 			(*IF _debug_enable THEN
@@ -10307,7 +10307,7 @@ END_FUNCTION_BLOCK
 // 		END_IF;
 //
 // 		IF FIND(rcv_text,'AUTH') > 0 THEN (* BUGFIX  !*)
-// 			IP_C.MAILBOX[3] := BYTE#1; (* IP Empfang blockieren bis Daten überprüft wurden *)
+// 			IP_C.MAILBOX[3] := BYTE#1; (* block IP receive until data has been checked *)
 // 			idx1 := 0;
 // 			step := 50;
 // 		END_IF;
@@ -10315,7 +10315,7 @@ END_FUNCTION_BLOCK
 // 	END_IF;
 //
 // 50:
-// 	str2 := ELEMENT_GET(59, idx1, str1); (* Trennzeichen >;< *)
+// 	str2 := ELEMENT_GET(59, idx1, str1); (* separator >;< *)
 //
 // 	(*####################  DEBUG-MESSAGE  ###################################*)
 // 	(*IF _debug_enable THEN
@@ -10331,21 +10331,21 @@ END_FUNCTION_BLOCK
 // 	IF LEN(str2) > 0 THEN
 // 		IF FIND(rcv_text,str2) > 0 THEN
 // 			auth_state := BIT_LOAD_B(auth_state, TRUE, idx1);
-// 			str3 := str2; (* aktuellen AUTH-Type Namen sichern *)
-// 			idx2 := 1000 + (idx1 * 100); (* Schritt berechnen *)
+// 			str3 := str2; (* save current AUTH type name *)
+// 			idx2 := 1000 + (idx1 * 100); (* calculate step *)
 // 		END_IF;
 // 		idx1 := idx1 + 1;
 // 	ELSE
-// 		IF auth_state <> BYTE#0 THEN (* AUTH-Type gefunden *)
-// 			IP_C.MAILBOX[3] := BYTE#0; (* IP Empfang wieder freigeben *)
+// 		IF auth_state <> BYTE#0 THEN (* AUTH type found *)
+// 			IP_C.MAILBOX[3] := BYTE#0; (* re-enable IP receive *)
 // 			(* mit den jeweiligen Authentifizierung Schritten fortfahren:
 // 			   1000 = PLAIN / 1100 = LOGIN / 1200 = CRAM-MD5 / 1300 TLS *)
 // 			step := idx2;
 // 		ELSE
 // 			idx1 := 0;
 // 			rcv_text := '';
-// 			IP_C.MAILBOX[3] := BYTE#0; (* IP Empfang wieder freigeben *)
-// 			step := 40; (* warten auf nächste 250 auth meldung *)
+// 			IP_C.MAILBOX[3] := BYTE#0; (* re-enable IP receive *)
+// 			step := 40; (* wait for the next 250 auth message *)
 // 		END_IF;
 // 	END_IF;
 //
@@ -10368,31 +10368,31 @@ END_FUNCTION_BLOCK
 // 90:
 // 	IF rcv_state = 235 OR rcv_state = 250 THEN (* 235 = Authentication successful / 250 Requested mail action okay *)
 // 		str2 := MAILFROM;
-// 		str1 := ELEMENT_GET(59, 0, str2);(* MAILFROM lesen , Trennzeichen >;< *)
+// 		str1 := ELEMENT_GET(59, 0, str2);(* read MAILFROM, separator >;< *)
 // 		snd_text := INSERT('MAIL FROM: <>', str1, 12);
-// 		str3 := REPLACE(snd_text, 'From', 9, 1); (* 'MAIL FROM' durch "From" ersetzen und zwischenspeichern *)
+// 		str3 := REPLACE(snd_text, 'From', 9, 1); (* replace 'MAIL FROM' with "From" and buffer it *)
 // 		next_step := 95;
-// 		cnt1 := ELEMENT_COUNT(35, MAILTO); (* Trennzeichen >#< , Anzahl der Blöcke bestimmen *)
+// 		cnt1 := ELEMENT_COUNT(35, MAILTO); (* separator >#<, determine the number of blocks *)
 // 		cnt2 := 0;
 // 	END_IF;
 //
 // 95:
 // 	IF rcv_state = 250 THEN (* 250 = Requested mail action okay *)
 // 		IF cnt2 < cnt1 THEN
-// 			str1 := ELEMENT_GET(35, cnt2, MAILTO);(* Trennzeichen >#< *)
-// 			cnt3 := ELEMENT_COUNT(59, str1); (* Trennzeichen >;< , Anzahl der Sub-Blöcke bestimmen *)
+// 			str1 := ELEMENT_GET(35, cnt2, MAILTO);(* separator >#< *)
+// 			cnt3 := ELEMENT_COUNT(59, str1); (* separator >;<, determine the number of sub-blocks *)
 // 			cnt4 := 0;
 // 			cnt2 := cnt2 + 1;
-// 			step := 100; (* Blockinhalt auswerten *)
+// 			step := 100; (* evaluate block content *)
 // 		ELSE
-// 			step := 110; (* alle Blöcke bearbeitet *)
+// 			step := 110; (* all blocks processed *)
 // 		END_IF;
 // 	END_IF;
 //
 // 100:
 // 	IF rcv_state = 250 THEN (* 250 = Requested mail action okay *)
 // 		IF cnt4 < cnt3 THEN
-// 			str2 := ELEMENT_GET(59, cnt4, str1); (* Trennzeichen >;< *)
+// 			str2 := ELEMENT_GET(59, cnt4, str1); (* separator >;< *)
 // 			snd_text := INSERT('RCPT TO: <>', str2, 10);
 // 			cnt4 := cnt4 + 1;
 // 			next_step := 100;
@@ -10411,7 +10411,7 @@ END_FUNCTION_BLOCK
 // 	IF rcv_state = 354 THEN (* 354 = Start mail input; end with. *)
 // 		snd_enable := FALSE;
 // 		str2 := MAILFROM;
-// 		str1 := ELEMENT_GET(59, 1, str2);(* Angezeigter Name lesen , Trennzeichen >;< *)
+// 		str1 := ELEMENT_GET(59, 1, str2);(* read display name, separator >;< *)
 // 		IF LEN(str1) > 0 THEN
 // 			str2 := INSERT('"" ', str1, 1);
 // 			snd_text := INSERT(str3, str2, 6);
@@ -10419,28 +10419,28 @@ END_FUNCTION_BLOCK
 // 			snd_text := str3;
 // 		END_IF;
 // 		cnt2 := 0;
-// 		cnt1 := MIN(2,cnt1); (* BlindCopy Block ausblenden *)
+// 		cnt1 := MIN(2,cnt1); (* hide blind copy block *)
 // 		step := 200;
 // 	END_IF;
 //
 // 200:
 // 	IF snd_step = 0 THEN
 // 		IF cnt2 < cnt1 THEN
-// 			str1 := ELEMENT_GET(35, cnt2, MAILTO);(* Trennzeichen >#< *)
-// 			cnt3 := ELEMENT_COUNT(59, str1); (* Trennzeichen >;< , Anzahl der Sub-Blöcke bestimmen *)
+// 			str1 := ELEMENT_GET(35, cnt2, MAILTO);(* separator >#< *)
+// 			cnt3 := ELEMENT_COUNT(59, str1); (* separator >;<, determine the number of sub-blocks *)
 // 			cnt4 := 0;
 // 			cnt2 := cnt2 + 1;
 // 			str3 := SEL(cnt2 = 1,'Cc: <>','To: <>');
-// 			step := 205; (* Blockinhalt auswerten *)
+// 			step := 205; (* evaluate block content *)
 // 		ELSE
-// 			step := 210; (* alle Blöcke bearbeitet *)
+// 			step := 210; (* all blocks processed *)
 // 		END_IF;
 // 	END_IF;
 //
 // 205:
 // 	IF snd_step = 0 THEN
 // 		IF cnt4 < cnt3 THEN
-// 			str2 := ELEMENT_GET(59, cnt4, str1); (* Trennzeichen >;< *)
+// 			str2 := ELEMENT_GET(59, cnt4, str1); (* separator >;< *)
 // 			snd_text := INSERT(str3, str2, 5);
 // 			cnt4 := cnt4 + 1;
 // 		ELSE
@@ -10456,7 +10456,7 @@ END_FUNCTION_BLOCK
 //
 // 220:
 // 	IF snd_step = 0 THEN
-// 		DTI := UDINT_TO_DT(DT_TO_UDINT(DTI) + INT_TO_UDINT(- DTI_OFFSET * 60)); (* Minuten-Offset auf Sekunden umrechnen und addieren *)
+// 		DTI := UDINT_TO_DT(DT_TO_UDINT(DTI) + INT_TO_UDINT(- DTI_OFFSET * 60)); (* convert minute offset to seconds and add *)
 // 		IF esmtp THEN (* ESMTP Format >Date: Thu, 21 May 1998 05:33:29 -0700< *)
 // 			str2 := ';Mon;Tue;Wed;Thu;Fri;Sat;Sun';
 // 			str1 := ELEMENT_GET(59, DAY_OF_WEEK(DT_TO_DATE(DTI)), str2);
@@ -10500,7 +10500,7 @@ END_FUNCTION_BLOCK
 // 280:
 // 	IF snd_step = 0 THEN
 // 		snd_text := 'Content-Type: text/plain; format=flowed; charset="iso-8859-1";';
-// 		snd_text := CONCAT(snd_text,' reply-type=original'); (* PCWORX kann nur konstanten mit max 80 zeichen *)
+// 		snd_text := CONCAT(snd_text,' reply-type=original'); (* PCWORX only supports constants with max 80 characters *)
 // 		step := 290;
 // 	END_IF;
 //
@@ -10521,7 +10521,7 @@ END_FUNCTION_BLOCK
 //
 // 310:
 // 	IF snd_step = 0 THEN
-// 		cnt1 := ELEMENT_COUNT(59, FILES) - 1; (* Anzahl der Dateien *)
+// 		cnt1 := ELEMENT_COUNT(59, FILES) - 1; (* number of files *)
 // 		step := 400;
 // 	END_IF;
 //
@@ -10529,7 +10529,7 @@ END_FUNCTION_BLOCK
 // 400:
 // 	IF cnt1 >= 0 THEN
 // 		str1 := ELEMENT_GET(59, cnt1, FILES);
-// 		FILE_PATH_SPLIT(FILENAME:=str1,X:=fpd); (* Datei-Path zerlegen *)
+// 		FILE_PATH_SPLIT(FILENAME:=str1,X:=fpd); (* split file path *)
 // 		IF fpd.FILENAME = '#DEL#' THEN
 // 			file_delete := TRUE;
 // 		ELSE
@@ -10571,14 +10571,14 @@ END_FUNCTION_BLOCK
 //
 // 450:
 // 	IF snd_step = 0 THEN
-// 		FSD.FILENAME := str1; (* Dateiname *)
-// 		FSD.OFFSET := UDINT#0; (* Start bei Dateianfang *)
+// 		FSD.FILENAME := str1; (* file name *)
+// 		FSD.OFFSET := UDINT#0; (* start at beginning of file *)
 // 		step := 460;
 // 	END_IF;
 //
 // 460:
-// 	FSD.MODE := BYTE#1; (* vorhandene Datei zum lesen öffnen *)
-// 	F_BUF.SIZE := b64_max; (* maximale länge einlesen *)
+// 	FSD.MODE := BYTE#1; (* open existing file for reading *)
+// 	F_BUF.SIZE := b64_max; (* read maximum length *)
 // 	idx1 := 0;
 // 	idx2 := 0;
 // 	step := 470;
@@ -10589,13 +10589,13 @@ END_FUNCTION_BLOCK
 // 		b64_size1 := MIN(48,UINT_TO_INT(F_BUF.SIZE) - idx1);
 // 		IF b64_size1 > 0 THEN
 // 			idx3 := b64_size1 - 1;
-// 			FOR i1 := 0 TO idx3 DO (* daten in BASE64 buffer kopieren *)
+// 			FOR i1 := 0 TO idx3 DO (* copy data into BASE64 buffer *)
 // 				b64_buf1[i1] := F_BUF.BUFFER[idx1];
 // 				idx1 := idx1 + 1;
 // 			END_FOR;
-// 			BASE64_ENCODE_STREAM( SIZE1:= b64_size1, BUF1:= b64_buf1, BUF2:= b64_buf2, SIZE2=> b64_size2); (* BASE64 Kodierung *)
+// 			BASE64_ENCODE_STREAM( SIZE1:= b64_size1, BUF1:= b64_buf1, BUF2:= b64_buf2, SIZE2=> b64_size2); (* BASE64 encoding *)
 // 			idx3 := b64_size2 - 1;
-// 			FOR i1 := 0 TO idx3 DO (* Daten aus BASE64 buffer kopieren *)
+// 			FOR i1 := 0 TO idx3 DO (* copy data out of BASE64 buffer *)
 // 				S_BUF.BUFFER[idx2] := b64_buf2[i1];
 // 				idx2 := idx2 + 1;
 // 			END_FOR;
@@ -10614,7 +10614,7 @@ END_FUNCTION_BLOCK
 // 			(*########################################################################*)
 // 		ELSE
 // 			b64_lf := last_block;
-// 			step := 480; (* block beendet  *)
+// 			step := 480; (* block finished  *)
 // 		END_IF;
 // 		IF b64_lf THEN
 // 			S_BUF.BUFFER[idx2] := BYTE#16#0D;
@@ -10636,7 +10636,7 @@ END_FUNCTION_BLOCK
 // 	END_IF;
 //
 // 480:
-// 	S_BUF.SIZE := INT_TO_UINT(idx2); (* Daten senden *)
+// 	S_BUF.SIZE := INT_TO_UINT(idx2); (* send data *)
 // 	(*####################  DEBUG-MESSAGE  ###################################*)
 // 	(*IF _debug_enable THEN
 // 		LOG_CL.NEW_MSG := 'B64: tcp_send ~1';
@@ -10647,7 +10647,7 @@ END_FUNCTION_BLOCK
 // 	step := 490;
 //
 // 490:
-// 	IF S_BUF.SIZE = UINT#0 THEN (* warten bis alle daten gesendet sind *)
+// 	IF S_BUF.SIZE = UINT#0 THEN (* wait until all data is sent *)
 // 		step := SEL(last_block ,460,400);
 // 	END_IF;
 //
@@ -10684,8 +10684,8 @@ END_FUNCTION_BLOCK
 // (* ================================================== *)
 //
 // 900:
-// 	IF FILE_DELETE THEN (* Dateien nach transfer löschen *)
-// 		cnt1 := ELEMENT_COUNT(59, FILES) - 1; (* Trennzeichen >;< , Anzahl der Dateien *)
+// 	IF FILE_DELETE THEN (* delete files after transfer *)
+// 		cnt1 := ELEMENT_COUNT(59, FILES) - 1; (* separator >;<, number of files *)
 // 		step := 910;
 // 	ELSE
 // 		step := 950;
@@ -10694,7 +10694,7 @@ END_FUNCTION_BLOCK
 // 910:
 // 	IF FSD.MODE = BYTE#0 AND FSD.ERROR = BYTE#0 THEN
 // 		IF cnt1 >= 0 THEN
-// 			str1 := ELEMENT_GET(59, cnt1, FILES); (* Trennzeichen >;< *)
+// 			str1 := ELEMENT_GET(59, cnt1, FILES); (* separator >;< *)
 // 			IF str1 <> '#DEL#' THEN
 // 				FSD.FILENAME := str1;
 // 				FSD.MODE := BYTE#4; (* File Remove *)
@@ -10710,13 +10710,13 @@ END_FUNCTION_BLOCK
 // 	step := 980;
 //
 // 980:
-// 	IP_C.C_ENABLE := FALSE; (* SMTP Steuerkanal schliessen *)
+// 	IP_C.C_ENABLE := FALSE; (* close SMTP control channel *)
 // 	S_BUF.SIZE := UINT#0;
 // 	R_BUF.SIZE := UINT#0;
-// 	IP_C.MAILBOX[3] := BYTE#0; (* IP Empfang wieder freigeben *)
+// 	IP_C.MAILBOX[3] := BYTE#0; (* re-enable IP receive *)
 // 	snd_step := 0;
 // 	next_step := 0;
-// 	FSD.MODE := BYTE#5; (* Datei schliessen *)
+// 	FSD.MODE := BYTE#5; (* close file *)
 // 	step := 990;
 //
 // 990:
@@ -10724,7 +10724,7 @@ END_FUNCTION_BLOCK
 // 		step := 0;
 // 	END_IF;
 //
-// (*  +++++++++++++++++ Authentifizierung +++++++++++++++++ *)
+// (*  +++++++++++++++++ authentication +++++++++++++++++ *)
 //
 // (* PLAIN ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ *)
 //
@@ -10734,10 +10734,10 @@ END_FUNCTION_BLOCK
 //  	step := 1010;
 //
 // 1010:
-// 	IF rcv_state = 334 THEN (* 334 = Authentifizierung  *)
+// 	IF rcv_state = 334 THEN (* 334 = authentication  *)
 // 		cnt1 := LEN(URL_DATA.USER);
 // 		cnt2 := LEN(URL_DATA.PASSWORD);
-// 		IF cnt1 + cnt2 <= 46 THEN (* USER + PASSWORD dürfen zusammen maximal 46 Zeichen haben *)
+// 		IF cnt1 + cnt2 <= 46 THEN (* USER + PASSWORD together may have at most 46 characters *)
 // 			b64_buf1[0] := BYTE#0;
 // 			FOR i1 := 1 TO cnt1 DO
 // 				b64_buf1[i1] := CODE(URL_DATA.USER, i1);
@@ -10749,7 +10749,7 @@ END_FUNCTION_BLOCK
 // 				b64_buf1[b64_size1] := CODE(URL_DATA.PASSWORD, i1);
 // 				b64_size1 := b64_size1 + 1;
 // 			END_FOR;
-// 			BASE64_ENCODE_STREAM( SIZE1:= b64_size1, BUF1:= b64_buf1, BUF2:= b64_buf2, SIZE2=> b64_size2); (* BASE64 Kodierung *)
+// 			BASE64_ENCODE_STREAM( SIZE1:= b64_size1, BUF1:= b64_buf1, BUF2:= b64_buf2, SIZE2=> b64_size2); (* BASE64 encoding *)
 // 			idx1 := b64_size2 - 1;
 // 			FOR i1 := 0 TO idx1 DO
 // 				S_BUF.BUFFER[i1] := b64_buf2[i1];
@@ -10772,9 +10772,9 @@ END_FUNCTION_BLOCK
 //  	step := 1110;
 //
 // 1110:
-// 	IF rcv_state = 334 THEN (* 334 = Authentifizierung  *)
+// 	IF rcv_state = 334 THEN (* 334 = authentication  *)
 // 		b64_str1 := URL_DATA.USER;
-// 		b64_start := TRUE; (* BASE64 kodierung von Username *)
+// 		b64_start := TRUE; (* BASE64 encoding of username *)
 // 		step := 1120;
 // 	END_IF;
 //
@@ -10788,7 +10788,7 @@ END_FUNCTION_BLOCK
 // 1130:
 // 	IF rcv_state = 334 THEN (* 334 = Password:  *)
 // 		b64_str1 := URL_DATA.PASSWORD;
-// 		b64_start := TRUE; (* BASE64 kodierung von Password *)
+// 		b64_start := TRUE; (* BASE64 encoding of password *)
 // 		step := 1140;
 // 	END_IF;
 //
@@ -10800,7 +10800,7 @@ END_FUNCTION_BLOCK
 // 	END_IF;
 //
 // (* CRAM-MD5  ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-// (Challenge-Response Authentication Mechanism, Message Digest 5) Authentifizierung auf Basis von MD5-HMAC-Algorithmus. *)
+// (Challenge-Response Authentication Mechanism, Message Digest 5) authentication based on the MD5-HMAC algorithm. *)
 //
 // 1200:
 // 	snd_text := CONCAT('AUTH',str3);
@@ -10808,7 +10808,7 @@ END_FUNCTION_BLOCK
 //  	step := 1210;
 //
 // 1210:
-// 	IF rcv_state = 334 THEN (* 334 = Authentifizierung  *)
+// 	IF rcv_state = 334 THEN (* 334 = authentication  *)
 // 		md5_b64_ts := RIGHT(rcv_text,LEN(rcv_text) - 4);
 // 		md5_user := URL_DATA.USER;
 // 		md5_password := URL_DATA.PASSWORD;
@@ -10832,41 +10832,41 @@ END_FUNCTION_BLOCK
 //
 // 1310:
 // 	IF rcv_state = 220 THEN (* 220 = Service ready - Ready to start TLS *)
-// 		IP_C.MAILBOX[16] := BYTE#1; (* SSL/TLS aktivieren *)
+// 		IP_C.MAILBOX[16] := BYTE#1; (* activate SSL/TLS *)
 // 		step := 1320;
 // 	END_IF;
 //
 // 1320:
-// 	IF IP_C.MAILBOX[16] = BYTE#2 THEN (* warten bis SSL/TLS aktiviert wurde *)
-// 		step := 30; (* ganzer Ablauf von vorne beginnen *)
+// 	IF IP_C.MAILBOX[16] = BYTE#2 THEN (* wait until SSL/TLS has been activated *)
+// 		step := 30; (* restart the whole sequence from the beginning *)
 // 	END_IF;
 //
-// (* keine Authentifizierung gefunden +++++++++++++++++++++++++++++++ *)
-// 1900: ; (* Auf Laufzeitfehler warten *)
+// (* no authentication found +++++++++++++++++++++++++++++++ *)
+// 1900: ; (* wait for runtime error *)
 //
 // END_CASE;
 // (* ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ *)
 // IF step >= 30 THEN
-// 	IF R_BUF.SIZE > UINT#0 THEN (* Daten wurden empfangen ? *)
+// 	IF R_BUF.SIZE > UINT#0 THEN (* data received? *)
 // 		idx1 := UINT_TO_INT(R_BUF.SIZE);
-// 		REPEAT (* zeilenterminierung erkennen und echtes TEXT-Ende bestimmen *)
+// 		REPEAT (* detect line termination and determine real end of TEXT *)
 // 			idx1 := idx1 - 1;
 // 		UNTIL idx1 = 0 OR R_BUF.BUFFER[idx1] >= BYTE#32 (* TRUE = EXIT *)
 // 		END_REPEAT;
-// 		FOR i1 := 0 TO idx1 DO (* bei multiline alle CRLF durch >^< ersetzen *)
+// 		FOR i1 := 0 TO idx1 DO (* for multiline replace all CRLF with >^< *)
 // 			IF R_BUF.BUFFER[i1] < BYTE#32 THEN
 // 				R_BUF.BUFFER[i1] := BYTE#94; (* >^< *)
 // 			END_IF;
 // 		END_FOR;
 // 		rcv_text := BUFFER_TO_STRING(PT:=REF(R_BUF.BUFFER),SIZE:=idx1+1,START:=0,STOP:=STRING_LENGTH-1);
-// 		IF LEN(rcv_text) >= 3 THEN (* Statuscode prüfen und auswerten *)
+// 		IF LEN(rcv_text) >= 3 THEN (* check and evaluate status code *)
 // 			rcv_s := LEFT(rcv_text,3);
-// 			IF IS_NUM(STR:=rcv_s) THEN (* enthält nur Zahlen ? *)
+// 			IF IS_NUM(STR:=rcv_s) THEN (* contains only digits? *)
 // 				rcv_state := STRING_TO_INT(rcv_s);
 // 			END_IF;
 // 			IP_C.R_OBSERVE := FALSE;
 // 		END_IF;
-// 		R_BUF.SIZE := UINT#0; (* daten löschen *)
+// 		R_BUF.SIZE := UINT#0; (* delete data *)
 //
 // 		(*####################  DEBUG-MESSAGE  ###################################*)
 // 		(*IF _debug_enable THEN
@@ -10879,7 +10879,7 @@ END_FUNCTION_BLOCK
 // 	END_IF;
 // END_IF;
 //
-// (* automatisches Datensenden *)
+// (* automatic data sending *)
 //
 // CASE snd_step OF
 //
@@ -10895,7 +10895,7 @@ END_FUNCTION_BLOCK
 // 		END_IF;*)
 // 		(*########################################################################*)
 //
-// 		_STRING_TO_BUFFER(str:=snd_text,pos:=snd_idx,pt:=REF(S_BUF.BUFFER),size:=SIZEOF(S_BUF.BUFFER)); (* String in puffer kopieren *)
+// 		_STRING_TO_BUFFER(str:=snd_text,pos:=snd_idx,pt:=REF(S_BUF.BUFFER),size:=SIZEOF(S_BUF.BUFFER)); (* copy string into buffer *)
 // 		snd_idx := snd_idx + LEN(snd_text);
 // 		FOR i1 := 1 TO snd_lf_cnt DO
 // 			S_BUF.BUFFER[snd_idx] := BYTE#16#0D;
@@ -10904,11 +10904,11 @@ END_FUNCTION_BLOCK
 // 			snd_idx := snd_idx + 1;
 // 		END_FOR;
 // 		snd_text := '';
-// 		rcv_state := 9999; (* letzen SMTP Status löschen *)
+// 		rcv_state := 9999; (* clear last SMTP status *)
 //
 // 		IF snd_enable THEN
-// 			S_BUF.SIZE := INT_TO_UINT(snd_idx); (* Sendelänge eintragen *)
-// 			R_BUF.SIZE := UINT#0; (* Empfangsbuffer rücksetzen *)
+// 			S_BUF.SIZE := INT_TO_UINT(snd_idx); (* enter send length *)
+// 			R_BUF.SIZE := UINT#0; (* reset receive buffer *)
 // 			IP_C.R_OBSERVE := step <= 120 OR step >= 820;
 // 			snd_idx := 0;
 // 			snd_step := 10;
@@ -10916,7 +10916,7 @@ END_FUNCTION_BLOCK
 // 	END_IF;
 //
 // 10:
-// 	IF S_BUF.SIZE = UINT#0 THEN (* warten bis alle daten gesendet sind *)
+// 	IF S_BUF.SIZE = UINT#0 THEN (* wait until all data is sent *)
 // 		IF next_step <> 0 THEN
 // 			step := next_step;
 // 			next_step := 0;
@@ -10926,8 +10926,8 @@ END_FUNCTION_BLOCK
 //
 // END_CASE;
 //
-// (* Globale Fehlerbehandlung für Haupt-Routine *)
-// IF ERROR_T = BYTE#0 AND step > 20 THEN (* noch kein Fehler gespeichert und Hauptroutine aktiv *)
+// (* global error handling for main routine *)
+// IF ERROR_T = BYTE#0 AND step > 20 THEN (* no error stored yet and main routine active *)
 //
 // 	IF IP_C.ERROR > DWORD#0 AND IP_C.C_ENABLE AND NOT IP_C.TIME_RESET THEN  (* IP Control 1 *)
 // 		IF ip_c_red_disable = FALSE OR IP_C.ERROR <> DWORD#16#FD000000 THEN
@@ -10940,14 +10940,14 @@ END_FUNCTION_BLOCK
 // 	IF FSD.MODE = BYTE#0 THEN
 // 		IF FSD.ERROR > BYTE#0 THEN
 // 			ERROR_C := BYTE_TO_DWORD(FSD.ERROR);
-// 			ERROR_T := BYTE#4; (* Dateizugriff *)
+// 			ERROR_T := BYTE#4; (* file access *)
 // 			step := 980;
 // 		END_IF;
 // 	END_IF;
 // END_IF;
 //
-// IF TON_WAIT.Q THEN (* Ablaufstörung - Schrittkette *)
-// 	ERROR_C := SHL(INT_TO_DWORD(step),16) OR INT_TO_DWORD(rcv_state); (* aktuellen Schritt und letzten SMTP Status eintragen *)
+// IF TON_WAIT.Q THEN (* sequence fault - step chain *)
+// 	ERROR_C := SHL(INT_TO_DWORD(step),16) OR INT_TO_DWORD(rcv_state); (* enter current step and last SMTP status *)
 // 	ERROR_T := BYTE#5;
 // 	step := 980;
 // END_IF;
@@ -10955,9 +10955,9 @@ END_FUNCTION_BLOCK
 // (* ######################################################## *)
 //
 // DNS_CLIENT(IP_C:=IP_C, S_BUF:=S_BUF, R_BUF:=R_BUF, DOMAIN:=URL_DATA.DOMAIN, IP4_DNS:= DNS_IP4, ACTIVATE:=step=10); (* DNS-Client *)
-// IPC(IP:= DWORD#0, PORT:= WORD#0 , TIME_OUT:= TIMEOUT, IP_C:= IP_C, S_BUF:= S_BUF, R_BUF:= R_BUF); (* SMTP Steuerkanal *)
+// IPC(IP:= DWORD#0, PORT:= WORD#0 , TIME_OUT:= TIMEOUT, IP_C:= IP_C, S_BUF:= S_BUF, R_BUF:= R_BUF); (* SMTP control channel *)
 // FS(FSD:=FSD,PT:=F_BUF); (* FILE_SERVER *)
-// BASE64_ENCODE_STR(RUN:= b64_start, STR1:= b64_str1, STR2:= b64_str2, DONE=> b64_done); (* BASE64 kodierung *)
+// BASE64_ENCODE_STR(RUN:= b64_start, STR1:= b64_str1, STR2:= b64_str2, DONE=> b64_done); (* BASE64 encoding *)
 //
 // TON_WAIT(IN:=step = last_step AND step > 0,PT:=timeout2);
 // last_step := step;
@@ -10967,7 +10967,7 @@ END_FUNCTION_BLOCK
 
 FUNCTION_BLOCK SNTP_CLIENT
 VAR_IN_OUT
-	IP_C : IP_C; (* IP_Control Verwaltungsstruktur *)
+	IP_C : IP_C; (* IP_Control management structure *)
 	S_BUF : NETWORK_BUFFER;
 	R_BUF : NETWORK_BUFFER;
 END_VAR
@@ -10998,18 +10998,18 @@ END_VAR
 tx := T_PLC_MS(); (* read system time *)
 
 CASE state OF
-00: (* auf positive Flanke SET warten *)
+00: (* wait for rising edge on SET *)
 	DONE_P := FALSE;
 	IF ACTIVATE AND NOT activate_last THEN
-		ip4_stored := IP4; (* aktuelle IP4 speichern *)
+		ip4_stored := IP4; (* store current IP4 *)
 		state := 10;
 		ERROR := DWORD#0;
-		ip_state := BYTE#1; (* Anmelden *)
+		ip_state := BYTE#1; (* register *)
 		(*####################  DEBUG-MESSAGE  ###################################*)
 		(*########################################################################*)
 	END_IF;
 
-10: (* Bei IP_Control anmelden und auf freigabe warten *)
+10: (* register with IP_Control and wait for release *)
 	IF ip_state = BYTE#3 THEN
 
 		S_BUF.BUFFER[00] := BYTE#16#1B;
@@ -11017,18 +11017,18 @@ CASE state OF
 			S_BUF.BUFFER[i] := BYTE#16#00;
 		END_FOR;
 
-		last := tx; (* aktuellen time wert sichern *)
+		last := tx; (* save current time value *)
 		state := 30;
 
-		(* IP Datenverkehr einrichten *)
-		IP_C.C_PORT := WORD#123; (* Portnummer eintragen *)
-		IP_C.C_IP := ip4_stored; (* IP eintragen *)
-		IP_C.C_MODE := BYTE#1; (* Mode: UDP+AKTIV+PORT+IP *)
-		IP_C.C_ENABLE := TRUE; (* Verbindungsaufbau freigeben *)
-		IP_C.TIME_RESET := TRUE; (* Zeitueberwachung rücksetzen *)
-		IP_C.R_OBSERVE := TRUE; (* Datenempfang ueberwachen *)
-		S_BUF.SIZE := UINT#48; (* Sendelänge eintragen *)
-		R_BUF.SIZE := UINT#0; (* Empfangslänge rücksetzen *)
+		(* set up IP data traffic *)
+		IP_C.C_PORT := WORD#123; (* enter port number *)
+		IP_C.C_IP := ip4_stored; (* enter IP *)
+		IP_C.C_MODE := BYTE#1; (* Mode: UDP+ACTIVE+PORT+IP *)
+		IP_C.C_ENABLE := TRUE; (* enable connection setup *)
+		IP_C.TIME_RESET := TRUE; (* reset timeout monitoring *)
+		IP_C.R_OBSERVE := TRUE; (* monitor data reception *)
+		S_BUF.SIZE := UINT#48; (* enter send length *)
+		R_BUF.SIZE := UINT#0; (* reset receive length *)
     		(*####################  DEBUG-MESSAGE  ###################################*)
     		(*########################################################################*)
 	END_IF;
@@ -11042,19 +11042,19 @@ CASE state OF
     		(*####################  DEBUG-MESSAGE  ###################################*)
     		(*########################################################################*)
 
-	ELSIF S_BUF.SIZE = UINT#0 AND R_BUF.SIZE >= UINT#48 THEN (* länge der empfangenen Daten prüfen *)
+	ELSIF S_BUF.SIZE = UINT#0 AND R_BUF.SIZE >= UINT#48 THEN (* check length of received data *)
 
-		(* Umrechnung SNTP Timestamp Base 1900-01-01 -> Unix 1970-01-01 = +2208988800 sekunden*)
+		(* convert SNTP timestamp base 1900-01-01 -> Unix 1970-01-01 = +2208988800 seconds*)
 		UDT := DWORD_TO_DT(DWORD_OF_BYTE(R_BUF.BUFFER[40],R_BUF.BUFFER[41],R_BUF.BUFFER[42],R_BUF.BUFFER[43]) - DWORD#2208988800);
 
-		(* Original-Sekundenanteile sind als 32 Bit Fractal dargestellt *)
-		(* ms nur mit veringerte Auflösung berechnen 1/65535 -> Highword verwenden *)
+		(* original fractional seconds are represented as a 32 bit fraction *)
+		(* calculate ms only with reduced resolution 1/65535 -> use high word *)
 		XMS := DWORD_TO_INT(SHR(DINT_TO_DWORD(WORD_TO_DINT(WORD_OF_BYTE(R_BUF.BUFFER[44],R_BUF.BUFFER[45])) * DINT#1000),16));
-		(* Zeitdifferenz (Laufzeitfehler) zwischen Send und Receive /2 teilen und addieren *)
+		(* divide the time difference (runtime error) between send and receive by 2 and add *)
 		XMS := XMS + DWORD_TO_INT(SHR(tx - last,1));
 
-		UDT := DWORD_TO_DT(DT_TO_DWORD(UDT) + (XMS / 1000)); (* sekundenanteile der Zeitdifferenz zu UDT aufrechnen *)
-		XMS := XMS MOD 1000;  (* ms übernehmen *)
+		UDT := DWORD_TO_DT(DT_TO_DWORD(UDT) + (XMS / 1000)); (* add the fractional seconds of the time difference to UDT *)
+		XMS := XMS MOD 1000;  (* take over ms *)
 		state := 0;
 		DONE_P := TRUE;
     		(*####################  DEBUG-MESSAGE  ###################################*)
@@ -11063,13 +11063,13 @@ CASE state OF
 	END_IF;
 
 	IF state = 0 THEN
-		IP_C.R_OBSERVE := FALSE; (* Datenempfang ueberwachen *)
+		IP_C.R_OBSERVE := FALSE; (* monitor data reception *)
 		ip_state := BYTE#4;
 	END_IF;
 
 END_CASE;
 
-activate_last := ACTIVATE; (* letzten Status sichern zur Flankenerkennung *)
+activate_last := ACTIVATE; (* save last status for edge detection *)
 
 (* IP_FIFO *)
 IP_FIFO(FIFO:=IP_C.FIFO,STATE:=ip_state,ID:=ip_id);
@@ -11079,7 +11079,7 @@ END_FUNCTION_BLOCK
 
 FUNCTION_BLOCK SNTP_SERVER
 VAR_IN_OUT
-	IP_C : IP_C; (* IP_Control Verwaltungsstruktur *)
+	IP_C : IP_C; (* IP_Control management structure *)
 	S_BUF : NETWORK_BUFFER;
 	R_BUF : NETWORK_BUFFER;
 END_VAR
@@ -11109,25 +11109,25 @@ tx := T_PLC_MS(); (* read system time *)
 
 CASE state OF
 
-00: (* Warten auf Freigabe *)
+00: (* wait for release *)
 	IF ENABLE THEN
 		state := 10;
-		ip_state := BYTE#1; (* Anmelden *)
+		ip_state := BYTE#1; (* register *)
     		(*####################  DEBUG-MESSAGE  ###################################*)
     		(*########################################################################*)
 	END_IF;
 
-10: (* Bei IP_Control anmelden und auf freigabe warten *)
+10: (* register with IP_Control and wait for release *)
 	IF ip_state = BYTE#3 THEN
-		(* IP Datenverkehr einrichten *)
-		IP_C.C_PORT := WORD#123; (* Portnummer eintragen *)
-		IP_C.C_IP := DWORD#00; (* IP eintragen *)
+		(* set up IP data traffic *)
+		IP_C.C_PORT := WORD#123; (* enter port number *)
+		IP_C.C_IP := DWORD#00; (* enter IP *)
 		IP_C.C_MODE := BYTE#5; (* Mode: UDP+PASSIV+PORT *)
-		IP_C.C_ENABLE := TRUE; (* Verbindungsaufbau freigeben *)
-		IP_C.TIME_RESET := TRUE; (* Zeitueberwachung rücksetzen *)
-		IP_C.R_OBSERVE := FALSE; (* Datenempfang ueberwachen *)
-		S_BUF.SIZE := UINT#0; (* Sendelänge eintragen *)
-		R_BUF.SIZE := UINT#0; (* Empfangslänge rücksetzen *)
+		IP_C.C_ENABLE := TRUE; (* enable connection setup *)
+		IP_C.TIME_RESET := TRUE; (* reset timeout monitoring *)
+		IP_C.R_OBSERVE := FALSE; (* monitor data reception *)
+		S_BUF.SIZE := UINT#0; (* enter send length *)
+		R_BUF.SIZE := UINT#0; (* reset receive length *)
 		state := 20;
     		(*####################  DEBUG-MESSAGE  ###################################*)
     		(*########################################################################*)
@@ -11137,7 +11137,7 @@ CASE state OF
 		state := 20;
     		(*####################  DEBUG-MESSAGE  ###################################*)
     		(*########################################################################*)
-		(* empfangenes Telegramm mit 00 auffüllen , wenn zu kurz ! und Sendebuffer mit 00 vorbelegen *)
+		(* pad received telegram with 00 if too short! and preset send buffer with 00 *)
 		FOR i := 0 TO 47 DO
 			IF INT_TO_UINT(i) > R_BUF.SIZE - 1 THEN
 				R_BUF.BUFFER[i] := BYTE#00;
@@ -11147,18 +11147,18 @@ CASE state OF
 
 		R_BUF.SIZE := UINT#0;
 
-		(* Sendedaten aufbereiten *)
+		(* prepare send data *)
 		S_BUF.BUFFER[0] := BYTE#2#11100; (* Flags: NO WARNING, NTP VERSION 3 , SERVER *)
 		S_BUF.BUFFER[1] := STRATUM; (* Peer Clock Stratum: *)
-		S_BUF.BUFFER[2] := BYTE#10; (* Peer Polling Intervall 2 hoch 10 = 1024 sek. *)
+		S_BUF.BUFFER[2] := BYTE#10; (* peer polling interval 2 to the power of 10 = 1024 sec. *)
 		S_BUF.BUFFER[3] := BYTE#16#FB; (* Peer Clock Precision: -5 = -31,25ms *)
 
-		(* Umrechnung SNTP Timestamp Base 1900-01-01 = Unix 1970-01-01 + 2208988800 sekunden *)
+		(* convert SNTP timestamp base 1900-01-01 = Unix 1970-01-01 + 2208988800 seconds *)
 		timestamp_int := DT_TO_DWORD(UDT) + DWORD#2208988800;
 
-		(* Sekundenanteile sind als 32 Bit Fractal dargestellt *)
-		(* nur mit veringerte Auflösung berechnen 1/65535 -> Highword verwenden *)
-		(* Berechnung des Sekundenanteils: xms * 65535 / 1000 *)
+		(* fractional seconds are represented as a 32 bit fraction *)
+		(* calculate only with reduced resolution 1/65535 -> use high word *)
+		(* calculation of the fractional seconds: xms * 65535 / 1000 *)
 		timestamp_sek := DINT_TO_DWORD(DWORD_TO_DINT(SHL(INT_TO_DWORD(XMS),16))/DINT#1000);
 
 		ts_b := BYTE_OF_DWORD(timestamp_int,3); (* Timestamp Byte 3 *)
@@ -11191,17 +11191,17 @@ CASE state OF
 		S_BUF.BUFFER[37] := ts_b; (* Receive   Timestamp *)
 		S_BUF.BUFFER[45] := ts_b; (* Transmit  Timestamp *)
 
-		(* Byte 1-8 von Transmit-Time auf Originate-Time umkopieren *)
+		(* copy bytes 1-8 of transmit time to originate time *)
 		i2 := 40;
 		FOR i := 24 TO 31 DO
 			S_BUF.BUFFER[i] := R_BUF.BUFFER[i2];
 			i2 := i2 +1;
 		END_FOR;
 
-		S_BUF.SIZE := UINT#48; (* Daten senden *)
+		S_BUF.SIZE := UINT#48; (* send data *)
 
 	ELSIF NOT ENABLE AND S_BUF.SIZE = UINT#0 THEN
-		ip_state := BYTE#4; (* Abmelden *)
+		ip_state := BYTE#4; (* unregister *)
 		state := 0;
 	END_IF;
 
@@ -11219,7 +11219,7 @@ END_FUNCTION_BLOCK
 // Commented out for beedance: it uses BUFFER_TO_STRING, which is commented out.
 // FUNCTION_BLOCK SPIDER_ACCESS
 // VAR_IN_OUT
-// 	IP_C : IP_C;(*IP_Control Verwaltungsstruktur*)
+// 	IP_C : IP_C;(*IP_Control management structure*)
 // 	S_BUF : NETWORK_BUFFER;
 // 	R_BUF : NETWORK_BUFFER;
 // 	VALUE : STRING;
@@ -11245,8 +11245,8 @@ END_FUNCTION_BLOCK
 //
 // 00:
 // 	IF MODE > BYTE#0 AND MODE < BYTE#3 THEN
-// 		MODE_SAVE := MODE; (* Modus speichern *)
-// 		(* wenn kein '.' in Name dann ist es eine globale variable *)
+// 		MODE_SAVE := MODE; (* store mode *)
+// 		(* if there is no '.' in the name, it is a global variable *)
 // 		IF FIND(VAR_NAME,'.') = 0 THEN
 // 			st_tmp := CONCAT('%40GV.',VAR_NAME);
 // 		ELSE
@@ -11390,7 +11390,7 @@ END_FUNCTION
 // Commented out for beedance: it uses DT_TO_STRF, which is commented out.
 // FUNCTION_BLOCK SYS_LOG
 // VAR_IN_OUT
-// 	IP_C : IP_C; (* IP_Control Verwaltungsstruktur *)
+// 	IP_C : IP_C; (* IP_Control management structure *)
 // 	S_BUF : NETWORK_BUFFER;
 // 	R_BUF : NETWORK_BUFFER;
 // END_VAR
@@ -11425,11 +11425,11 @@ END_FUNCTION
 // END_VAR
 //
 // CASE state OF
-// 00: (* auf positive Flanke SET warten *)
+// 00: (* wait for rising edge on SET *)
 // 	IF ACTIVATE AND NOT ACTIVATE_LAST THEN
 // 		state := 10;
 // 		ERROR := DWORD#0;
-// 		IP_STATE := BYTE#1; (* Anmelden *)
+// 		IP_STATE := BYTE#1; (* register *)
 //     		(*####################  DEBUG-MESSAGE  ###################################*)
 //     		(*IF _debug_enable THEN
 //       			LOG_CL.NEW_MSG := 'SYS_LOG: S00 START /IP_ID ~4';
@@ -11440,12 +11440,12 @@ END_FUNCTION
 // 	END_IF;
 // 	DONE_P := FALSE;
 //
-// 10: (* Bei IP_Control anmelden und auf freigabe warten *)
+// 10: (* register with IP_Control and wait for release *)
 // 	IF IP_STATE = BYTE#3 THEN
-// 		(* Sendedaten aufbereiten *)
+// 		(* prepare send data *)
 // 		i := 0;
 // 		IF (OPTION AND BYTE#0000_0001) = BYTE#00 THEN (* Option: no priority Code *)
-// 			(* Priority:  '<xx>' als dezimalwert *)
+// 			(* Priority:  '<xx>' as decimal value *)
 // 			(* BYTE: xxxx x...  = Facility *)
 // 			(*       .... .xxx  = Level *)
 // 			s1 := REPLACE('<P>',BYTE_TO_STRING(SHL(FACILITY,3) OR (SEVERITY AND BYTE#0000_0111)),1,2);
@@ -11458,54 +11458,54 @@ END_FUNCTION
 // 			s1 := CONCAT(s1,DT_TO_STRF(DTI:=LDT,MS:=0,FMT:='#E #W #N:#R:#T ',LANG:=1));
 // 			_STRING_TO_BUFFER(STR:=s1,POS:=i,PT:=REF(S_BUF.BUFFER),SIZE:=UINT#1024);
 // 			i := i + LEN(s1);
-// 			(* ' sourcename eintragen *)
+// 			(* ' enter sourcename *)
 // 			_STRING_TO_BUFFER(STR:=HOSTNAME,POS:=i,PT:=REF(S_BUF.BUFFER),SIZE:=UINT#1024);
 // 			i := i + LEN(HOSTNAME);
-// 			S_BUF.BUFFER[i] := BYTE#32; (* leerzeichen einfuegen *)
+// 			S_BUF.BUFFER[i] := BYTE#32; (* insert space *)
 // 			i := i + 1;
-// 			(* ' tag eintragen *)
+// 			(* ' enter tag *)
 // 			_STRING_TO_BUFFER(STR:=TAG,POS:=i,PT:=REF(S_BUF.BUFFER),SIZE:=UINT#1024);
 // 			i := i + LEN(TAG);
-// 			S_BUF.BUFFER[i] := BYTE#32; (* leerzeichen einfuegen *)
+// 			S_BUF.BUFFER[i] := BYTE#32; (* insert space *)
 // 			i := i + 1;
 // 		END_IF;
 //
-// 		(* ' message eintragen *)
+// 		(* ' enter message *)
 // 		_STRING_TO_BUFFER(STR:=MESSAGE,POS:=i,PT:=REF(S_BUF.BUFFER),SIZE:=UINT#1024);
 // 		i := i + LEN(MESSAGE);
 //
 // 		IF (OPTION AND BYTE#0000_0100) > BYTE#00 THEN (* Option: Add a CR & LF to end of message *)
-// 			S_BUF.BUFFER[i] := BYTE#13; (* Carriage Return einfuegen *)
+// 			S_BUF.BUFFER[i] := BYTE#13; (* insert carriage return *)
 // 			i := i + 1;
-// 			S_BUF.BUFFER[i] := BYTE#10; (* Linefeed einfuegen *)
+// 			S_BUF.BUFFER[i] := BYTE#10; (* insert line feed *)
 // 			i := i + 1;
 // 		END_IF;
 //
 // 		state := 30;
 //
-// 		(* IP Datenverkehr einrichten *)
+// 		(* set up IP data traffic *)
 // 		IF (OPTION AND BYTE#2#0000_1000) > BYTE#00 THEN (* Option: TCP Mode *)
-// 			IP_C.C_MODE := BYTE#0; (* Mode: TCP/AKTIV *)
+// 			IP_C.C_MODE := BYTE#0; (* Mode: TCP/ACTIVE *)
 // 		ELSE
-// 			IP_C.C_MODE := BYTE#1; (* Mode: UDP/AKTIV *)
+// 			IP_C.C_MODE := BYTE#1; (* Mode: UDP/ACTIVE *)
 // 		END_IF;
 //
-// 		IF PORT = WORD#0 THEN (* keine Portnummer vorgegeben ? *)
-// 			IF IP_C.C_MODE = BYTE#0 THEN (* Modus bestimmen  TCP oder UDP ? *)
-// 				IP_C.C_PORT := WORD#1468; (* Standard Portnummer für Syslog over TCP *)
+// 		IF PORT = WORD#0 THEN (* no port number specified? *)
+// 			IF IP_C.C_MODE = BYTE#0 THEN (* determine mode  TCP or UDP? *)
+// 				IP_C.C_PORT := WORD#1468; (* default port number for syslog over TCP *)
 // 			ELSE
-// 				IP_C.C_PORT := WORD#514; (* Standard Portnummer für Syslog over UDP *)
+// 				IP_C.C_PORT := WORD#514; (* default port number for syslog over UDP *)
 // 			END_IF;
 // 		ELSE
-// 			IP_C.C_PORT := PORT; (* uebergebene Portnummer eintragen *)
+// 			IP_C.C_PORT := PORT; (* enter the given port number *)
 // 		END_IF;
 //
-// 		IP_C.C_IP := SERVER_IP4; (* IP eintragen *)
-// 		IP_C.C_ENABLE := TRUE; (* Verbindungsaufbau freigeben *)
-// 		IP_C.TIME_RESET := TRUE; (* Zeitueberwachung rücksetzen *)
-// 		IP_C.R_OBSERVE := FALSE; (* Datenempfang ueberwachen *)
-// 		S_BUF.SIZE := INT_TO_UINT(i); (* Sendelänge eintragen *)
-// 		R_BUF.SIZE := UINT#0; (* Empfangslänge rücksetzen *)
+// 		IP_C.C_IP := SERVER_IP4; (* enter IP *)
+// 		IP_C.C_ENABLE := TRUE; (* enable connection setup *)
+// 		IP_C.TIME_RESET := TRUE; (* reset timeout monitoring *)
+// 		IP_C.R_OBSERVE := FALSE; (* monitor data reception *)
+// 		S_BUF.SIZE := INT_TO_UINT(i); (* enter send length *)
+// 		R_BUF.SIZE := UINT#0; (* reset receive length *)
 //     		(*####################  DEBUG-MESSAGE  ###################################*)
 //     		(*IF _debug_enable THEN
 //       			LOG_CL.NEW_MSG := 'SYS_LOG: S20 SEND /IP_ID ~4';
@@ -11527,7 +11527,7 @@ END_FUNCTION
 //       			LOG_MSG();
 //     		END_IF;*)
 //     		(*########################################################################*)
-// 	ELSIF S_BUF.SIZE = UINT#0 THEN (* warten bis alle daten gesendet sind *)
+// 	ELSIF S_BUF.SIZE = UINT#0 THEN (* wait until all data is sent *)
 // 		DONE_P := TRUE;
 // 		state := 0;
 //     		(*####################  DEBUG-MESSAGE  ###################################*)
@@ -11539,13 +11539,13 @@ END_FUNCTION
 //     		(*########################################################################*)
 // 	END_IF;
 //
-// 	IF state = 0 THEN (* Verbindung freigeben *)
+// 	IF state = 0 THEN (* release connection *)
 // 		IP_STATE := BYTE#4;
 // 	END_IF;
 //
 // END_CASE;
 //
-// ACTIVATE_LAST := ACTIVATE; (* letzten Status sichern zur Flankenerkennung *)
+// ACTIVATE_LAST := ACTIVATE; (* save last status for edge detection *)
 //
 // (* IP_FIFO *)
 // IP_FIFO(FIFO:=IP_C.FIFO,STATE:=ip_state,ID:=IP_ID);
@@ -11560,7 +11560,7 @@ END_VAR
 VAR_INPUT
 	ENABLE : BOOL;
 	OPTION : BYTE := BYTE#2#1000_1100; (* no flush buffer (7) , CR&LF (3), Colors (2), AUTOWRAP (1), Screen-Init (0) *)
-	PORT : WORD := 23; (* Port Nummer *)
+	PORT : WORD := 23; (* port number *)
 END_VAR
 VAR_OUTPUT
 	READY : BOOL;
@@ -11581,17 +11581,17 @@ IF NOT init THEN
 	IF OPTION > 0 THEN
 		TELNET_PRINT.OPTION := OPTION;
 	END_IF;
-	IF PORT > 0 THEN (* bei portvorgabe wird der standardport überschrieben *)
+	IF PORT > 0 THEN (* a specified port overrides the default port *)
 		TELNET_PRINT.PORT := PORT;
 	END_IF;
   	WATCHDOG.PT := T#1ms;
 END_IF;
 
-WATCHDOG(IN:=FALSE); (* Timer stoppen *)
+WATCHDOG(IN:=FALSE); (* stop timer *)
 
 ci := LOG_CL.IDX;
 
-(* CONNECT_OFF Flanke auswerten *)
+(* evaluate CONNECT_OFF edge *)
 IF IP_C.C_STATE = BYTE#1 THEN
 	pi := 0;
 	init := FALSE;
@@ -11643,7 +11643,7 @@ END_FUNCTION_BLOCK
 // 	FRONT_COLOR : BYTE;
 // 	X_POS : BYTE;
 // 	Y_POS : BYTE;
-// 	PORT : WORD := 23; (* Port Nummer *)
+// 	PORT : WORD := 23; (* port number *)
 // END_VAR
 // VAR_OUTPUT
 // 	READY : BOOL;
@@ -11669,39 +11669,39 @@ END_FUNCTION_BLOCK
 //
 // CASE state OF
 //
-// 00: (* Warten auf Freigabe *)
+// 00: (* wait for release *)
 // 	IF ENABLE THEN
 // 		state := 10;
-// 		ip_state := BYTE#1; (* Anmelden *)
+// 		ip_state := BYTE#1; (* register *)
 // 	END_IF;
 //
-// 10: (* Bei IP_Control anmelden und auf freigabe warten *)
+// 10: (* register with IP_Control and wait for release *)
 // 	IF ip_state = BYTE#3 THEN
 //
-// 		(* IP Datenverkehr einrichten *)
-// 		IP_C.C_PORT := PORT; (* Portnummer eintragen *)
-// 		IP_C.C_IP := DWORD#00; (* IP eintragen *)
+// 		(* set up IP data traffic *)
+// 		IP_C.C_PORT := PORT; (* enter port number *)
+// 		IP_C.C_IP := DWORD#00; (* enter IP *)
 // 		IP_C.C_MODE := BYTE#4; (* Mode: TCP+PASSIV+PORT *)
-// 		IP_C.TIME_RESET := TRUE; (* Zeitueberwachung rücksetzen *)
-// 		IP_C.C_ENABLE := TRUE; (* Verbindungsaufbau freigeben *)
-// 		IP_C.R_OBSERVE := FALSE; (* keine Empfangsueberwachung *)
+// 		IP_C.TIME_RESET := TRUE; (* reset timeout monitoring *)
+// 		IP_C.C_ENABLE := TRUE; (* enable connection setup *)
+// 		IP_C.R_OBSERVE := FALSE; (* no receive monitoring *)
 // 		state := 20;
 // 	END_IF;
 //
 // 20:	IF IP_C.ERROR > DWORD#0 THEN
-// 		IP_C.TIME_RESET := TRUE; (* Fehler rücksetzen *)
+// 		IP_C.TIME_RESET := TRUE; (* reset error *)
 // 	END_IF;
-// 	IF S_BUF.SIZE = UINT#0 THEN (* Datensenden nicht aktiv *)
+// 	IF S_BUF.SIZE = UINT#0 THEN (* data sending not active *)
 // 		IF NOT ENABLE THEN
-// 			ip_state := BYTE#4; (* Verbindung abbauen - Ressource freigeben *)
-// 			IP_C.C_ENABLE := FALSE; (* Verbindungsabbau *)
+// 			ip_state := BYTE#4; (* close connection - release resource *)
+// 			IP_C.C_ENABLE := FALSE; (* connection shutdown *)
 // 			state := 0;
 // 		END_IF;
-// 		IF IP_C.C_STATE = BYTE#1 THEN (* positive Flanke Connect off *)
+// 		IF IP_C.C_STATE = BYTE#1 THEN (* rising edge connect off *)
 // 			init := FALSE;
-// 		ELSIF READY THEN (* Verbindung vorhanden *)
-// 			IF IP_C.C_STATE = BYTE#254 AND NOT INIT THEN (* positive Flanke Connect on *)
-// 				(* Var Init ist notwendig, damit der Baustein im selben zyklus mehrmals ausgerufen werden kann *)
+// 		ELSIF READY THEN (* connection present *)
+// 			IF IP_C.C_STATE = BYTE#254 AND NOT INIT THEN (* rising edge connect on *)
+// 				(* var init is necessary so the block can be called several times in the same cycle *)
 // 				init := TRUE;
 // 				b0_screen_clear := (OPTION AND BYTE#2#0000_0001) > BYTE#0;
 // 				b1_autowrap := (OPTION AND BYTE#2#0000_0010) > BYTE#0;
@@ -11709,7 +11709,7 @@ END_FUNCTION_BLOCK
 // 				b3_cr_lr := (OPTION AND BYTE#2#0000_1000) > BYTE#0;
 // 				b7_no_flush := (OPTION AND BYTE#2#1000_0000) > BYTE#0;
 //
-// 				last_fc := NOT FRONT_COLOR; (* aktualisierung der Farben erzwingen !*)
+// 				last_fc := NOT FRONT_COLOR; (* force color update!*)
 // 				x := 0;
 //
 // 				(* AUTOWRAP OFF/ON *)
@@ -11736,13 +11736,13 @@ END_FUNCTION_BLOCK
 // 						x := x +1;
 // 						S_BUF.BUFFER[x] := BYTE#16#33; (* 3 *)
 // 						x := x +1;
-// 						S_BUF.BUFFER[x] := (FRONT_COLOR AND BYTE#2#00000111) OR BYTE#16#30; (* Einerstelle Farbe Foreground ausgeben *)
+// 						S_BUF.BUFFER[x] := (FRONT_COLOR AND BYTE#2#00000111) OR BYTE#16#30; (* output ones digit of foreground color *)
 // 						x := x +1;
 // 						S_BUF.BUFFER[x] := BYTE#16#3B; (* ; *)
 // 						x := x +1;
 // 						S_BUF.BUFFER[x] := BYTE#16#34; (* 4 *)
 // 						x := x +1;
-// 						S_BUF.BUFFER[x] := (BACK_COLOR AND BYTE#2#00000111) OR BYTE#16#30; (* Einerstelle Farbe Background ausgeben *)
+// 						S_BUF.BUFFER[x] := (BACK_COLOR AND BYTE#2#00000111) OR BYTE#16#30; (* output ones digit of background color *)
 // 						x := x +1;
 // 						S_BUF.BUFFER[x] := BYTE#16#6D; (* m *)
 // 					END_IF;
@@ -11757,99 +11757,99 @@ END_FUNCTION_BLOCK
 // 					S_BUF.BUFFER[x] := BYTE#16#4A; (* J *)
 // 				ELSE
 // 					x := x +1;
-// 					S_BUF.BUFFER[x] := BYTE#16#0A; (* neue Zeile *)
+// 					S_BUF.BUFFER[x] := BYTE#16#0A; (* new line *)
 // 				END_IF;
 // 			END_IF;
 //
-// 			(* buffer voll , oder Daten sind vorhanden und kein weiterer Sendewunsch *)
+// 			(* buffer full, or data present and no further send request *)
 // 			IF (INT_TO_UINT(x + LEN(TEXT) + 21) > SIZEOF(S_BUF.BUFFER)) OR (x >= 0 AND NOT SEND) THEN
-// 				S_BUF.SIZE := INT_TO_UINT(x + 1); (* Länge eintragen -> Datensenden starten *)
+// 				S_BUF.SIZE := INT_TO_UINT(x + 1); (* enter length -> start sending data *)
 // 				x := -1;
 // 			ELSIF SEND THEN
 //
-// 				(* aktuelle Farbe bestimmen  *)
+// 				(* determine current color  *)
 // 				IF b2_color AND FRONT_COLOR <> last_FC THEN
-// 					(* Farbeinstellung: ANSI-Sequenz ESC[X;Y;Zm ausgeben *)
+// 					(* color setting: output ANSI sequence ESC[X;Y;Zm *)
 // 					x := x + 1;
 // 					S_BUF.BUFFER[x] := BYTE#16#1B; (* ESC *)
 // 					x := x + 1;
 // 					S_BUF.BUFFER[x] := BYTE#16#5B; (* [ *)
-// 					(* Farbeinstellung: dunkel oder Hell und blinken bestimmen *)
+// 					(* color setting: determine dark or bright and blinking *)
 // 					IF ((FRONT_COLOR AND BYTE#2#0001_1000) XOR (last_FC AND BYTE#2#0001_1000)) <> BYTE#00 OR TRUE THEN
 // 						x := x + 1;
 // 						S_BUF.BUFFER[x] := BYTE#16#30; (* 0  *)
 // 						x := x + 1;
 // 						S_BUF.BUFFER[x] := BYTE#16#3B; (* ; *)
-// 						(* keine dunklen Farben gewünscht -> dann Bold & Bright *)
+// 						(* no dark colors wanted -> then bold & bright *)
 // 						IF (FRONT_COLOR AND BYTE#2#00001000) = BYTE#0 THEN
-// 							(* auf Bold & Bright Farben umstellen *)
+// 							(* switch to bold & bright colors *)
 // 							x := x + 1;
 // 							S_BUF.BUFFER[x] := BYTE#16#31; (* 1 *)
 // 							x := x + 1;
 // 							S_BUF.BUFFER[x] := BYTE#16#3B; (* ; *)
 // 						END_IF;
-// 						(* blinkenden Farben gewünscht *)
+// 						(* blinking colors wanted *)
 // 						IF (FRONT_COLOR AND BYTE#2#00010000) > BYTE#0 THEN
-// 							(* auf Blinkenden Farbe umstellen *)
+// 							(* switch to blinking color *)
 // 							x := x + 1;
 // 							S_BUF.BUFFER[x] := BYTE#16#35; (* 5 *)
 // 							x := x + 1;
 // 							S_BUF.BUFFER[x] := BYTE#16#3B; (* ; *)
 // 						END_IF;
 // 					END_IF;
-// 					(* Zehnerstelle Farbe Foreground ausgeben *)
+// 					(* output tens digit of foreground color *)
 // 					x := x + 1;
 // 					S_BUF.BUFFER[x] := BYTE#16#33; (* 3 *)
-// 					(* Einerstelle Farbe Foreground ausgeben *)
+// 					(* output ones digit of foreground color *)
 // 					x := x + 1;
 // 					S_BUF.BUFFER[x] := (FRONT_COLOR AND BYTE#2#00000111) OR BYTE#16#30;
 // 					x := x + 1;
 // 					S_BUF.BUFFER[x] := BYTE#16#6D; (* m *)
-// 					(* neue Farbe als letzt verwendete speichern *)
+// 					(* store new color as last used *)
 // 					last_FC := FRONT_COLOR;
 // 				END_IF;
 //
-// 				(* Cursor positionieren *)
+// 				(* position cursor *)
 // 				IF X_POS > BYTE#0 AND Y_POS > BYTE#0 THEN
 // 					x := x + 1;
 // 					S_BUF.BUFFER[x] := BYTE#16#1B; (* ESC *)
 // 					x := x + 1;
 // 					S_BUF.BUFFER[x] := BYTE#16#5B; (* [ *)
-// 					(* Zehnerstelle Y_POS ausgeben *)
+// 					(* output tens digit of Y_POS *)
 // 					x := x + 1;
 // 					S_BUF.BUFFER[x] := SHR(INT_TO_BCDC(BYTE_TO_INT(Y_POS)),4) OR BYTE#16#30;
-// 					(* Einerstelle Y_POS ausgeben *)
+// 					(* output ones digit of Y_POS *)
 // 					x := x + 1;
 // 					S_BUF.BUFFER[x] := (INT_TO_BCDC(BYTE_TO_INT(Y_POS)) AND BYTE#16#0F) OR BYTE#16#30;
 // 					x := x + 1;
 // 					S_BUF.BUFFER[x] := BYTE#16#3B; (* ; *)
-// 					(* Zehnerstelle X_POS ausgeben *)
+// 					(* output tens digit of X_POS *)
 // 					x := x + 1;
 // 					S_BUF.BUFFER[x] := SHR(INT_TO_BCDC(BYTE_TO_INT(X_POS)),4) OR BYTE#16#30;
-// 					(* Einerstelle X_POS ausgeben *)
+// 					(* output ones digit of X_POS *)
 // 					x := x + 1;
 // 					S_BUF.BUFFER[x] := (INT_TO_BCDC(BYTE_TO_INT(X_POS)) AND BYTE#16#0F) OR BYTE#16#30;
 // 					x := x + 1;
 // 					S_BUF.BUFFER[x] := BYTE#16#48; (* H *)
 // 				END_IF;
 //
-// 				(* text ausgeben *)
+// 				(* output text *)
 // 				IF LEN(TEXT) > 0 THEN
 // 					_STRING_TO_BUFFER(str:=TEXT,pos:=x + 1,pt :=REF(S_BUF.BUFFER), size:=SIZEOF(S_BUF.BUFFER));
 // 					x := x + LEN(TEXT);
 // 				END_IF;
 //
-// 				IF b3_cr_lr THEN (* Option: CR,LF ausgeben *)
+// 				IF b3_cr_lr THEN (* Option: output CR,LF *)
 // 					x := x + 1;
 // 					S_BUF.BUFFER[x] := BYTE#16#0D;
 // 					x := x + 1;
 // 					S_BUF.BUFFER[x] := BYTE#16#0A;
 // 				END_IF;
 //
-// 				DONE := TRUE; (* Fertig in Buffer eingetragen *)
+// 				DONE := TRUE; (* finished entering into buffer *)
 //
 // 				IF b7_no_flush THEN (* Option: no buffer flush *)
-// 					(* buffer sofort senden - aktuellen Schreibindex speichern -> Senden anstossen *)
+// 					(* send buffer immediately - store current write index -> trigger send *)
 // 					S_BUF.SIZE := INT_TO_UINT(x + 1);
 // 					x := -1;
 // 				END_IF;
@@ -11884,16 +11884,16 @@ END_FUNCTION_BLOCK
 // 	PORT : WORD;
 // END_VAR
 //
-// (* Initialisierung / Freigeben der Verbindung *)
+// (* initialization / release of the connection *)
 // IF (NOT IP_C.C_ENABLE) THEN
 //
-// 	(* IP Datenverkehr einrichten *)
-// 	IP_C.C_PORT := SEL(PORT=BYTE#0,PORT,WORD#23); (* Portnummer eintragen *)
-// 	IP_C.C_IP := DWORD#00; (* IP eintragen *)
+// 	(* set up IP data traffic *)
+// 	IP_C.C_PORT := SEL(PORT=BYTE#0,PORT,WORD#23); (* enter port number *)
+// 	IP_C.C_IP := DWORD#00; (* enter IP *)
 // 	IP_C.C_MODE := BYTE#4; (* Mode: TCP+PASSIV+PORT *)
-// 	IP_C.TIME_RESET := TRUE; (* Zeitueberwachung rücksetzen *)
-// 	IP_C.C_ENABLE := TRUE; (* Verbindungsaufbau freigeben *)
-// 	IP_C.R_OBSERVE := FALSE; (* keine Empfangsueberwachung *)
+// 	IP_C.TIME_RESET := TRUE; (* reset timeout monitoring *)
+// 	IP_C.C_ENABLE := TRUE; (* enable connection setup *)
+// 	IP_C.R_OBSERVE := FALSE; (* no receive monitoring *)
 //
 // END_IF;
 //
@@ -11954,12 +11954,12 @@ END_FUNCTION_BLOCK
 // 	bo_Tool_Tip_Update : BOOL;
 // END_VAR
 //
-// (* Bearbeitung freigegeben ? *)
+// (* processing enabled? *)
 // IF (Xus_TN_INPUT_CONTROL.bo_Enable = FALSE) OR (Xus_TN_SCREEN.bo_Menue_Bar_Dialog = TRUE) THEN
 // 	RETURN;
 // END_IF;
 //
-// (* Fokus Reset durchführen *)
+// (* perform focus reset *)
 // IF (Xus_TN_INPUT_CONTROL.bo_Reset_Fokus = TRUE) THEN
 // 	Xus_TN_INPUT_CONTROL.bo_Reset_Fokus := FALSE;
 //
@@ -11976,17 +11976,17 @@ END_FUNCTION_BLOCK
 // END_IF;
 //
 // IF (Xus_TN_SCREEN.bo_Modal_Dialog = FALSE) THEN
-// 	(* TAB-Taste für Control-element wechsel auswerten *)
+// 	(* evaluate TAB key for switching control element *)
 // 	IF (Xus_TN_SCREEN.by_Input_Exten_Code = BYTE#09) THEN
 //
 // 		in_Scroll_Offset := INT#01;
 //
-// 		(* Cursor-Oben Taste *)
+// 		(* cursor up key *)
 // 	ELSIF (Xus_TN_SCREEN.by_Input_Exten_Code = BYTE#65) THEN
 //
 // 		in_Scroll_Offset := -1;
 //
-// 		(* Cursor-unten Taste *)
+// 		(* cursor down key *)
 // 	ELSIF (Xus_TN_SCREEN.by_Input_Exten_Code = BYTE#66) THEN
 //
 // 		in_Scroll_Offset := INT#01;
@@ -11995,7 +11995,7 @@ END_FUNCTION_BLOCK
 // END_IF;
 //
 // IF (in_Scroll_Offset <> INT#00) THEN
-// 	(* Grenzwerte überprüfen                                            *)
+// 	(* check limits                                            *)
 //
 // 	Xus_TN_INPUT_CONTROL.in_Focus_at:=LIMIT(INT#01,Xus_TN_INPUT_CONTROL.in_Focus_at,Xus_TN_INPUT_CONTROL.in_Count);
 //
@@ -12011,11 +12011,11 @@ END_FUNCTION_BLOCK
 //
 // 	in_Focus_alt := Xus_TN_INPUT_CONTROL.in_Focus_at;
 //
-// 	(* aktuellen Element den Fokus entziehen *)
+// 	(* remove focus from the current element *)
 // 	Xus_TN_INPUT_CONTROL.usa_TN_INPUT_CONTROL_DATA[in_Focus_alt].bo_Focus := FALSE;
 // 	Xus_TN_INPUT_CONTROL.usa_TN_INPUT_CONTROL_DATA[in_Focus_alt].bo_Update_Input := TRUE;
 //
-// 	(* neuem Element den Fokus geben *)
+// 	(* give focus to the new element *)
 // 	Xus_TN_INPUT_CONTROL.usa_TN_INPUT_CONTROL_DATA[in_Focus_new].bo_Focus  := TRUE;
 // 	Xus_TN_INPUT_CONTROL.usa_TN_INPUT_CONTROL_DATA[in_Focus_new].bo_Update_Input := TRUE;
 //
@@ -12026,7 +12026,7 @@ END_FUNCTION_BLOCK
 //
 // END_IF;
 //
-// (* Alle Elemente updaten ? *)
+// (* update all elements? *)
 // IF (Xus_TN_INPUT_CONTROL.bo_Update_all = TRUE) THEN
 // 	FOR in_index := 1 TO Xus_TN_INPUT_CONTROL.in_Count DO
 // 		Xus_TN_INPUT_CONTROL.usa_TN_INPUT_CONTROL_DATA[in_index].bo_Update_All := TRUE;
@@ -12045,7 +12045,7 @@ END_FUNCTION_BLOCK
 // 			Xus_TN_INPUT_CONTROL.usa_TN_INPUT_CONTROL_DATA[in_index].by_Input_Exten_Code  := Xus_TN_SCREEN.by_Input_Exten_Code;
 // 			Xus_TN_INPUT_CONTROL.usa_TN_INPUT_CONTROL_DATA[in_index].bo_Input_ASCII_IsNum := Xus_TN_SCREEN.bo_Input_ASCII_IsNum;
 //
-// 			(* Tool-Tip Text ausgeben *)
+// 			(* output tooltip text *)
 // 			IF (bo_Tool_Tip_Update = TRUE) THEN
 //
 // 				FB_TN_SC_WRITE_C(	Iin_Y := Xus_TN_INPUT_CONTROL.in_ToolTip_Y,
@@ -12056,29 +12056,29 @@ END_FUNCTION_BLOCK
 // 									Ist_STRING := Xus_TN_INPUT_CONTROL.usa_TN_INPUT_CONTROL_DATA[in_index].st_Input_ToolTip,
 // 									Xus_TN_SCREEN := Xus_TN_SCREEN);
 //
-// 				(* Flag rücksetzen *)
+// 				(* reset flag *)
 // 				bo_Tool_Tip_Update := FALSE;
 // 			END_IF;
 // 		END_IF;
 //
 // 		CASE Xus_TN_INPUT_CONTROL.usa_TN_INPUT_CONTROL_DATA[in_index].in_Type OF
 // 		1:
-// 			(* Edit-Line bearbeiten *)
+// 			(* process edit line *)
 // 			FB_TN_INPUT_EDIT_LINE(	Xus_TN_INPUT_CONTROL_DATA := Xus_TN_INPUT_CONTROL.usa_TN_INPUT_CONTROL_DATA[in_index],
 // 									Xus_TN_SCREEN := Xus_TN_SCREEN);
 // 		2:
-// 			(* Select-Text bearbeiten *)
+// 			(* process select text *)
 // 			FB_TN_INPUT_SELECT_TEXT(	Xus_TN_INPUT_CONTROL_DATA := Xus_TN_INPUT_CONTROL.usa_TN_INPUT_CONTROL_DATA[in_index],
 // 										Xus_TN_SCREEN := Xus_TN_SCREEN);
 // 		3:
-// 			(* Select-Popup bearbeiten *)
+// 			(* process select popup *)
 // 			FB_TN_INPUT_SELECT_POPUP(	Xus_TN_INPUT_CONTROL_DATA := Xus_TN_INPUT_CONTROL.usa_TN_INPUT_CONTROL_DATA[in_index],
 // 										Xus_TN_SCREEN := Xus_TN_SCREEN);
 // 		END_CASE;
 //
 // 		IF (Xus_TN_INPUT_CONTROL.usa_TN_INPUT_CONTROL_DATA[in_index].bo_Focus = TRUE) THEN
 //
-// 			(* Cursor position von Element auf Screen übertragen *)
+// 			(* transfer cursor position of element to screen *)
 // 			Xus_TN_SCREEN.in_Cursor_X := Xus_TN_INPUT_CONTROL.usa_TN_INPUT_CONTROL_DATA[in_index].in_Cursor_X;
 // 			Xus_TN_SCREEN.in_Cursor_Y := Xus_TN_INPUT_CONTROL.usa_TN_INPUT_CONTROL_DATA[in_index].in_Cursor_Y;
 //
@@ -12107,21 +12107,21 @@ END_FUNCTION_BLOCK
 // 	Xus_TN_INPUT_CONTROL_DATA : us_TN_INPUT_CONTROL_DATA;
 // END_VAR
 //
-// (* Cursorsteuerung rücksetzen *)
+// (* reset cursor control *)
 // in_CursorOffset := INT#0;
 //
 // IF Xus_TN_INPUT_CONTROL_DATA.bo_Focus = TRUE THEN
 //
-// 	(* Texteingabe erkannt ? *)
+// 	(* text input detected? *)
 // 	IF Xus_TN_INPUT_CONTROL_DATA.by_Input_ASCII_Code > BYTE#0 THEN
 //
 // 		IF (Xus_TN_INPUT_CONTROL_DATA.bo_Input_Only_Num = TRUE AND Xus_TN_INPUT_CONTROL_DATA.bo_Input_ASCII_IsNum = TRUE)
 // 			OR (Xus_TN_INPUT_CONTROL_DATA.bo_Input_Only_Num = FALSE) THEN
 //
-// 			(* ASCII Wert in einen String wandeln *)
+// 			(* convert ASCII value into a string *)
 // 			st_CHAR := CHR_TO_STRING(C:=Xus_TN_INPUT_CONTROL_DATA.by_Input_ASCII_Code);
 //
-// 			(* Eingabe übernehmen *)
+// 			(* accept input *)
 // 			Xus_TN_INPUT_CONTROL_DATA.st_Input_Data := REPLACE(Xus_TN_INPUT_CONTROL_DATA.st_Input_Data,
 // 			st_CHAR,INT#1,Xus_TN_INPUT_CONTROL_DATA.in_Cursor_Pos);
 //
@@ -12132,43 +12132,43 @@ END_FUNCTION_BLOCK
 //
 // 	CASE BYTE_TO_INT(Xus_TN_INPUT_CONTROL_DATA.by_Input_Exten_Code) OF
 //
-// 	67: (* Cursor rechts gedrückt *)
+// 	67: (* cursor right pressed *)
 // 		in_CursorOffset := INT#1;
 //
-// 	68: (* Cursor links gedrückt *)
+// 	68: (* cursor left pressed *)
 // 		in_CursorOffset := -1;
 //
-// 	08: (* Backspace gedrückt *)
+// 	08: (* backspace pressed *)
 // 		Xus_TN_INPUT_CONTROL_DATA.st_Input_Data := REPLACE(Xus_TN_INPUT_CONTROL_DATA.st_Input_Data, ' ', 1,Xus_TN_INPUT_CONTROL_DATA.in_Cursor_Pos);
 // 		Xus_TN_INPUT_CONTROL_DATA.bo_Update_Input := TRUE;
 // 		in_CursorOffset := -1;
 //
-// 	13: (* Enter-Taste gedrückt *)
+// 	13: (* enter key pressed *)
 // 		IF LEN(Xus_TN_INPUT_CONTROL_DATA.st_Input_Mask) > INT#00 THEN
-// 			(* Eingabestring übernehmen *)
+// 			(* accept input string *)
 // 			Xus_TN_INPUT_CONTROL_DATA.st_Input_String := Xus_TN_INPUT_CONTROL_DATA.st_Input_Data;
 //
-// 			(* Eingabestring -> links und rechts Leerzeichen entfernen *)
+// 			(* input string -> remove leading and trailing spaces *)
 // 			Xus_TN_INPUT_CONTROL_DATA.st_Input_String := TRIME(str:=Xus_TN_INPUT_CONTROL_DATA.st_Input_String);
 // 			Xus_TN_INPUT_CONTROL_DATA.bo_Input_Entered := TRUE;
 //
-// 			(* neue Eingabe vorbereiten *)
+// 			(* prepare new input *)
 // 			Xus_TN_INPUT_CONTROL_DATA.st_Input_Data := Xus_TN_INPUT_CONTROL_DATA.st_Input_Mask;
 //
 // 			Xus_TN_INPUT_CONTROL_DATA.in_Cursor_Pos := INT#1;
 // 			Xus_TN_INPUT_CONTROL_DATA.bo_Update_Input := TRUE;
 //
-// 			(* suche erstes Position in Eingabemaske *)
+// 			(* search first position in input mask *)
 // 			st_CHAR := MID(Xus_TN_INPUT_CONTROL_DATA.st_Input_Mask,1,Xus_TN_INPUT_CONTROL_DATA.in_Cursor_Pos);
 // 			IF st_CHAR <> ' ' THEN
-// 				(* nächsten Eingabeposition suchen *)
+// 				(* search next input position *)
 // 				in_CursorOffset := INT#1;
 // 			END_IF;
 // 		END_IF;
 // 	END_CASE;
 // END_IF;
 //
-// (* Cursor richtung rechts bewegen                                   *)
+// (* move cursor to the right                                   *)
 // IF (in_CursorOffset > INT#0) OR (Xus_TN_INPUT_CONTROL_DATA.in_Cursor_Pos = INT#0) THEN
 // 	bo_Pos_Found := FALSE;
 //
@@ -12189,7 +12189,7 @@ END_FUNCTION_BLOCK
 // 	END_WHILE;
 // END_IF;
 //
-// (* Cursor richtung links bewegen *)
+// (* move cursor to the left *)
 // IF in_CursorOffset < INT#0 THEN
 // 	bo_Pos_Found := FALSE;
 //
@@ -12209,70 +12209,70 @@ END_FUNCTION_BLOCK
 // 	END_WHILE;
 // END_IF;
 //
-// (* maximale Cursorposition ? *)
+// (* maximum cursor position? *)
 // IF Xus_TN_INPUT_CONTROL_DATA.in_Cursor_Pos > LEN(Xus_TN_INPUT_CONTROL_DATA.st_Input_Data) THEN
 // 	Xus_TN_INPUT_CONTROL_DATA.in_Cursor_Pos := LEN(Xus_TN_INPUT_CONTROL_DATA.st_Input_Data);
 // 	Xus_TN_INPUT_CONTROL_DATA.bo_Update_Input := TRUE;
 // END_IF;
 //
-// (* minimale Cursorposition ? *)
+// (* minimum cursor position? *)
 // IF Xus_TN_INPUT_CONTROL_DATA.in_Cursor_Pos < INT#1 THEN
 // 	Xus_TN_INPUT_CONTROL_DATA.in_Cursor_Pos := INT#1;
 // 	Xus_TN_INPUT_CONTROL_DATA.bo_Update_Input := TRUE;
 // END_IF;
 //
-// (* Aktualisierung der Anzeige *)
+// (* update of the display *)
 // IF (Xus_TN_INPUT_CONTROL_DATA.bo_Update_Input = TRUE) OR (Xus_TN_INPUT_CONTROL_DATA.bo_Update_All = TRUE) THEN
 //
-// 	(* Title-Text ausgeben *)
+// 	(* output title text *)
 // 	IF (Xus_TN_INPUT_CONTROL_DATA.bo_Update_All = TRUE) THEN
 //
 // 		IF (Xus_TN_INPUT_CONTROL_DATA.in_Title_X_Offset = INT#00) AND (Xus_TN_INPUT_CONTROL_DATA.in_Title_Y_Offset = INT#00) THEN
-// 			(* wenn Offset X,Y =0 dann Titlestring links vom Element positionieren *)
+// 			(* if offset X,Y = 0 then position the title string left of the element *)
 // 			FB_TN_SC_WRITE.Iin_Y := Xus_TN_INPUT_CONTROL_DATA.in_Y;
 // 			FB_TN_SC_WRITE.Iin_X := Xus_TN_INPUT_CONTROL_DATA.in_X - LEN(Xus_TN_INPUT_CONTROL_DATA.st_Title_String);
 // 		ELSE
-// 			(* Title-Text durch Row, Color-Offset ausgeben *)
+// 			(* output title text via row, color offset *)
 // 			FB_TN_SC_WRITE.Iin_Y := Xus_TN_INPUT_CONTROL_DATA.in_Y + Xus_TN_INPUT_CONTROL_DATA.in_Title_Y_Offset;
 // 			FB_TN_SC_WRITE.Iin_X := Xus_TN_INPUT_CONTROL_DATA.in_X + Xus_TN_INPUT_CONTROL_DATA.in_Title_X_Offset;
 // 		END_IF;
 //
-// 		(* Title-Text durch Row, Color-Offset ausgeben *)
+// 		(* output title text via row, color offset *)
 // 		FB_TN_SC_WRITE(	Iby_ATTR := Xus_TN_INPUT_CONTROL_DATA.by_Title_Attr,
 // 						Ist_STRING := Xus_TN_INPUT_CONTROL_DATA.st_Title_String,
 // 						Xus_TN_SCREEN := Xus_TN_SCREEN);
 // 	END_IF;
 //
-// 	(* Eingabetext ausgeben *)
+// 	(* output input text *)
 // 	IF (Xus_TN_INPUT_CONTROL_DATA.bo_Input_Hidden = TRUE) THEN
 //
 // 		st_String := '';
 //
 // 		IF LEN(Xus_TN_INPUT_CONTROL_DATA.st_Input_Data) = LEN(Xus_TN_INPUT_CONTROL_DATA.st_Input_Mask) THEN
-// 			(* Eingabemodus: HIDDEN *)
+// 			(* input mode: HIDDEN *)
 // 			FOR in_count := 1 TO LEN(Xus_TN_INPUT_CONTROL_DATA.st_Input_Data) DO
 //
-// 				(* Zeichen aus Eingabemaske lesen *)
+// 				(* read character from input mask *)
 // 				st_CHAR := MID(Xus_TN_INPUT_CONTROL_DATA.st_Input_Mask,1,in_count);
 //
-// 				(* Eingabe oder Maskenzeichen ausgeben *)
+// 				(* output input or mask character *)
 // 				IF st_CHAR = ' ' THEN
 //
-// 					(* Zeichen aus Eingabedata lesen *)
+// 					(* read character from input data *)
 // 					st_CHAR := MID(Xus_TN_INPUT_CONTROL_DATA.st_Input_Data,1,in_count);
 //
 // 					IF st_CHAR = ' ' THEN
-// 						(* Leerzeichen ausgeben *)
+// 						(* output spaces *)
 // 						st_String := CONCAT(st_String, ' ');
 //
 // 					ELSE
-// 						(* verdecktes Zeichen ausgeben *)
+// 						(* output hidden character *)
 // 						st_String := CONCAT(st_String, '*');
 //
 // 					END_IF;
 //
 // 				ELSE
-// 					(* Zeichen aus Eingabemaske übernehmen *)
+// 					(* take character from input mask *)
 // 					st_CHAR := MID(Xus_TN_INPUT_CONTROL_DATA.st_Input_Data,1,in_count);
 // 					st_String := CONCAT(st_String,st_CHAR);
 //
@@ -12281,12 +12281,12 @@ END_FUNCTION_BLOCK
 // 		END_IF;
 // 	ELSE
 //
-// 		(* Eingabemodus: NORMAL *)
+// 		(* input mode: NORMAL *)
 // 		st_String := Xus_TN_INPUT_CONTROL_DATA.st_Input_Data;
 //
 // 	END_IF;
 //
-// 	(* String ausgeben *)
+// 	(* output string *)
 //
 // 	IF Xus_TN_INPUT_CONTROL_DATA.bo_Focus = TRUE THEN
 // 		by_Attr := Xus_TN_INPUT_CONTROL_DATA.by_Attr_mF;
@@ -12300,13 +12300,13 @@ END_FUNCTION_BLOCK
 // 					Ist_STRING := st_String,
 // 					Xus_TN_SCREEN := Xus_TN_SCREEN);
 //
-// 	(* Cursor auf aktuelle Position setzen *)
+// 	(* set cursor to current position *)
 // 	Xus_TN_INPUT_CONTROL_DATA.in_Cursor_Y := Xus_TN_INPUT_CONTROL_DATA.in_Y;
 // 	Xus_TN_INPUT_CONTROL_DATA.in_Cursor_X := Xus_TN_INPUT_CONTROL_DATA.in_X + Xus_TN_INPUT_CONTROL_DATA.in_Cursor_Pos - INT#1;
 //
 // 	in_old_charpos := INT#0;
 //
-// 	(* Update-Flag's rücksetzen *)
+// 	(* reset update flags *)
 // 	Xus_TN_INPUT_CONTROL_DATA.bo_Update_All := FALSE;
 // 	Xus_TN_INPUT_CONTROL_DATA.bo_Update_Input := FALSE;
 // END_IF;
@@ -12337,7 +12337,7 @@ END_FUNCTION_BLOCK
 // 	Xus_TN_SCREEN : us_TN_SCREEN;
 // END_VAR
 //
-// (* sicherstellen das rechteck immer innerhalb screen positioniert wird *)
+// (* make sure the rectangle is always positioned inside the screen *)
 //
 // IF (Xus_TN_MENU.in_State = INT#00) AND (Xus_TN_MENU.bo_Create = TRUE) THEN
 // 	Xus_TN_MENU.in_State := INT#01;
@@ -12346,18 +12346,18 @@ END_FUNCTION_BLOCK
 // 	Xus_TN_MENU.bo_Update := TRUE;
 // 	bo_Reset_Position := TRUE;
 //
-// 	(* Menu-Bar - Hauptmenue *)
+// 	(* menu bar - main menu *)
 // 	st_MENU_BAR := ELEMENT_GET(SEP:=BYTE#37,POS:=0,ELEMENT:=Xus_TN_MENU.st_MENU_TEXT);
 //
-// 	(* Menu-Bar - Anzahl der Elemente bestimmen *)
+// 	(* menu bar - determine number of elements *)
 // 	Xus_TN_MENU.in_Menu_E_Count := ELEMENT_COUNT(SEP:=BYTE#35,ELEMENT:=st_MENU_BAR);
 //
 // END_IF;
 //
-// (* Keycode ablegen *)
+// (* store keycode *)
 // by_New_KeyCode := Xus_TN_SCREEN.by_Input_Exten_Code;
 //
-// (* Popup-Menu Tastensteuerung (nur Cursor oben + unten zulassen *)
+// (* popup menu key control (only allow cursor up + down *)
 // IF (by_New_KeyCode = BYTE#65) OR (by_New_KeyCode = BYTE#66) THEN
 // 	us_TN_MENU_POPUP.by_Input_Exten_Code := by_New_KeyCode;
 // ELSE
@@ -12366,7 +12366,7 @@ END_FUNCTION_BLOCK
 //
 // (* Escape *)
 // IF (by_New_KeyCode = BYTE#27) THEN
-// 	(* Menu war inaktiv -> Escape -> Menu aktivieren *)
+// 	(* menu was inactive -> escape -> activate menu *)
 // 	IF (Xus_TN_MENU.in_State = INT#01) AND (Xus_TN_SCREEN.bo_Modal_Dialog = FALSE) THEN
 // 		Xus_TN_MENU.in_State := INT#02;
 // 		Xus_TN_MENU.bo_Update := TRUE;
@@ -12374,7 +12374,7 @@ END_FUNCTION_BLOCK
 //
 // 		Xus_TN_SCREEN.bo_Menue_Bar_Dialog := TRUE;
 //
-// 		(* Menu war aktiv -> Escape -> Menu deaktivieren *)
+// 		(* menu was active -> escape -> deactivate menu *)
 // 	ELSIF (Xus_TN_MENU.in_State = INT#02) THEN
 // 		us_TN_MENU_POPUP.bo_Destroy := TRUE;
 // 		Xus_TN_MENU.bo_Update := TRUE;
@@ -12385,7 +12385,7 @@ END_FUNCTION_BLOCK
 // 	END_IF;
 // END_IF;
 //
-// (* Menu aktiv *)
+// (* menu active *)
 // IF (Xus_TN_MENU.in_State = INT#02) THEN
 //
 // 	(* Return *)
@@ -12399,7 +12399,7 @@ END_FUNCTION_BLOCK
 //
 // 		Xus_TN_SCREEN.bo_Menue_Bar_Dialog := FALSE;
 //
-// 		(* Destroy-Befehl -> Popup-Menu beenden *)
+// 		(* destroy command -> close popup menu *)
 // 	ELSIF (Xus_TN_MENU.bo_Destroy = TRUE) THEN
 // 		us_TN_MENU_POPUP.bo_Destroy := TRUE;
 // 		Xus_TN_MENU.bo_Update := TRUE;
@@ -12412,12 +12412,12 @@ END_FUNCTION_BLOCK
 //
 // 	END_IF;
 //
-// 	IF (by_New_KeyCode = BYTE#67) THEN (* Cursor rechts *)
+// 	IF (by_New_KeyCode = BYTE#67) THEN (* cursor right *)
 // 		in_Scroll_Offset := INT#1;
 // 		Xus_TN_MENU.bo_Update := TRUE;
 // 		Xus_TN_SCREEN.by_Input_Exten_Code := BYTE#00;
 //
-// 	ELSIF (by_New_KeyCode = BYTE#68) THEN (* Cursor links *)
+// 	ELSIF (by_New_KeyCode = BYTE#68) THEN (* cursor left *)
 // 		in_Scroll_Offset := -1;
 // 		Xus_TN_MENU.bo_Update := TRUE;
 // 		Xus_TN_SCREEN.by_Input_Exten_Code := BYTE#00;
@@ -12432,7 +12432,7 @@ END_FUNCTION_BLOCK
 // 	Xus_TN_MENU.in_Y_SM_new := -1;
 // END_IF;
 //
-// (* POPUP-Menu updaten *)
+// (* update POPUP menu *)
 // IF (Xus_TN_MENU.in_State > INT#00) AND (Xus_TN_MENU.bo_Update = TRUE) THEN
 //
 // 	Xus_TN_MENU.bo_Update := FALSE;
@@ -12445,16 +12445,16 @@ END_FUNCTION_BLOCK
 // 		Xus_TN_MENU.in_Cur_Menu_Item := INC2(Xus_TN_MENU.in_Cur_Menu_Item,in_Scroll_Offset,1,Xus_TN_MENU.in_Menu_E_Count);
 // 		in_Scroll_Offset := INT#00;
 // 	ELSE
-// 		(* Item = 0 und kein Scrolloffset *)
+// 		(* item = 0 and no scroll offset *)
 // 		IF (Xus_TN_MENU.in_Cur_Menu_Item = INT#00) THEN
 // 			Xus_TN_MENU.in_Cur_Menu_Item := INT#01;
 // 		END_IF;
 // 	END_IF;
 //
-// 	(* alle Menutext zeichnen *)
+// 	(* draw all menu texts *)
 // 	FOR in_Count := INT#01 TO Xus_TN_MENU.in_Menu_E_Count DO;
 //
-// 		(* Zeichenfarbe bestimmen *)
+// 		(* determine character color *)
 // 		IF (in_Count = Xus_TN_MENU.in_Cur_Menu_Item) AND (Xus_TN_MENU.in_State > INT#01 ) THEN
 // 			by_ATTR := Xus_TN_MENU.by_Attr_mF;
 //
@@ -12484,17 +12484,17 @@ END_FUNCTION_BLOCK
 //
 // IF Xus_TN_MENU.in_X_SM_new <> Xus_TN_MENU.in_X_SM_old THEN
 //
-// 	(* SubMenu ist aktiv -> beenden                                     *)
+// 	(* submenu is active -> exit                                     *)
 // 	IF us_TN_MENU_POPUP.bo_Activ = TRUE THEN
 // 		us_TN_MENU_POPUP.bo_Destroy := TRUE;
 //
-// 		(* Sub-Menu bearbeiten *)
+// 		(* process submenu *)
 // 		FB_TN_INPUT_MENU_POPUP(	Xus_TN_MENU_POPUP := us_TN_MENU_POPUP,
 // 								Xus_TN_SCREEN := Xus_TN_SCREEN);
 // 	END_IF;
 //
 // 	IF us_TN_MENU_POPUP.bo_Activ = FALSE THEN
-// 		(* Popup-Menu zu aktuellen Menu parametrieren und ausführen         *)
+// 		(* configure and run the popup menu for the current menu         *)
 // 		in_Index := Xus_TN_MENU.in_Cur_Menu_Item;
 //
 // 		us_TN_MENU_POPUP.in_Y := Xus_TN_MENU.in_Y_SM_new;
@@ -12510,14 +12510,14 @@ END_FUNCTION_BLOCK
 // 	END_IF;
 // END_IF;
 //
-// (* Popup-Menu zyklisch aufrufen *)
+// (* call popup menu cyclically *)
 // FB_TN_INPUT_MENU_POPUP(	Xus_TN_MENU_POPUP := us_TN_MENU_POPUP,
 // 						Xus_TN_SCREEN := Xus_TN_SCREEN);
 //
-// (* aktuelles Item vom Popup-Menu kopieren *)
+// (* copy current item from popup menu *)
 // Xus_TN_MENU.in_Cur_Sub_Item := us_TN_MENU_POPUP.in_Cur_Item;
 //
-// (* Destroy-Befehl *)
+// (* destroy command *)
 // IF (Xus_TN_MENU.in_State = INT#01) THEN
 // 	IF (Xus_TN_MENU.bo_Destroy = TRUE) THEN
 // 		Xus_TN_MENU.in_State := INT#00;
@@ -12553,7 +12553,7 @@ END_FUNCTION_BLOCK
 // 	Xus_TN_SCREEN : us_TN_SCREEN;
 // END_VAR
 //
-// (* sicherstellen das rechteck immer innerhalb screen positioniert wird *)
+// (* make sure the rectangle is always positioned inside the screen *)
 //
 // IF (Xus_TN_MENU_POPUP.bo_Activ = FALSE) AND (Xus_TN_MENU_POPUP.bo_Create = TRUE) THEN
 // 	Xus_TN_MENU_POPUP.bo_Activ := TRUE;
@@ -12561,50 +12561,50 @@ END_FUNCTION_BLOCK
 // 	Xus_TN_MENU_POPUP.bo_Destroy := FALSE;
 // 	Xus_TN_MENU_POPUP.bo_Update := TRUE;
 //
-//   (* Sub-Menu-Texte *)
+//   (* submenu texts *)
 //
 // 	Xus_TN_MENU_POPUP.in_Menu_E_Count := ELEMENT_COUNT(SEP:=BYTE#35,ELEMENT:=Xus_TN_MENU_POPUP.st_Menu_Text);
 //
-// 	(* Anzahl Zeilen (Sub-Menu-Texte) bestimmen *)
+// 	(* determine number of lines (submenu texts) *)
 // 	Xus_TN_MENU_POPUP.in_Rows := Xus_TN_MENU_POPUP.in_Menu_E_Count;
 //
-// 	(* längsten Sub-Menu-Text suchen *)
+// 	(* find longest submenu text *)
 // 	Xus_TN_MENU_POPUP.in_Cols := INT#00;
 //
 // 	FOR in_Count := INT#01 TO Xus_TN_MENU_POPUP.in_Rows DO;
 // 		Xus_TN_MENU_POPUP.in_Cols:=MAX(LEN(ELEMENT_GET(SEP:=BYTE#35,POS:=in_Count - 1,ELEMENT:=Xus_TN_MENU_POPUP.st_Menu_Text)),Xus_TN_MENU_POPUP.in_Cols);
 // 	END_FOR;
 //
-// 	(* Horizontale Position überprüfen und korrigieren *)
+// 	(* check and correct horizontal position *)
 // 	IF (Xus_TN_MENU_POPUP.in_X + Xus_TN_MENU_POPUP.in_Cols) > INT#75 THEN
 // 		Xus_TN_MENU_POPUP.in_X := INT#79 - Xus_TN_MENU_POPUP.in_Cols - INT#04;
 // 	END_IF;
 //
-//   (* Vertikale Position überprüfen und korrigieren *)
+//   (* check and correct vertical position *)
 // 	IF (Xus_TN_MENU_POPUP.in_Y + Xus_TN_MENU_POPUP.in_ROWS) > INT#21 THEN
 // 		Xus_TN_MENU_POPUP.in_Y := INT#23 - Xus_TN_MENU_POPUP.in_ROWS - INT#2;
 // 	END_IF;
 //
 // 	Xus_TN_SCREEN.bo_Modal_Dialog := TRUE;
 //
-// 	(* Hintergrund sichern *)
+// 	(* save background *)
 // 	FB_TN_SC_AREA_SAVE(	Iin_X1 := Xus_TN_MENU_POPUP.in_X,
 // 									Iin_Y1 := Xus_TN_MENU_POPUP.in_Y,
 // 									Iin_X2 := Xus_TN_MENU_POPUP.in_X + Xus_TN_MENU_POPUP.in_Cols + INT#04,
 // 									Iin_Y2 := Xus_TN_MENU_POPUP.in_Y + Xus_TN_MENU_POPUP.in_Rows + INT#02,
 // 									Xus_TN_SCREEN := Xus_TN_SCREEN);
 //
-// 	(* Rahmen für Submenu zeichnen *)
+// 	(* draw frame for submenu *)
 // 	FB_TN_SC_BOX(	Iin_X1 := Xus_TN_MENU_POPUP.in_X,
 // 					Iin_Y1 := Xus_TN_MENU_POPUP.in_Y,
 // 					Iin_X2 := Xus_TN_MENU_POPUP.in_X + Xus_TN_MENU_POPUP.in_Cols + INT#03,
 // 					Iin_Y2 := Xus_TN_MENU_POPUP.in_Y + Xus_TN_MENU_POPUP.in_Rows + INT#01,
-// 					Iby_FILL := BYTE#32, (* Füllung *)
+// 					Iby_FILL := BYTE#32, (* fill *)
 // 					Iin_BORDER := INT#01, (* Single-Line Border *)
 // 					Iby_ATTR := Xus_TN_MENU_POPUP.by_Attr_oF,
 // 					Xus_TN_SCREEN := Xus_TN_SCREEN);
 //
-// 	(* Shadow für Submenu zeichnen *)
+// 	(* draw shadow for submenu *)
 // 	FB_TN_SC_ADD_SHADOW(Iin_X1 := Xus_TN_MENU_POPUP.in_X + INT#1,
 // 						Iin_Y1 := Xus_TN_MENU_POPUP.in_Y + INT#1,
 // 						Iin_X2 := Xus_TN_MENU_POPUP.in_X + Xus_TN_MENU_POPUP.in_Cols + INT#04,
@@ -12612,14 +12612,14 @@ END_FUNCTION_BLOCK
 // 						Iin_OPTION := INT#00,
 // 						Xus_TN_SCREEN := Xus_TN_SCREEN);
 //
-// 	(* Parameter laden *)
+// 	(* load parameters *)
 // 	in_COL := Xus_TN_MENU_POPUP.in_X;
 // 	in_ROW := Xus_TN_MENU_POPUP.in_Y;
 // 	in_ROWS := Xus_TN_MENU_POPUP.in_Rows;
 // 	in_COLS := Xus_TN_MENU_POPUP.in_Cols;
 //
-// 	(* Trennlinien zeichnen *)
-// 	in_COLS := in_COLS + INT#02; (* Text um 2 Zeichen verlängern *)
+// 	(* draw separator lines *)
+// 	in_COLS := in_COLS + INT#02; (* extend text by 2 characters *)
 //
 // 	FOR in_Count := INT#01 TO Xus_TN_MENU_POPUP.in_Menu_E_Count DO;
 // 		in_ROW := in_ROW + INT#01;
@@ -12641,11 +12641,11 @@ END_FUNCTION_BLOCK
 //
 // 	CASE BYTE_TO_INT(Xus_TN_MENU_POPUP.by_Input_Exten_Code) OF
 //
-// 	65: (* Cursor oben *)
+// 	65: (* cursor up *)
 // 		in_Scroll_Offset := -1;
 // 		Xus_TN_MENU_POPUP.bo_Update := TRUE;
 //
-// 	66: (* Cursor unten *)
+// 	66: (* cursor down *)
 // 		in_Scroll_Offset := 1;
 // 		Xus_TN_MENU_POPUP.bo_Update := TRUE;
 //
@@ -12656,19 +12656,19 @@ END_FUNCTION_BLOCK
 // 		Xus_TN_MENU_POPUP.bo_Destroy := TRUE;
 // 		Xus_TN_MENU_POPUP.in_Cur_Item := INT#00;
 //
-// 	67..68: (* Cursor links oder rechts *)
+// 	67..68: (* cursor left or right *)
 // 		Xus_TN_MENU_POPUP.bo_Destroy := TRUE;
 // 		Xus_TN_MENU_POPUP.in_Cur_Item := INT#00;
 //
 // 	END_CASE;
 // END_IF;
 //
-// (* POPUP-Menu updaten *)
+// (* update POPUP menu *)
 // IF (Xus_TN_MENU_POPUP.bo_Activ = TRUE) AND (Xus_TN_MENU_POPUP.bo_Update = TRUE) THEN
 //
 // 	Xus_TN_MENU_POPUP.bo_Update := FALSE;
 //
-// 	(* überprüfung + nächstes anwählbares Sub-Menu suchen *)
+// 	(* check + find next selectable submenu *)
 // 	in_index := Xus_TN_MENU_POPUP.in_Cur_Item;
 //
 // 	IF (in_index < INT#01) OR (in_index > Xus_TN_MENU_POPUP.in_Menu_E_Count) THEN
@@ -12676,7 +12676,7 @@ END_FUNCTION_BLOCK
 // 		in_index := Xus_TN_MENU_POPUP.in_Menu_E_Count;
 // 	END_IF;
 //
-// 	(* aktueller Index steht auf Trennzeichen -> ändern *)
+// 	(* current index is on a separator -> change *)
 // 	IF ELEMENT_GET(SEP:=BYTE#35,POS:=in_index-1,ELEMENT:=Xus_TN_MENU_POPUP.st_Menu_Text) = '-' THEN
 // 		in_Scroll_Offset := INT#01;
 // 	END_IF;
@@ -12698,20 +12698,20 @@ END_FUNCTION_BLOCK
 // 	Xus_TN_MENU_POPUP.in_Cur_Item := in_index;
 // 	in_Scroll_Offset := INT#00;
 //
-// 	(* Parameter laden *)
+// 	(* load parameters *)
 // 	in_COL  := Xus_TN_MENU_POPUP.in_X;
 // 	in_ROW  := Xus_TN_MENU_POPUP.in_Y;
 // 	in_ROWS := Xus_TN_MENU_POPUP.in_Rows;
 // 	in_COLS := Xus_TN_MENU_POPUP.in_Cols;
 //
-// 	(* SUB-MENU-Titel ausgeben *)
-// 	in_COLS := in_COLS + INT#02; (* Text um 2 Zeichen verlängern *)
+// 	(* output SUB-MENU title *)
+// 	in_COLS := in_COLS + INT#02; (* extend text by 2 characters *)
 //
 // 	FOR in_Count := INT#01 TO Xus_TN_MENU_POPUP.in_Menu_E_Count DO;
 //
 // 		in_ROW := in_ROW + INT#01;
 //
-// 		(* Zeichenfarbe bestimmen *)
+// 		(* determine character color *)
 // 		IF in_Count = Xus_TN_MENU_POPUP.in_Cur_Item THEN
 // 			by_ATTR := Xus_TN_MENU_POPUP.by_Attr_mF;
 // 		ELSE
@@ -12732,13 +12732,13 @@ END_FUNCTION_BLOCK
 // 	END_FOR;
 // END_IF;
 //
-// (* POPUP-Menu entfernen (Destroy) *)
+// (* remove POPUP menu (destroy) *)
 // IF (Xus_TN_MENU_POPUP.bo_Activ = TRUE) AND (Xus_TN_MENU_POPUP.bo_Destroy = TRUE) THEN
 //
 // 	Xus_TN_MENU_POPUP.bo_Destroy := FALSE;
 // 	Xus_TN_MENU_POPUP.bo_Activ := FALSE;
 //
-// 	(* alten Hintergrund aus Speicher wiederherstellen *)
+// 	(* restore old background from memory *)
 // 	FB_TN_SC_AREA_RESTORE(Xus_TN_SCREEN := Xus_TN_SCREEN);
 //
 // 	Xus_TN_SCREEN.bo_Modal_Dialog := FALSE;
@@ -12764,7 +12764,7 @@ END_FUNCTION_BLOCK
 // 	Xus_TN_INPUT_CONTROL_DATA : us_TN_INPUT_CONTROL_DATA;
 // END_VAR
 //
-// (* Benutzereingabe auswerten -> Selektion Text n *)
+// (* evaluate user input -> selection text n *)
 // IF (Xus_TN_INPUT_CONTROL_DATA.bo_Focus = TRUE) THEN
 //
 // 	by_Cur_Key := Xus_TN_INPUT_CONTROL_DATA.by_Input_Exten_Code;
@@ -12772,9 +12772,9 @@ END_FUNCTION_BLOCK
 // 	IF (us_TN_MENU_POPUP.bo_Activ = FALSE) THEN
 // 		us_TN_MENU_POPUP.by_Input_Exten_Code := BYTE#00;
 //
-// 		(* Return-Taste auswerten *)
+// 		(* evaluate return key *)
 // 		IF (by_Cur_Key = BYTE#13) THEN
-// 			(* Popup-Menu parameter übergeben *)
+// 			(* pass popup menu parameters *)
 // 			us_TN_MENU_POPUP.in_Y := Xus_TN_INPUT_CONTROL_DATA.in_Y;
 // 			us_TN_MENU_POPUP.in_X := Xus_TN_INPUT_CONTROL_DATA.in_X;
 // 			us_TN_MENU_POPUP.by_Attr_mF := Xus_TN_INPUT_CONTROL_DATA.by_Attr_mF;
@@ -12795,29 +12795,29 @@ END_FUNCTION_BLOCK
 // 		us_TN_MENU_POPUP.by_Input_Exten_Code := by_Cur_Key;
 // 	END_IF;
 //
-// 	(* Popup-Menu zyklisch aufrufen *)
+// 	(* call popup menu cyclically *)
 // 	FB_TN_INPUT_MENU_POPUP(Xus_TN_MENU_POPUP := us_TN_MENU_POPUP, Xus_TN_SCREEN := Xus_TN_SCREEN);
 //
 // END_IF;
 //
-// (* Aktualisierung der Anzeige *)
+// (* update of the display *)
 // IF (Xus_TN_INPUT_CONTROL_DATA.bo_Update_Input = TRUE) OR (Xus_TN_INPUT_CONTROL_DATA.bo_Update_All = TRUE) THEN
 //
-// 	(* Title-Text ausgeben *)
+// 	(* output title text *)
 // 	IF Xus_TN_INPUT_CONTROL_DATA.bo_Update_All = TRUE THEN
 //
 // 		IF (Xus_TN_INPUT_CONTROL_DATA.in_Title_X_Offset = INT#00) AND (Xus_TN_INPUT_CONTROL_DATA.in_Title_Y_Offset = INT#00) THEN
-// 			(* wenn Offset X,Y =0 dann Titlestring links vom Element positionieren *)
+// 			(* if offset X,Y = 0 then position the title string left of the element *)
 // 			FB_TN_SC_WRITE.Iin_Y := Xus_TN_INPUT_CONTROL_DATA.in_Y;
 // 			FB_TN_SC_WRITE.Iin_X := Xus_TN_INPUT_CONTROL_DATA.in_X - LEN(Xus_TN_INPUT_CONTROL_DATA.st_Title_String);
 //
 // 		ELSE
-// 			(* Title-Text durch Row, Color-Offset ausgeben *)
+// 			(* output title text via row, color offset *)
 // 			FB_TN_SC_WRITE.Iin_Y := Xus_TN_INPUT_CONTROL_DATA.in_Y + Xus_TN_INPUT_CONTROL_DATA.in_Title_Y_Offset;
 // 			FB_TN_SC_WRITE.Iin_X := Xus_TN_INPUT_CONTROL_DATA.in_X + Xus_TN_INPUT_CONTROL_DATA.in_Title_X_Offset;
 // 		END_IF;
 //
-// 		(* Title-Text durch Row, Color-Offset ausgeben *)
+// 		(* output title text via row, color offset *)
 // 		FB_TN_SC_WRITE(	Iby_ATTR := Xus_TN_INPUT_CONTROL_DATA.by_Title_Attr,
 // 						Ist_STRING := Xus_TN_INPUT_CONTROL_DATA.st_Title_String,
 // 						Xus_TN_SCREEN := Xus_TN_SCREEN);
@@ -12853,11 +12853,11 @@ END_FUNCTION_BLOCK
 // 								Xus_TN_SCREEN := Xus_TN_SCREEN );
 // 	END_IF;
 //
-// 	(* Cursor auf aktuelle Position setzen *)
+// 	(* set cursor to current position *)
 // 	Xus_TN_INPUT_CONTROL_DATA.in_Cursor_X := Xus_TN_INPUT_CONTROL_DATA.in_X;
 // 	Xus_TN_INPUT_CONTROL_DATA.in_Cursor_Y := Xus_TN_INPUT_CONTROL_DATA.in_Y;
 //
-// 	(* Update-Flag's rücksetzen *)
+// 	(* reset update flags *)
 // 	Xus_TN_INPUT_CONTROL_DATA.bo_Update_All   := FALSE;
 // 	Xus_TN_INPUT_CONTROL_DATA.bo_Update_Input := FALSE;
 //
@@ -12879,49 +12879,49 @@ END_FUNCTION_BLOCK
 // 	Xus_TN_INPUT_CONTROL_DATA : us_TN_INPUT_CONTROL_DATA;
 // END_VAR
 //
-// (* Benutzereingabe auswerten -> Selektion Text n *)
+// (* evaluate user input -> selection text n *)
 // IF Xus_TN_INPUT_CONTROL_DATA.bo_Focus = TRUE THEN
 //
-// (* Leertaste-Taste auswerten *)
+// (* evaluate space key *)
 // 	IF Xus_TN_INPUT_CONTROL_DATA.by_Input_ASCII_Code = BYTE#32 THEN
 // 		Xus_TN_INPUT_CONTROL_DATA.in_selected := Xus_TN_INPUT_CONTROL_DATA.in_selected + INT#01;
 // 		Xus_TN_INPUT_CONTROL_DATA.bo_Update_Input := TRUE;
 // 	END_IF;
 //
-// 	(* Return-Taste auswerten *)
+// 	(* evaluate return key *)
 // 	IF Xus_TN_INPUT_CONTROL_DATA.by_Input_Exten_Code = BYTE#13 THEN
 // 		Xus_TN_INPUT_CONTROL_DATA.bo_Input_Entered := TRUE;
 // 	END_IF;
 //
 // END_IF;
 //
-// (* Aktualisierung der Anzeige *)
+// (* update of the display *)
 // IF (Xus_TN_INPUT_CONTROL_DATA.bo_Update_Input = TRUE) OR (Xus_TN_INPUT_CONTROL_DATA.bo_Update_All = TRUE) THEN
 //
-// 	(* Title-Text ausgeben *)
+// 	(* output title text *)
 // 	IF Xus_TN_INPUT_CONTROL_DATA.bo_Update_All = TRUE THEN
 //
 // 		IF (Xus_TN_INPUT_CONTROL_DATA.in_Title_X_Offset = INT#00) AND (Xus_TN_INPUT_CONTROL_DATA.in_Title_Y_Offset = INT#00) THEN
-// 			(* wenn Offset X,Y =0 dann Titlestring links vom Element positionieren *)
+// 			(* if offset X,Y = 0 then position the title string left of the element *)
 // 			FB_TN_SC_WRITE.Iin_Y := Xus_TN_INPUT_CONTROL_DATA.in_Y;
 // 			FB_TN_SC_WRITE.Iin_X := Xus_TN_INPUT_CONTROL_DATA.in_X - LEN(Xus_TN_INPUT_CONTROL_DATA.st_Title_String);
 //
 // 		ELSE
-// 			(* Title-Text durch Row, Color-Offset ausgeben *)
+// 			(* output title text via row, color offset *)
 // 			FB_TN_SC_WRITE.Iin_Y := Xus_TN_INPUT_CONTROL_DATA.in_Y + Xus_TN_INPUT_CONTROL_DATA.in_Title_Y_Offset;
 // 			FB_TN_SC_WRITE.Iin_X := Xus_TN_INPUT_CONTROL_DATA.in_X + Xus_TN_INPUT_CONTROL_DATA.in_Title_X_Offset;
 // 		END_IF;
 //
-// 		(* Title-Text durch Row, Color-Offset ausgeben *)
+// 		(* output title text via row, color offset *)
 // 		FB_TN_SC_WRITE(	Iby_ATTR := Xus_TN_INPUT_CONTROL_DATA.by_Title_Attr,
 // 						Ist_STRING := Xus_TN_INPUT_CONTROL_DATA.st_Title_String,
 // 						Xus_TN_SCREEN := Xus_TN_SCREEN);
 //
 // 	END_IF;
 //
-// 	(* Eingabezeile verarbeiten *)
+// 	(* process input line *)
 //
-// 	(* Anzahl der Elemente bestimmen *)
+// 	(* determine number of elements *)
 // 	in_count := ELEMENT_COUNT(SEP:=BYTE#35,ELEMENT:=Xus_TN_INPUT_CONTROL_DATA.st_Input_Data);
 //
 // 	IF in_Count > INT#00 THEN
@@ -12956,11 +12956,11 @@ END_FUNCTION_BLOCK
 // 						Xus_TN_SCREEN := Xus_TN_SCREEN);
 // 	END_IF;
 //
-// 	(* Cursor auf aktuelle Position setzen *)
+// 	(* set cursor to current position *)
 // 	Xus_TN_INPUT_CONTROL_DATA.in_Cursor_Y := Xus_TN_INPUT_CONTROL_DATA.in_Y;
 // 	Xus_TN_INPUT_CONTROL_DATA.in_Cursor_X := Xus_TN_INPUT_CONTROL_DATA.in_X;
 //
-// 	(* Update-Flag's rücksetzen *)
+// 	(* reset update flags *)
 // 	Xus_TN_INPUT_CONTROL_DATA.bo_Update_All := FALSE;
 // 	Xus_TN_INPUT_CONTROL_DATA.bo_Update_Input := FALSE;
 //
@@ -12979,12 +12979,12 @@ VAR
 	REQ3 : BYTE;
 END_VAR
 
-(* Datenempfang auswertung *)
+(* evaluate data reception *)
 Xus_TN_SCREEN.by_Input_ASCII_Code := BYTE#00;
 Xus_TN_SCREEN.by_Input_Exten_Code := BYTE#00;
 
 IF R_BUF.SIZE > UINT#0 THEN
-	(* empfangene Daten auswerten *)
+	(* evaluate received data *)
 	REQ_Size := R_BUF.SIZE;
 	REQ1 := R_BUF.BUFFER[0];
 	REQ2 := R_BUF.BUFFER[1];
@@ -12992,22 +12992,22 @@ IF R_BUF.SIZE > UINT#0 THEN
 
 	IF REQ1 = BYTE#27 AND REQ_Size >= UINT#3 THEN (* Escape *)
 		IF REQ2 = BYTE#91 THEN (* Cursor code *)
-			IF (REQ3 >= BYTE#65 AND REQ3 <= BYTE#68) OR (REQ3 = BYTE#72) OR (REQ3 = BYTE#75) THEN (* 65..68 = Cursor o,u,r,l / 72 = POS1 / 75 = ENDE *)
+			IF (REQ3 >= BYTE#65 AND REQ3 <= BYTE#68) OR (REQ3 = BYTE#72) OR (REQ3 = BYTE#75) THEN (* 65..68 = cursor up,down,right,left / 72 = HOME / 75 = END *)
 				Xus_TN_SCREEN.by_Input_Exten_Code := REQ3;
 			END_IF;
-		ELSIF REQ2 = BYTE#79 THEN (* Sondertasten F1/F2/F3/F4 *)
+		ELSIF REQ2 = BYTE#79 THEN (* special keys F1/F2/F3/F4 *)
 			IF REQ3 >= BYTE#80 AND REQ3 <= BYTE#83 THEN
 				Xus_TN_SCREEN.by_Input_Exten_Code := REQ3;
 			END_IF;
 		END_IF;
 	ELSIF REQ1 >= BYTE#32 AND REQ1 <= BYTE#126 THEN
 		Xus_TN_SCREEN.by_Input_ASCII_Code := REQ1;
-		Xus_TN_SCREEN.bo_Input_ASCII_IsNum := ISC_NUM(REQ1); (* Auswertung auf Zahleneingabe *)
-	ELSIF REQ1 = BYTE#8 OR REQ1 = BYTE#9 OR REQ1 = BYTE#13 OR REQ1 = BYTE#27 THEN (* prüfe auf Steuerzeichen 8=Backspace / 9=Tabulator / 13=Return / 27=Escape *)
+		Xus_TN_SCREEN.bo_Input_ASCII_IsNum := ISC_NUM(REQ1); (* check for numeric input *)
+	ELSIF REQ1 = BYTE#8 OR REQ1 = BYTE#9 OR REQ1 = BYTE#13 OR REQ1 = BYTE#27 THEN (* check for control characters 8=Backspace / 9=Tab / 13=Return / 27=Escape *)
 		Xus_TN_SCREEN.by_Input_Exten_Code := REQ1;
 	END_IF;
 
-	(* Empfangsbuffer Datenlänge null eintragen (Telegramm zerstören *)
+	(* set receive buffer data length to zero (destroy telegram *)
 	R_BUF.SIZE := UINT#00;
 END_IF;
 END_FUNCTION_BLOCK
@@ -13031,38 +13031,38 @@ END_VAR
 
 IF TN_SC_XY2_ERROR(Iin_X1,Iin_Y1,Iin_X2,Iin_Y2) THEN RETURN; END_IF;
 
-IF Iin_Y1 < 0 OR Iin_X1 < 0 OR Iin_Y2 < 0 OR Iin_X2 < 0 THEN RETURN; END_IF; (* min werte prüfen *)
-IF Iin_Y1 > 23 OR Iin_X1 > 79 OR Iin_Y2 > 23 OR Iin_X2 > 79 THEN RETURN; END_IF; (* max werte prüfen *)
+IF Iin_Y1 < 0 OR Iin_X1 < 0 OR Iin_Y2 < 0 OR Iin_X2 < 0 THEN RETURN; END_IF; (* check min values *)
+IF Iin_Y1 > 23 OR Iin_X1 > 79 OR Iin_Y2 > 23 OR Iin_X2 > 79 THEN RETURN; END_IF; (* check max values *)
 
 in_Offset := (Iin_Y1 * 80) + Iin_X2;
 
 IF Iin_OPTION = INT#00 THEN
-	(* Schatten durch Farbanpassung erzeugen *)
+	(* create shadow by adjusting color *)
 	FOR in_Y := Iin_Y1 TO Iin_Y2 DO
 		Xus_TN_SCREEN.bya_COLOR[in_Offset] := TN_SC_SHADOW_ATTR(Xus_TN_SCREEN.bya_COLOR[in_Offset]);
 		in_Offset := in_Offset + 80;
-		Xus_TN_SCREEN.bya_Line_Update[in_Y] := TRUE; (* Zeile für Update eintragen *)
+		Xus_TN_SCREEN.bya_Line_Update[in_Y] := TRUE; (* mark line for update *)
 	END_FOR;
 ELSE
-	(* Schatten durch Farbe Schwarz und Leerzeichen erzeugen *)
+	(* create shadow with black color and spaces *)
 	FOR in_Y := Iin_Y1 TO Iin_Y2 DO
 		Xus_TN_SCREEN.bya_COLOR[in_Offset] := BYTE#00;
 		Xus_TN_SCREEN.bya_CHAR[in_Offset] := BYTE#32;
 		in_Offset := in_Offset + 80;
-		Xus_TN_SCREEN.bya_Line_Update[in_Y] := TRUE; (* Zeile für Update eintragen *)
+		Xus_TN_SCREEN.bya_Line_Update[in_Y] := TRUE; (* mark line for update *)
 	END_FOR;
 END_IF;
 
 in_Offset := (Iin_Y2 * 80) + Iin_X1;
 
 IF Iin_OPTION = INT#00 THEN
-	(* Schatten durch Farbanpassung erzeugen *)
+	(* create shadow by adjusting color *)
 	FOR in_X  := Iin_X1 TO Iin_X2 DO
 		Xus_TN_SCREEN.bya_COLOR[in_Offset] := TN_SC_SHADOW_ATTR(Xus_TN_SCREEN.bya_COLOR[in_Offset]);
 		in_Offset := in_Offset + 1;
 	END_FOR;
 ELSE
-	(* Schatten durch Farbe Schwarz und Leerzeichen erzeugen *)
+	(* create shadow with black color and spaces *)
 	FOR in_X  := Iin_X1 TO Iin_X2 DO
 		Xus_TN_SCREEN.bya_COLOR[in_Offset] := BYTE#00;
 		Xus_TN_SCREEN.bya_CHAR[in_Offset] := BYTE#32;
@@ -13088,7 +13088,7 @@ END_VAR
 
 IF Xus_TN_SCREEN.bya_BACKUP[0] > BYTE#00 THEN
 
-	(* Parameter auslesen *)
+	(* read parameters *)
 	in_X1 := BYTE_TO_INT(Xus_TN_SCREEN.bya_BACKUP[1]);
 	in_Y1 := BYTE_TO_INT(Xus_TN_SCREEN.bya_BACKUP[2]);
 	in_X2 := BYTE_TO_INT(Xus_TN_SCREEN.bya_BACKUP[3]);
@@ -13097,10 +13097,10 @@ IF Xus_TN_SCREEN.bya_BACKUP[0] > BYTE#00 THEN
 	IF TN_SC_XY2_ERROR(in_X1,in_Y1,in_X2,in_Y2) THEN RETURN; END_IF;
 	in_Offset_2 := 5;
 
-	(* CHAR und COLOR von BUFFER wiederherstellen *)
+	(* restore CHAR and COLOR from BUFFER *)
 	FOR in_Y := in_Y1 TO in_Y2 DO
 
-		Xus_TN_SCREEN.bya_Line_Update[in_Y] := TRUE; (* Zeile zum Updaten freigeben *)
+		Xus_TN_SCREEN.bya_Line_Update[in_Y] := TRUE; (* release line for update *)
 		in_Offset_1 := (in_Y * 80) + in_X1;
 
 		FOR in_X := in_X1 TO in_X2 DO
@@ -13115,7 +13115,7 @@ IF Xus_TN_SCREEN.bya_BACKUP[0] > BYTE#00 THEN
 		END_FOR;
 	END_FOR;
 
-	(* Daten als ungültig markieren *)
+	(* mark data as invalid *)
 	Xus_TN_SCREEN.bya_BACKUP[0] := BYTE#00;
 END_IF;
 END_FUNCTION_BLOCK
@@ -13139,7 +13139,7 @@ END_VAR
 
 IF TN_SC_XY2_ERROR(Iin_X1,Iin_Y1,Iin_X2,Iin_Y2) THEN RETURN; END_IF;
 
-(* Parameter ablegen *)
+(* store parameters *)
 Xus_TN_SCREEN.bya_BACKUP[0] := BYTE#1;
 Xus_TN_SCREEN.bya_BACKUP[1] := INT_TO_BYTE(Iin_X1);
 Xus_TN_SCREEN.bya_BACKUP[2] := INT_TO_BYTE(Iin_Y1);
@@ -13147,7 +13147,7 @@ Xus_TN_SCREEN.bya_BACKUP[3] := INT_TO_BYTE(Iin_X2);
 Xus_TN_SCREEN.bya_BACKUP[4] := INT_TO_BYTE(Iin_Y2);
 
 in_Offset_2 := 5;
-(* CHAR und COLOR in BUFFER sichern *)
+(* save CHAR and COLOR in BUFFER *)
 FOR in_Y := Iin_Y1 TO Iin_Y2 DO
 
 	in_Offset_1 := (in_Y * 80) + Iin_X1;
@@ -13193,19 +13193,19 @@ END_VAR
 
 IF TN_SC_XY2_ERROR(Iin_X1,Iin_Y1,Iin_X2,Iin_Y2) THEN RETURN; END_IF;
 
-(* Bordertype bestimmen *)
+(* determine border type *)
 CASE Iin_Border OF
 0:
 	in_Border_Offset := 0;
 1:
-	by_BorderChar_L_T := BYTE#218; (* links oben *)
-	by_BorderChar_T := BYTE#196; (* oben *)
-	by_BorderChar_R_T := BYTE#191; (* rechts oben *)
-	by_BorderChar_L := BYTE#179; (* links *)
-	by_BorderChar_R := BYTE#179; (* rechts *)
-	by_BorderChar_B := BYTE#196; (* unten *)
-	by_BorderChar_L_B := BYTE#217; (* links unten *)
-	by_BorderChar_R_B := BYTE#192; (* rechts unten *)
+	by_BorderChar_L_T := BYTE#218; (* top left *)
+	by_BorderChar_T := BYTE#196; (* top *)
+	by_BorderChar_R_T := BYTE#191; (* top right *)
+	by_BorderChar_L := BYTE#179; (* left *)
+	by_BorderChar_R := BYTE#179; (* right *)
+	by_BorderChar_B := BYTE#196; (* bottom *)
+	by_BorderChar_L_B := BYTE#217; (* bottom left *)
+	by_BorderChar_R_B := BYTE#192; (* bottom right *)
 	in_Border_Offset := 1;
  2:
 	by_BorderChar_L_T := BYTE#201;
@@ -13230,9 +13230,9 @@ ELSE
 
 END_CASE;
 
-IF Iby_FILL > BYTE#0 THEN (* FILL Zeichen vorhanden ? -> Box zeichnen *)
+IF Iby_FILL > BYTE#0 THEN (* FILL character present? -> draw box *)
 
-	(* Fill-Function um eine Zeichenreihe kleiner zeichnen *)
+	(* draw fill function one character row smaller *)
 	FB_TN_SC_FILL(	Iin_Y1 := Iin_Y1 + in_Border_Offset,
 					Iin_X1 := Iin_X1 + in_Border_Offset,
 					Iin_Y2 := Iin_Y2 - in_Border_Offset,
@@ -13244,14 +13244,14 @@ END_IF;
 
 IF Iin_BORDER = 0 THEN RETURN; END_IF;
 
-(* linken und rechten Rand ausgeben *)
+(* output left and right border *)
 
 in_Offset_1 := (Iin_Y1 * 80) + Iin_X1;
 in_Offset_2 := (Iin_Y1 * 80) + Iin_X2;
 
 FOR in_Y := Iin_Y1 TO Iin_Y2 DO
 
-	(* Zeile zum Updaten freigeben *)
+	(* release line for update *)
 	Xus_TN_SCREEN.bya_Line_Update[in_Y] := TRUE;
 
 	Xus_TN_SCREEN.bya_CHAR[in_Offset_1] := by_BorderChar_L;
@@ -13265,7 +13265,7 @@ FOR in_Y := Iin_Y1 TO Iin_Y2 DO
 
 END_FOR;
 
-(* unteren und oberen Rand ausgeben *)
+(* output bottom and top border *)
 in_Offset_1 := (Iin_Y1 * 80) + Iin_X1;
 in_Offset_2 := (Iin_Y2 * 80) + Iin_X1;
 
@@ -13282,22 +13282,22 @@ FOR in_X := Iin_X1 TO Iin_X2 DO
 
 END_FOR;
 
-(* linke obere Ecke ausgeben *)
+(* output top left corner *)
 in_Offset_1 := (Iin_Y1 * 80) + Iin_X1;
 Xus_TN_SCREEN.bya_CHAR[in_Offset_1] := by_BorderChar_L_T;
 Xus_TN_SCREEN.bya_COLOR[in_Offset_1] := Iby_Attr;
 
-(* rechte obere Ecke ausgeben *)
+(* output top right corner *)
 in_Offset_1 := (Iin_Y1 * 80) + Iin_X2;
 Xus_TN_SCREEN.bya_CHAR[in_Offset_1] := by_BorderChar_R_T;
 Xus_TN_SCREEN.bya_COLOR[in_Offset_1] := Iby_Attr;
 
-(* linke untere Ecke ausgeben *)
+(* output bottom left corner *)
 in_Offset_1 := (Iin_Y2 * 80) + Iin_X1;
 Xus_TN_SCREEN.bya_CHAR[in_Offset_1] := by_BorderChar_R_B;
 Xus_TN_SCREEN.bya_COLOR[in_Offset_1] := Iby_Attr;
 
-(* rechte untere Ecke ausgeben *)
+(* output bottom right corner *)
 in_Offset_1 := (Iin_Y2 * 80) + Iin_X2;
 Xus_TN_SCREEN.bya_CHAR[in_Offset_1] := by_BorderChar_L_B;
 Xus_TN_SCREEN.bya_COLOR[in_Offset_1] := Iby_Attr;
@@ -13324,11 +13324,11 @@ END_VAR
 IF TN_SC_XY2_ERROR(Iin_X1,Iin_Y1,Iin_X2,Iin_Y2) THEN RETURN; END_IF;
 
 FOR in_Y := Iin_Y1 TO Iin_Y2 DO
-	Xus_TN_SCREEN.bya_Line_Update[in_Y] := TRUE; (* Zeile zum Updaten freigeben *)
+	Xus_TN_SCREEN.bya_Line_Update[in_Y] := TRUE; (* release line for update *)
 	in_Offset := (in_Y * 80) + Iin_X1;
 	FOR in_X := Iin_X1 TO Iin_X2 DO
-		Xus_TN_SCREEN.bya_CHAR[in_Offset]  := Iby_CHAR; (* Zeichen eintragen *)
-		Xus_TN_SCREEN.bya_COLOR[in_Offset] := Iby_Attr; (* Farbe eintragen *)
+		Xus_TN_SCREEN.bya_CHAR[in_Offset]  := Iby_CHAR; (* enter character *)
+		Xus_TN_SCREEN.bya_COLOR[in_Offset] := Iby_Attr; (* enter color *)
 		in_Offset := in_Offset + 1;
 	END_FOR;
 END_FOR;
@@ -13363,7 +13363,7 @@ END_VAR
 
 IF TN_SC_XY2_ERROR(Iin_X1,Iin_Y1,Iin_X2,Iin_Y2) THEN RETURN; END_IF;
 
-(* Bordertype bestimmen *)
+(* determine border type *)
 IF Iby_Border = BYTE#01 THEN (* Single Line *)
 	by_Connect_Top_Char := BYTE#16#C2;
 	by_Connect_Bottom_Char := BYTE#16#C1;
@@ -13372,7 +13372,7 @@ IF Iby_Border = BYTE#01 THEN (* Single Line *)
 	by_Horzontal_Line_Char := BYTE#16#C4;
 	by_Vertikal_Line_Char := BYTE#16#B3;
 	by_Connect_Cruz_Char := BYTE#16#C5;
-ELSIF Iby_Border = BYTE#02 THEN	(* Double Linie *)
+ELSIF Iby_Border = BYTE#02 THEN	(* double line *)
 	by_Connect_Top_Char := BYTE#16#CB;
 	by_Connect_Bottom_Char := BYTE#16#CA;
 	by_Connect_Left_Char := BYTE#16#CC;
@@ -13380,7 +13380,7 @@ ELSIF Iby_Border = BYTE#02 THEN	(* Double Linie *)
 	by_Horzontal_Line_Char := BYTE#16#CD;
 	by_Vertikal_Line_Char := BYTE#16#BA;
 	by_Connect_Cruz_Char := BYTE#16#CE;
-ELSE (* Full Linie *)
+ELSE (* full line *)
 	by_Connect_Top_Char := Iby_Border;
 	by_Connect_Bottom_Char := Iby_Border;
 	by_Connect_Left_Char := Iby_Border;
@@ -13390,39 +13390,39 @@ ELSE (* Full Linie *)
 	by_Connect_Cruz_Char := Iby_Border;
 END_IF;
 
-(* Vertikale Linie zeichnen *)
+(* draw vertical line *)
 IF Iin_X1 = Iin_X2 THEN
 	in_Offset_1 := (Iin_Y1 * 80) + Iin_X1;
 	FOR in_ROW_Index := Iin_Y1 TO Iin_Y2 DO
-		by_old_Char := Xus_TN_SCREEN.bya_CHAR[in_Offset_1]; (* bestehendes Zeichen auslesen *)
-		by_Char := by_Vertikal_Line_Char; (* Standardzeichen vorbelegen *)
-		IF by_old_Char = by_Horzontal_Line_Char THEN (* Schnittpunkt erkannt *)
-			IF in_ROW_Index = Iin_Y1 THEN (* Anfang der Linie behandeln *)
+		by_old_Char := Xus_TN_SCREEN.bya_CHAR[in_Offset_1]; (* read existing character *)
+		by_Char := by_Vertikal_Line_Char; (* preset default characters *)
+		IF by_old_Char = by_Horzontal_Line_Char THEN (* intersection detected *)
+			IF in_ROW_Index = Iin_Y1 THEN (* handle start of line *)
 				by_Char := by_Connect_Top_Char;
-			ELSIF in_ROW_Index = Iin_Y2 THEN (* Ende der Linie behandeln *)
+			ELSIF in_ROW_Index = Iin_Y2 THEN (* handle end of line *)
 				by_Char := by_Connect_Bottom_Char;
-			ELSE (* Kreuzungspunkt behandeln *)
+			ELSE (* handle crossing point *)
 				by_Char := by_Connect_Cruz_Char;
 			END_IF;
 		END_IF;
-		Xus_TN_SCREEN.bya_Line_Update[in_ROW_Index] := TRUE; (* Zeile zum Updaten freigeben *)
+		Xus_TN_SCREEN.bya_Line_Update[in_ROW_Index] := TRUE; (* release line for update *)
 		Xus_TN_SCREEN.bya_CHAR[in_Offset_1] := by_Char;
 		Xus_TN_SCREEN.bya_COLOR[in_Offset_1] := Iby_Attr;
 		in_Offset_1 := in_Offset_1 + 80;
 	END_FOR;
 
-ELSIF Iin_Y1 = Iin_Y2 THEN (* Horzontale Linie zeichnen *)
-	Xus_TN_SCREEN.bya_Line_Update[Iin_Y1] := TRUE; (* Zeile zum Updaten freigeben *)
+ELSIF Iin_Y1 = Iin_Y2 THEN (* draw horizontal line *)
+	Xus_TN_SCREEN.bya_Line_Update[Iin_Y1] := TRUE; (* release line for update *)
 	in_Offset_1 := (Iin_Y1 * 80) + Iin_X1;
 	FOR in_COL_Index := Iin_X1 TO Iin_X2 DO
-		by_old_Char := Xus_TN_SCREEN.bya_CHAR[in_Offset_1]; (* bestehendes Zeichen auslesen *)
-		by_Char := by_Horzontal_Line_Char; (* Standardzeichen vorbelegen *)
-		IF by_old_Char = by_Vertikal_Line_Char THEN (* Schnittpunkt erkannt *)
-			IF in_COL_Index = Iin_X1 THEN (* Anfang der Linie behandeln *)
+		by_old_Char := Xus_TN_SCREEN.bya_CHAR[in_Offset_1]; (* read existing character *)
+		by_Char := by_Horzontal_Line_Char; (* preset default characters *)
+		IF by_old_Char = by_Vertikal_Line_Char THEN (* intersection detected *)
+			IF in_COL_Index = Iin_X1 THEN (* handle start of line *)
 				by_Char := by_Connect_Left_Char;
-			ELSIF in_COL_Index = Iin_X2 THEN (* Ende der Linie behandeln *)
+			ELSIF in_COL_Index = Iin_X2 THEN (* handle end of line *)
 				by_Char := by_Connect_Right_Char;
-			ELSE (* Kreuzungspunkt behandeln *)
+			ELSE (* handle crossing point *)
 				by_Char := by_Connect_Cruz_Char;
 			END_IF;
 		END_IF;
@@ -13450,7 +13450,7 @@ END_VAR
 
 IF TN_SC_XY_ERROR(Iin_X,Iin_Y) THEN RETURN; END_IF;
 in_Offset := (Iin_Y * 80) + Iin_X;
-Oby_ATTR := Xus_TN_SCREEN.bya_COLOR[in_Offset]; (* Attribute auslesen *)
+Oby_ATTR := Xus_TN_SCREEN.bya_COLOR[in_Offset]; (* read attributes *)
 END_FUNCTION_BLOCK
 
 FUNCTION_BLOCK TN_SC_READ_CHAR
@@ -13470,7 +13470,7 @@ END_VAR
 
 IF TN_SC_XY_ERROR(Iin_X,Iin_Y) THEN RETURN; END_IF;
 in_Offset := (Iin_Y * 80) + Iin_X;
-Oby_CHAR := Xus_TN_SCREEN.bya_CHAR[in_Offset]; (* Charakter auslesen *)
+Oby_CHAR := Xus_TN_SCREEN.bya_CHAR[in_Offset]; (* read character *)
 END_FUNCTION_BLOCK
 
 FUNCTION TN_SC_SHADOW_ATTR : BYTE
@@ -13478,8 +13478,8 @@ VAR_INPUT
 	Iby_ATTR : BYTE;
 END_VAR
 
-(* Background Farbe auf Schwarz ändern      *)
-(* und dunkle Fordergrundfarben einschalten *)
+(* change background color to black      *)
+(* and switch on dark foreground colors *)
 TN_SC_SHADOW_ATTR := ((Iby_ATTR AND BYTE#2#11110000) OR BYTE#2#00001000);
 END_FUNCTION
 
@@ -13509,13 +13509,13 @@ END_FUNCTION
 // 	Iti_TIME : TIME;
 // END_VAR
 //
-// (* LOG-Messages ausgeben *)
+// (* output LOG messages *)
 //
-// IF Xus_LOG_VIEWPORT.UPDATE AND FB_TON.Q THEN (* Update gewünscht und Verzögerungszeit abgelaufen *)
+// IF Xus_LOG_VIEWPORT.UPDATE AND FB_TON.Q THEN (* update requested and delay time elapsed *)
 // 	Xus_LOG_VIEWPORT.UPDATE := FALSE;
-// 	FOR in_count := 1 TO Xus_LOG_VIEWPORT.COUNT DO (* Alle Viewport-Zeilen abarbeiten *)
+// 	FOR in_count := 1 TO Xus_LOG_VIEWPORT.COUNT DO (* process all viewport lines *)
 // 		in_index := Xus_LOG_VIEWPORT.LINE_ARRAY[in_count];
-// 		(* Farbe aus den Option-Parameter auslesen >0,Level,Back,Front< *)
+// 		(* read color from the option parameter >0,Level,Back,Front< *)
 // 		in_Color := DWORD_TO_INT(Xus_LOG_CONTROL.MSG_OPTION[in_index] AND DWORD#2#1111);
 //
 // 		CASE in_Color OF
@@ -13525,23 +13525,23 @@ END_FUNCTION
 // 			by_Attr := BYTE_OF_DWORD(Idw_ATTR_1,BYTE#0);
 // 		END_CASE;
 //
-// 		(* Message (Text + Farbe) ausgeben *)
+// 		(* output message (text + color) *)
 // 		FB_TN_SC_WRITE(	Iin_Y := Iin_Y + in_count - INT#01,
 // 						Iin_X := Iin_X,
 // 						Iby_ATTR := by_Attr,
-// 						Ist_STRING := FIX(str := Xus_LOG_CONTROL.MSG[in_index], L := Iin_Width, C := BYTE#32, M := INT#00), (* String rechts ergänzen bzw. kürzen *)
+// 						Ist_STRING := FIX(str := Xus_LOG_CONTROL.MSG[in_index], L := Iin_Width, C := BYTE#32, M := INT#00), (* pad or truncate string on the right *)
 // 						Xus_TN_SCREEN := Xus_TN_SCREEN);
 //
 // 	END_FOR;
 //
-// 	(* Timer stoppen/rücksetzen *)
+// 	(* stop/reset timer *)
 // 	FB_TON.IN := FALSE;
 // 	FB_TON.PT := Iti_TIME;
 // 	FB_TON();
 //
 // END_IF;
 //
-// (* Update-Zeitverzoegerung *)
+// (* update time delay *)
 // FB_TON.IN := TRUE;
 // FB_TON.PT := Iti_TIME;
 // FB_TON();
@@ -13567,18 +13567,18 @@ END_FUNCTION
 //
 // in_String_Length := LEN(Ist_STRING);
 // IF TN_SC_XY_ERROR(Iin_X + in_String_Length - 1,Iin_Y) THEN RETURN; END_IF;
-// Xus_TN_SCREEN.bya_Line_Update[Iin_Y] := TRUE; (* Zeile zum Updaten freigeben *)
-// in_Offset := (Iin_Y * 80) + Iin_X; (* Offset des ersten Zeichen berechnen *)
+// Xus_TN_SCREEN.bya_Line_Update[Iin_Y] := TRUE; (* release line for update *)
+// in_Offset := (Iin_Y * 80) + Iin_X; (* calculate offset of the first character *)
 // bo_Color := Iby_ATTR <> BYTE#00;
 //
-// (* Zeichen und Attribute des String kopieren *)
+// (* copy characters and attributes of the string *)
 // FOR in_Char_Index := 1 TO in_String_Length DO
 // 	IF bo_Color THEN Xus_TN_SCREEN.bya_COLOR[in_Offset] := Iby_ATTR; END_IF;
 // 	Xus_TN_SCREEN.bya_CHAR[in_Offset] := CODE(STR:=Ist_STRING,POS:=in_Char_Index);
 // 	in_Offset := in_Offset + INT#1;
 // END_FOR;
 //
-// Xus_TN_SCREEN.in_EOS_Offset := in_Offset; (* End of String Offset sichern *)
+// Xus_TN_SCREEN.in_EOS_Offset := in_Offset; (* save end of string offset *)
 // END_FUNCTION_BLOCK
 
 FUNCTION_BLOCK TN_SC_WRITE_ATTR
@@ -13596,7 +13596,7 @@ END_VAR
 
 IF TN_SC_XY_ERROR(Iin_X,Iin_Y) THEN RETURN; END_IF;
 in_Offset := (Iin_Y * 80) + Iin_X;
-Xus_TN_SCREEN.bya_COLOR[in_Offset] := Iby_ATTR; (* Attribute schreiben *)
+Xus_TN_SCREEN.bya_COLOR[in_Offset] := Iby_ATTR; (* write attributes *)
 END_FUNCTION_BLOCK
 
 // Commented out for beedance: it uses TN_SC_WRITE, which is commented out.
@@ -13616,7 +13616,7 @@ END_FUNCTION_BLOCK
 // 	Xus_TN_SCREEN : us_TN_SCREEN;
 // END_VAR
 //
-// (* Text ausgeben *)
+// (* output text *)
 // FB_TN_SC_WRITE( Iin_Y := Iin_Y,
 // 				Iin_X := Iin_X,
 // 				Iby_ATTR := Iby_ATTR,
@@ -13639,7 +13639,7 @@ END_VAR
 
 IF TN_SC_XY_ERROR(Iin_X,Iin_Y) THEN RETURN; END_IF;
 in_Offset := (Iin_Y * 80) + Iin_X;
-Xus_TN_SCREEN.bya_CHAR[in_Offset] := Iby_CHAR; (* Charakter schreiben *)
+Xus_TN_SCREEN.bya_CHAR[in_Offset] := Iby_CHAR; (* write character *)
 END_FUNCTION_BLOCK
 
 FUNCTION_BLOCK TN_SC_WRITE_EOS
@@ -13654,8 +13654,8 @@ VAR_IN_OUT
 	Xus_TN_SCREEN : us_TN_SCREEN;
 END_VAR
 
-TN_SC_WRITE(Iin_Y := Xus_TN_SCREEN.in_EOS_Offset / 80, (* aktuelle Zeile ausrechnen *)
-			Iin_X := Xus_TN_SCREEN.in_EOS_Offset MOD 80, (* aktuelle Spalte ausrechnen *)
+TN_SC_WRITE(Iin_Y := Xus_TN_SCREEN.in_EOS_Offset / 80, (* calculate current line *)
+			Iin_X := Xus_TN_SCREEN.in_EOS_Offset MOD 80, (* calculate current column *)
 			Iby_ATTR := Iby_ATTR,
 			Ist_STRING := Ist_STRING,
 			Xus_TN_SCREEN := Xus_TN_SCREEN);
@@ -13669,7 +13669,7 @@ VAR_INPUT
 	Y2 : INT;
 END_VAR
 
-(* min und max werte prüfen *)
+(* check min and max values *)
 TN_SC_XY2_ERROR := Y1 < 0 OR X1 < 0 OR Y2 < 0 OR X2 < 0 OR Y1 > 23 OR X1 > 79 OR Y2 > 23 OR X2 > 79;
 END_FUNCTION
 
@@ -13679,7 +13679,7 @@ VAR_INPUT
 	Y : INT;
 END_VAR
 
-(* min und max werte prüfen *)
+(* check min and max values *)
 TN_SC_XY_ERROR := Y < 0 OR X < 0 OR Y > 23 OR X > 79;
 END_FUNCTION
 
@@ -13693,7 +13693,7 @@ VAR_INPUT
 	S_BUF_SIZE : INT;
 END_VAR
 VAR
-	in_Line_Count : INT;(*Zähler um max alle 24 Zeilen zu durchlaufen*)
+	in_Line_Count : INT;(*counter to run through at most all 24 lines*)
 	in_Col_Count : INT;
 	in_Last_Row_Index : INT;
 	bo_Break_Loop : BOOL;
@@ -13706,24 +13706,24 @@ VAR
 	in_Write_Stop : INT;
 END_VAR
 
-(* Verbindung vorhanden und kein Datensenden aktiv *)
+(* connection present and no data sending active *)
 IF (IP_C.C_STATE < BYTE#127 OR S_BUF.SIZE > UINT#0) THEN
-	RETURN; (* nein -> Baustein beenden *)
+	RETURN; (* no -> exit block *)
 END_IF;
 
-(* aktuellen Schreibindex laden *)
+(* load current write index *)
 in_Write_Index := UINT_TO_INT(S_BUF.SIZE) - 1;
 
-(* aktuellen Schreibindex zwischenspeichern *)
+(* buffer current write index *)
 in_Write_Index_Backup := in_Write_Index;
 
-(* positive Flanke Connect on *)
+(* rising edge connect on *)
 IF (IP_C.C_STATE = BYTE#254) OR (Xus_TN_SCREEN.bo_Clear_Screen) THEN
 
-	(* Clear-Screen Meldung rücksetzen *)
+	(* reset clear-screen message *)
 	Xus_TN_SCREEN.bo_Clear_Screen := FALSE;
 
-	(* alle Zeilen für Update markieren *)
+	(* mark all lines for update *)
 	FOR in_Line_Count := INT#00 TO INT#23 DO
 		Xus_TN_SCREEN.bya_Line_Update[in_Line_Count] := TRUE;
 	END_FOR;
@@ -13740,7 +13740,7 @@ IF (IP_C.C_STATE = BYTE#254) OR (Xus_TN_SCREEN.bo_Clear_Screen) THEN
 	in_Write_Index := in_Write_Index + INT#1;
 	S_BUF.BUFFER[in_Write_Index] := BYTE#16#33; (* 3 *)
 
-	(* Einerstelle Farbe Foreground ausgeben *)
+	(* output ones digit of foreground color *)
 	in_Write_Index := in_Write_Index + INT#1;
 	S_BUF.BUFFER[in_Write_Index] := (SHR(Xus_TN_SCREEN.by_Clear_Screen_Attr,4) OR BYTE#16#30);
 
@@ -13749,7 +13749,7 @@ IF (IP_C.C_STATE = BYTE#254) OR (Xus_TN_SCREEN.bo_Clear_Screen) THEN
 	in_Write_Index := in_Write_Index + INT#1;
 	S_BUF.BUFFER[in_Write_Index] := BYTE#16#34; (* 4 *)
 
-	(* Einerstelle Farbe Background ausgeben *)
+	(* output ones digit of background color *)
 	in_Write_Index := in_Write_Index + INT#1;
 	S_BUF.BUFFER[in_Write_Index] := ((Xus_TN_SCREEN.by_Clear_Screen_Attr AND BYTE#16#07) OR BYTE#16#30);
 
@@ -13784,26 +13784,26 @@ in_Last_Row_Index := INT#0;
 bo_Break_Loop := FALSE;
 in_Write_Stop := S_BUF_SIZE - 20;
 
-(* alle Zeilen durchlaufen *)
+(* run through all lines *)
 FOR in_Line_Count := 0 TO 23 DO
 
 	in_Offset := in_Row_Count * INT#80;
 
-	(* prüfen ob Update einer Zeile notwendig ist bzw. nach Reconnect *)
+	(* check whether an update of a line is necessary, or after reconnect *)
 	IF (Xus_TN_SCREEN.bya_Line_Update[in_Row_Count] = TRUE) THEN
 
-		(* Schreib-Cursor positionieren *)
+		(* position write cursor *)
 		in_Write_Index := in_Write_Index + INT#1;
 		S_BUF.BUFFER[in_Write_Index] := BYTE#16#1B; (* ESC *)
 		in_Write_Index := in_Write_Index + INT#1;
 		S_BUF.BUFFER[in_Write_Index] := BYTE#16#5B; (* [ *)
 
-		(* Zehnerstelle Zeilennummer ausgeben *)
+		(* output tens digit of line number *)
 		in_Write_Index := in_Write_Index + INT#1;
 		S_BUF.BUFFER[in_Write_Index] :=
 		SHR(INT_TO_BCDC(in_Row_Count + INT#1),INT#4) OR BYTE#16#30;
 
-		(* Einerstelle Zeilennummer ausgeben *)
+		(* output ones digit of line number *)
 		in_Write_Index := in_Write_Index + INT#1;
 		S_BUF.BUFFER[in_Write_Index] :=
 		(INT_TO_BCDC(in_Row_Count + INT#1) AND BYTE#16#0F) OR BYTE#16#30;
@@ -13815,21 +13815,21 @@ FOR in_Line_Count := 0 TO 23 DO
 		in_Write_Index := in_Write_Index + INT#1;
 		S_BUF.BUFFER[in_Write_Index] := BYTE#16#48; (* H *)
 
-		(* alle Spalten einer Zeile durchlaufen *)
+		(* run through all columns of a line *)
 		FOR in_Col_Count := 0 TO 79 DO
 
-			(* aktuelle Farbe bestimmen *)
+			(* determine current color *)
 			by_Cur_Color := Xus_TN_SCREEN.bya_COLOR[in_Offset];
 			IF (by_Cur_Color <> by_last_Color) OR (in_Col_Count = INT#00) THEN
 
-				(* Farbeinstellung: ANSI-Sequenz ESC[X;Y;Zm ausgeben *)
+				(* color setting: output ANSI sequence ESC[X;Y;Zm *)
 				in_Write_Index := in_Write_Index + INT#1;
 				S_BUF.BUFFER[in_Write_Index] := BYTE#16#1B; (* ESC *)
 
 				in_Write_Index := in_Write_Index + INT#1;
 				S_BUF.BUFFER[in_Write_Index] := BYTE#16#5B; (* [ *)
 
-				(* Farbeinstellung: dunkel oder Hell und blinken bestimmen *)
+				(* color setting: determine dark or bright and blinking *)
 
 					IF (((by_Cur_Color AND BYTE#2#10001000) XOR (by_last_Color AND BYTE#2#10001000)) <> BYTE#00) OR (in_Col_Count = 0) THEN
 
@@ -13838,10 +13838,10 @@ FOR in_Line_Count := 0 TO 23 DO
 						in_Write_Index := in_Write_Index + INT#1;
 						S_BUF.BUFFER[in_Write_Index] := BYTE#16#3B; (* ; *)
 
-						(* keine dunklen Farben gewünscht -> dann Bold & Bright *)
+						(* no dark colors wanted -> then bold & bright *)
 						IF (by_Cur_Color AND BYTE#2#00001000) = BYTE#2#00000000 THEN
 
-							(* auf Bold & Btight Farben umstellen *)
+							(* switch to bold & bright colors *)
 							in_Write_Index := in_Write_Index + INT#1;
 							S_BUF.BUFFER[in_Write_Index] := BYTE#16#31; (* 1 *)
 							in_Write_Index := in_Write_Index + INT#1;
@@ -13849,10 +13849,10 @@ FOR in_Line_Count := 0 TO 23 DO
 
 						END_IF;
 
-						(* blinkenden Farben gewünscht *)
+						(* blinking colors wanted *)
 						IF (by_Cur_Color AND BYTE#2#10000000) = BYTE#2#10000000 THEN
 
-							(* auf Bold & Bright Farben umstellen *)
+							(* switch to bold & bright colors *)
 							in_Write_Index := in_Write_Index + INT#1;
 							S_BUF.BUFFER[in_Write_Index] := BYTE#16#35; (* 5 *)
 							in_Write_Index := in_Write_Index + INT#1;
@@ -13862,34 +13862,34 @@ FOR in_Line_Count := 0 TO 23 DO
 
 					END_IF;
 
-					(* Zehnerstelle Farbe Foreground ausgeben *)
+					(* output tens digit of foreground color *)
 					in_Write_Index := in_Write_Index + INT#1;
 					S_BUF.BUFFER[in_Write_Index] := BYTE#16#33; (* 3 *)
 
-					(* Einerstelle Farbe Foreground ausgeben *)
+					(* output ones digit of foreground color *)
 					in_Write_Index := in_Write_Index + INT#1;
 					S_BUF.BUFFER[in_Write_Index] := ((SHR(by_Cur_Color,4) AND BYTE#2#00000111) OR BYTE#16#30);
 
 					in_Write_Index := in_Write_Index + INT#1;
 					S_BUF.BUFFER[in_Write_Index] := BYTE#16#3B; (* ; *)
 
-					(* Zehnerstelle Farbe Background ausgeben *)
+					(* output tens digit of background color *)
 					in_Write_Index := in_Write_Index + INT#1;
 					S_BUF.BUFFER[in_Write_Index] := BYTE#16#34; (* 4 *)
 
-					(* Einerstelle Farbe Background ausgeben *)
+					(* output ones digit of background color *)
 					in_Write_Index := in_Write_Index + INT#1;
 					S_BUF.BUFFER[in_Write_Index] := ((by_Cur_Color AND BYTE#2#00000111) OR BYTE#16#30);
 
 					in_Write_Index := in_Write_Index + INT#1;
 					S_BUF.BUFFER[in_Write_Index] := BYTE#16#6D; (* m *)
 
-					(* neue Farbe als letzt verwendete speichern *)
+					(* store new color as last used *)
 					by_last_Color := by_Cur_Color;
 
 				END_IF;
 
-				(* Buffer Ende vorzeitig erreicht -> Ende *)
+				(* end of buffer reached early -> end *)
 				IF (in_Write_Index > in_Write_Stop) THEN
 
 					bo_Break_Loop := TRUE;
@@ -13897,32 +13897,32 @@ FOR in_Line_Count := 0 TO 23 DO
 
 				END_IF;
 
-				(* ein TEXT-Zeichen von Screenbuffer in den Sendebuffer übertragen *)
+				(* transfer one TEXT character from the screen buffer to the send buffer *)
 				in_Write_Index := in_Write_Index + INT#1;
 				S_BUF.BUFFER[in_Write_Index] := Xus_TN_SCREEN.bya_CHAR[in_Offset];
 
-				(* nächste Spalte anwählen *)
+				(* select next column *)
 				in_Offset := in_Offset + INT#01;
 			END_FOR;
 
 			IF (bo_Break_Loop = TRUE) THEN;
 
-				(* Buffer Ende vorzeitig erreicht -> nur bis zur letzten kompletten Zeile uebertragen *)
+				(* end of buffer reached early -> transfer only up to the last complete line *)
 				in_Write_Index := in_Last_Row_Index;
 
 				EXIT;
 			END_IF;
 
-			(* Buffer ist noch nicht voll -> neue Zeile ubernehmen *)
+			(* buffer is not full yet -> take new line *)
 			in_Last_Row_Index := in_Write_Index;
 			Xus_TN_SCREEN.bya_Line_Update[in_Row_Count] := FALSE;
 
 		END_IF;
 
-		(* naechste Zeile adressieren *)
+		(* address next line *)
 		in_Row_Count := in_Row_Count + INT#01;
 
-		(* ab letzter Zeile wieder von vorne beginnen *)
+		(* after the last line start again from the beginning *)
 		IF (in_Row_Count > INT#23) THEN
 			in_Row_Count := INT#00;
 		END_IF;
@@ -13930,15 +13930,15 @@ FOR in_Line_Count := 0 TO 23 DO
 
 	END_FOR;
 
-	(* wenn in einen Update-Zyklus alle Zeilen auf einmal geschafft wurden *)
-	(* wird der Row_Count auf ersten Zeile gestellt *)
-	(* soll das hässliche Grafikflackern verhindern *)
-	(* ansonsten wird bei der letzen Zeile weitergemacht *)
+	(* if all lines were done at once in one update cycle *)
+	(* Row_Count is set to the first line *)
+	(* meant to prevent ugly graphics flicker *)
+	(* otherwise continue at the last line *)
 	IF (bo_Break_Loop = FALSE) THEN
 		in_Row_Count := INT#00;
 	END_IF;
 
-	(* Edit-Cursor positionieren *)
+	(* position edit cursor *)
 	IF (in_Write_Index <> in_Write_Index_Backup) THEN
 
 		in_Write_Index := in_Write_Index + INT#1;
@@ -13946,22 +13946,22 @@ FOR in_Line_Count := 0 TO 23 DO
 		in_Write_Index := in_Write_Index + INT#1;
 		S_BUF.BUFFER[in_Write_Index] := BYTE#16#5B; (* [ *)
 
-		(* Zehnerstelle Zeilennummer ausgeben *)
+		(* output tens digit of line number *)
 		in_Write_Index := in_Write_Index + INT#1;
 		S_BUF.BUFFER[in_Write_Index] := SHR(INT_TO_BCDC(Xus_TN_SCREEN.in_Cursor_Y + 1),INT#4) OR BYTE#16#30;
 
-		(* Einerstelle Zeilennummer ausgeben *)
+		(* output ones digit of line number *)
 		in_Write_Index := in_Write_Index + INT#1;
 		S_BUF.BUFFER[in_Write_Index] := (INT_TO_BCDC(Xus_TN_SCREEN.in_Cursor_Y + 1) AND BYTE#16#0F) OR BYTE#16#30;
 
 		in_Write_Index := in_Write_Index + INT#1;
 		S_BUF.BUFFER[in_Write_Index] := BYTE#16#3B; (* ; *)
 
-		(* Zehnerstelle Spaltenummer ausgeben *)
+		(* output tens digit of column number *)
 		in_Write_Index := in_Write_Index + INT#1;
 		S_BUF.BUFFER[in_Write_Index] := SHR(INT_TO_BCDC(Xus_TN_SCREEN.in_Cursor_X + 1),INT#4) OR BYTE#16#30;
 
-		(* Einerstelle Spaltennummer ausgeben *)
+		(* output ones digit of column number *)
 		in_Write_Index := in_Write_Index + INT#1;
 		S_BUF.BUFFER[in_Write_Index] := (INT_TO_BCDC(Xus_TN_SCREEN.in_Cursor_X + 1) AND BYTE#16#0F) OR BYTE#16#30;
 
@@ -13970,7 +13970,7 @@ FOR in_Line_Count := 0 TO 23 DO
 
 END_IF;
 
-(* aktuellen Schreibindex speichern -> Senden anstossen *)
+(* store current write index -> trigger send *)
 S_BUF.SIZE := INT_TO_UINT(in_Write_Index + 1);
 END_FUNCTION_BLOCK
 
@@ -14001,13 +14001,13 @@ END_FUNCTION_BLOCK
 //
 // CASE DATA.D_MODE OF
 //
-// 01:	x := WORD_TO_BYTE(DATA.D_HEAD); (* nur rechtes byte auswerten *)
+// 01:	x := WORD_TO_BYTE(DATA.D_HEAD); (* evaluate only the right byte *)
 // 	CASE x OF
-// 	01:	cnt := LEN(DATA.D_STRING); (* String verarbeiten *)
+// 	01:	cnt := LEN(DATA.D_STRING); (* process string *)
 // 		pTmp := REF(DATA.D_STRING);
-// 	02:	cnt := 4; (* Real verarbeiten *)
+// 	02:	cnt := 4; (* process real *)
 // 		pTmp := REF(DATA.D_REAL);
-// 	03:	cnt := 4; (* DWORD verarbeiten *)
+// 	03:	cnt := 4; (* process DWORD *)
 // 		pTmp := REF(DATA.D_DWORD);
 // 	ELSE
 // 		cnt := 0;
@@ -14015,10 +14015,10 @@ END_FUNCTION_BLOCK
 //
 // 	DATA.BUF_DATA_CNT := DATA.BUF_DATA_CNT + UDINT#1;
 //
-// 	(* ------ Daten in buffer eintragen ------ *)
+// 	(* ------ enter data into buffer ------ *)
 // 	buf_totalsize := SIZEOF(DATA.BUF);
 //
-// 	IF (cnt + HeaderSize) > (buf_totalsize - DATA.BUF_SIZE) THEN (* genug Speicher frei ? *)
+// 	IF (cnt + HeaderSize) > (buf_totalsize - DATA.BUF_SIZE) THEN (* enough memory free? *)
 // 		DATA.BUF_DATA_LOST := DATA.BUF_DATA_LOST + UDINT#1;
 // 		RETURN;
 // 	END_IF;
@@ -14028,7 +14028,7 @@ END_FUNCTION_BLOCK
 // 	mode_last := DATA.D_MODE;
 // 	tmp_dw := SHL(WORD_TO_DWORD(DATA.D_HEAD),16) OR UINT_TO_DWORD(cnt);
 //
-// 	(* Header in Buffer eintragen *)
+// 	(* enter header into buffer *)
 // 	n1 := 0;
 // 	REPEAT
 // 		n2 := MIN(HeaderSize - n1, buf_totalsize - DATA._Last);
@@ -14044,7 +14044,7 @@ END_FUNCTION_BLOCK
 // 	UNTIL n1 >= HeaderSize
 // 	END_REPEAT;
 //
-// 	(* Daten in Buffer eintragen *)
+// 	(* enter data into buffer *)
 // 	n1 := 0;
 // 	REPEAT
 // 		n2 := MIN(cnt - n1, buf_totalsize - DATA._Last);
@@ -14062,7 +14062,7 @@ END_FUNCTION_BLOCK
 //
 // 	DATA.BUF_SIZE := DATA.BUF_SIZE + cnt + HeaderSize;
 // 	DATA.BUF_COUNT := DATA.BUF_COUNT + 1;
-// 	DATA.BUF_USED := UINT_TO_USINT(100 * DATA.BUF_SIZE / buf_totalsize); (* benützer Speicher in % *)
+// 	DATA.BUF_USED := UINT_TO_USINT(100 * DATA.BUF_SIZE / buf_totalsize); (* used memory in % *)
 // 	DATA.D_MODE := 0;
 //
 // 	(*####################  DEBUG-MESSAGE  ###################################*)
@@ -14082,15 +14082,15 @@ END_FUNCTION_BLOCK
 // 	END_IF;*)
 // 	(*########################################################################*)
 //
-// 10..12:	(* ------ Daten aus buffer auslesen und optional löschen ------ *)
-// 		(* 10 = nur lesen / 11 = löschen nach lesen / 12 = lesen und löschen *)
+// 10..12:	(* ------ read data from buffer and optionally delete ------ *)
+// 		(* 10 = read only / 11 = delete after read / 12 = read and delete *)
 // 	IF DATA.D_MODE <> 11 THEN
 // 		IF DATA.BUF_COUNT = 0 THEN RETURN; END_IF;
 // 		buf_totalsize := SIZEOF(DATA.BUF);
-// 		DATA._GetEnd := DATA._First;(* index des ältesten eintrags merken *)
+// 		DATA._GetEnd := DATA._First;(* remember index of the oldest entry *)
 // 		mode_last := DATA.D_MODE;
 //
-// 		(* Header aus Buffer lesen *)
+// 		(* read header from buffer *)
 // 		n1 := 0;
 // 		tmp_dw := 0;
 // 		REPEAT
@@ -14111,14 +14111,14 @@ END_FUNCTION_BLOCK
 // 		DATA.D_SIZE := cnt;
 // 		DATA.D_HEAD := DWORD_TO_WORD(SHR(tmp_dw,16));
 //
-// 		x := WORD_TO_BYTE(DATA.D_HEAD); (* nur rechtes byte auswerten *)
+// 		x := WORD_TO_BYTE(DATA.D_HEAD); (* evaluate only the right byte *)
 // 		CASE x OF
-// 		01:	pTmp := REF(DATA.D_STRING); (* String verarbeiten *)
-// 		02:	pTmp := REF(DATA.D_REAL); (* Real verarbeiten *)
-// 		03:	pTmp := REF(DATA.D_DWORD); (* DWORD verarbeiten *)
+// 		01:	pTmp := REF(DATA.D_STRING); (* process string *)
+// 		02:	pTmp := REF(DATA.D_REAL); (* process real *)
+// 		03:	pTmp := REF(DATA.D_DWORD); (* process DWORD *)
 // 		END_CASE;
 //
-// 		(* Daten aus Buffer lesen *)
+// 		(* read data from buffer *)
 // 		n1 := 0;
 // 		REPEAT
 // 			n2 := MIN(cnt - n1, buf_totalsize - DATA._GetEnd);
@@ -14134,7 +14134,7 @@ END_FUNCTION_BLOCK
 // 		UNTIL n1 >= cnt
 // 		END_REPEAT;
 // 		IF x = 1 THEN
-// 			pTmp^ := 0; (* String terminieren *)
+// 			pTmp^ := 0; (* terminate string *)
 // 		END_IF;
 // 		DATA.D_MODE := 0;
 //
@@ -14156,12 +14156,12 @@ END_FUNCTION_BLOCK
 // 		(*########################################################################*)
 // 	END_IF;
 //
-// 	IF (mode_last = 10 AND DATA.D_MODE = 11) OR (mode_last = 12 AND DATA.D_MODE = 0) THEN (* löschen nur direkt nach lesen möglich *)
+// 	IF (mode_last = 10 AND DATA.D_MODE = 11) OR (mode_last = 12 AND DATA.D_MODE = 0) THEN (* delete only possible directly after read *)
 // 		mode_last := DATA.D_MODE;
 // 		DATA.BUF_SIZE := DATA.BUF_SIZE - cnt - HeaderSize;
 // 		DATA.BUF_COUNT := DATA.BUF_COUNT - 1;
 // 		DATA._First := DATA._GetEnd;
-// 		DATA.BUF_USED := UINT_TO_USINT(100 * DATA.BUF_SIZE / SIZEOF(DATA.BUF)); (* benützer Speicher in % *)
+// 		DATA.BUF_USED := UINT_TO_USINT(100 * DATA.BUF_SIZE / SIZEOF(DATA.BUF)); (* used memory in % *)
 // 		DATA.D_MODE := 0;
 //
 // 		(*####################  DEBUG-MESSAGE  ###################################*)
@@ -14182,7 +14182,7 @@ END_FUNCTION_BLOCK
 // 		(*########################################################################*)
 // 	END_IF;
 //
-// 99:	(* Buffer reset - alles löschen *)
+// 99:	(* buffer reset - delete everything *)
 // 	DATA._First := 0;
 // 	DATA._Last := 0;
 // 	DATA._GetStart := 0;
@@ -14199,7 +14199,7 @@ END_FUNCTION_BLOCK
 // 	mode_last := 0;
 // END_CASE;
 //
-// (* höchsten Auslastungswert speichern *)
+// (* store highest utilization value *)
 // IF DATA.BUF_USED > DATA.BUF_USED_MAX THEN
 // 	DATA.BUF_USED_MAX := DATA.BUF_USED;
 // END_IF;
@@ -14328,7 +14328,7 @@ END_FUNCTION
 // Commented out for beedance: it uses CSV_PARSER_BUF, which is commented out.
 // FUNCTION_BLOCK WORLD_WEATHER
 // VAR_IN_OUT
-// 	IP_C : IP_C; (* IP_Control Verwaltungsstruktur *)
+// 	IP_C : IP_C; (* IP_Control management structure *)
 // 	S_BUF : NETWORK_BUFFER;
 // 	R_BUF : NETWORK_BUFFER;
 // 	WW : WORLD_WEATHER_DATA;
@@ -14379,7 +14379,7 @@ END_FUNCTION
 // 		ERROR_T := BYTE#0;
 // 	END_IF;
 //
-// 20: (* URL for DNS UND HTTP-GET *)
+// 20: (* URL for DNS AND HTTP-GET *)
 // 	(* Example: http://api.worldweatheronline.com/free/v1/weather.ashx?q=48.21,16.37&format=csv&num_of_days=5&key=xxxxxxxxxxxxxxxxxxxxxx *)
 // 	url_str := CONCAT('http://api.worldweatheronline.com/free/v1/weather.ashx?q=',REAL_TO_STRF(LATITUDE,6,D:='.'));
 // 	url_str := CONCAT(url_str,',');
@@ -14394,7 +14394,7 @@ END_FUNCTION
 // 	IF DNS_CLIENT.DONE THEN
 // 		state := 60;
 // 	ELSIF (DNS_CLIENT.ERROR > DWORD#00) THEN
-// 		(* Fehlerbehandlung *)
+// 		(* error handling *)
 // 		ERROR_C := DNS_CLIENT.ERROR;
 // 	ERROR_T := BYTE#01;
 // 		state   := 100;
@@ -14406,27 +14406,27 @@ END_FUNCTION
 // 		idx := 0;
 // 		day := 0;
 // 		cnt := 0;
-// 		OFFSET := HTTP_GET.BODY_START; (* Start Offset vorgeben *)
+// 		OFFSET := HTTP_GET.BODY_START; (* set start offset *)
 // 		size := HTTP_GET.BODY_STOP; (* End Position *)
-// 		run := 1; (* Element suchen *)
+// 		run := 1; (* search element *)
 // 		state := 80;
 //
 // 	ELSIF (HTTP_GET.ERROR > DWORD#00) THEN
-// 		(* Fehlerbehandlung *)
+// 		(* error handling *)
 // 		ERROR_C := HTTP_GET.ERROR;
 // 		ERROR_T := BYTE#02;
 // 		state := 100;
 // 	END_IF;
 //
-// 80:	IF run = 0 THEN (* kein Befehl mehr aktiv ? *)
-// 		run := 1; (*  nächstes Element suchen  *)
+// 80:	IF run = 0 THEN (* no command active anymore? *)
+// 		run := 1; (*  search next element  *)
 // 		IF result = 1 OR result = 2 THEN
 // 			value_int := 0;
 // 			value_real := 0.0;
-// 			(* automatische konvertierung in real und int ausführen *)
+// 			(* perform automatic conversion to real and int *)
 // 			IF LEN(value) <= 20 THEN
 // 				v_real:=FLOAT_TO_REAL(FLT:=value);
-// 				IF CHK_REAL(v_real) = 0 THEN (* !!! prüft auf gültigen REAL Wert, ansonsten stürzt Twincat ab !!!!  *)
+// 				IF CHK_REAL(v_real) = 0 THEN (* !!! checks for a valid REAL value, otherwise TwinCAT crashes !!!!  *)
 // 					value_real := v_real;
 // 					value_int := REAL_TO_INT(value_real);
 // 				END_IF;
@@ -14462,7 +14462,7 @@ END_FUNCTION
 // 					END_IF;
 // 				ELSE
 // 					CASE cnt OF
-// 					08:	sep :=44; (* ab jetzt mit Trennzeichen arbeiten, *)
+// 					08:	sep :=44; (* from now on work with separators, *)
 // 					09:	WW.CUR.OBSERVATION_TIME := value;
 // 					10:	WW.CUR.TEMP_C := value_int;
 // 					11:	WW.CUR.WEATHER_CODE := value_int;
@@ -14481,9 +14481,9 @@ END_FUNCTION
 // 					END_CASE;
 // 				END_IF;
 // 			END_IF;
-// 		ELSIF result = 10 THEN (* nichts mehr gefunden *)
+// 		ELSIF result = 10 THEN (* nothing more found *)
 // 			DONE  := TRUE;
-// 			run := 0; (* Auswertung beenden *)
+// 			run := 0; (* end evaluation *)
 // 			state := 100;
 // 		END_IF;
 // 	END_IF;
@@ -14506,7 +14506,7 @@ END_FUNCTION
 // 			IP4_DNS:=DWORD#00,
 // 			ACTIVATE:=state=40 (* DNS Start *)
 // 			);
-// (* nicht oder nicht direkt verwendete Parameter *)
+// (* parameters not used, or not used directly *)
 // (*	DWORD :=DNS_CLIENT.IP4;
 // 	BOOL  :=DNS_CLIENT.DONE;
 // 	BYTE  :=DNS_CLIENT.ERROR; *)
@@ -14518,12 +14518,12 @@ END_FUNCTION
 // 			R_BUF:=R_BUF,
 // 			IP4:=DNS_CLIENT.IP4,
 // 			GET:=state=60,
-// 			MODE:=BYTE#2, (* HTTP 1.1 mit persistenter Verbindung *)
+// 			MODE:=BYTE#2, (* HTTP 1.1 with persistent connection *)
 // 			UNLOCK_BUF:=state=100,
 // 			URL_DATA:=URL_DATA
 // 			);
 //
-// (* nicht oder nicht direkt verwendete Parameter *)
+// (* parameters not used, or not used directly *)
 // (*	STRING := HTTP_GET.HTTP_STATUS;
 // 	UINT :=HTTP_GET.HEADER_START;
 // 	UINT :=HTTP_GET.HEADER_STOP;
@@ -14675,7 +14675,7 @@ END_FUNCTION_BLOCK
 // (*
 //
 // TYP
-// 00 = UNBEKANNT
+// 00 = UNKNOWN
 // 01 = ELEMENT (STANDARD)
 // 02 = CLOSE ELEMENT
 // 03 = TEXT
@@ -14687,9 +14687,9 @@ END_FUNCTION_BLOCK
 // 14 = !DTD ELEMENT (Document Type Declarations )
 //
 // 98 = WATCHDOG
-// 99 = ENDE
+// 99 = END
 //
-// Bei Typ 02 werden keine Blockdaten ausgegeben !
+// no block data is output for type 02!
 //
 // *)
 //
@@ -14723,7 +14723,7 @@ END_FUNCTION_BLOCK
 // CTRL.BLOCK2_START := UINT#0;
 // CTRL.BLOCK2_STOP := UINT#0;
 //
-// WATCHDOG(IN:=FALSE); (* Timer stoppen *)
+// WATCHDOG(IN:=FALSE); (* stop timer *)
 //
 // WHILE (TRUE) DO
 //
@@ -14754,8 +14754,8 @@ END_FUNCTION_BLOCK
 //       			LOG_MSG();
 //     		END_IF;*)
 //     		(*########################################################################*)
-// 		mode  := 0; (* Schritt ruecksetzen *)
-// 		index := 0; (* Abarbeitung stoppen *)
+// 		mode  := 0; (* reset step *)
+// 		index := 0; (* stop processing *)
 // 		RETURN;
 // 	END_IF;
 //
@@ -14783,32 +14783,32 @@ END_FUNCTION_BLOCK
 // 		END_WHILE;
 //
 // 		(* analyse element *)
-// 		CTRL.TYP := 0; (* TYP löschen *)
+// 		CTRL.TYP := 0; (* clear TYPE *)
 // 		IF s1 > 0 THEN
 // 			WHILE (index <= stop AND e1 = 0) DO
 // 				c := BUF[index];
-// 				(* whitespace zeichen = Element with Attributes *)
+// 				(* whitespace character = element with attributes *)
 // 				IF c <= BYTE#32 THEN
-// 					(* suche nächstes druckbares zeichen *)
+// 					(* search next printable character *)
 // 					index2 := index;
 // 					WHILE (index2 <= stop) AND (BUF[index2] <= BYTE#32) DO
 // 						index2 := index2 + 1;
 // 					END_WHILE;
-// 					IF BUF[index2] = BYTE#47 THEN (* pruefe auf leeres Element '/' *)
+// 					IF BUF[index2] = BYTE#47 THEN (* check for empty element '/' *)
 // 						index := index2;
 // 						e1 := index - 2;
-// 						CTRL.TYP := 1; (* struktur-element *)
+// 						CTRL.TYP := 1; (* structure element *)
 // 						mode := 300;   (* Close Element *)
 // 						EXIT;
 // 					END_IF;
 //
 // 					e1 := index - 1;
-// 					CTRL.TYP := 1; (* Element mit Attribute *)
+// 					CTRL.TYP := 1; (* element with attributes *)
 // 					mode := 400;
 //
 // 				ELSIF c = BYTE#62 THEN (* '>' TagEnd *)
 //
-// 					(* pruefe auf leeres Element <xx/> *)
+// 					(* check for empty element <xx/> *)
 // 					index2 := index - 1;
 // 					IF BUF[index2] = BYTE#47 THEN (* TagTerm '/' *)
 // 						e1 := index2 - 1;
@@ -14821,12 +14821,12 @@ END_FUNCTION_BLOCK
 // 					e1 := index - 1;
 // 					index2 := index + 1;
 //
-// 					(* untersuche nachfolgendes Element *)
+// 					(* examine following element *)
 // 					WHILE (index2 <= stop) DO
 // 						c := BUF[index2];
 // 						IF c = BYTE#60 THEN (* '<' TagBegin *)
 //
-// 							index2 := index2 + 1; (* geht bei PCWORX leider nicht anders !*)
+// 							index2 := index2 + 1; (* unfortunately no other way on PCWORX!*)
 // 							c := BUF[index2];
 // 							index2 := index2 - 1;
 // 							IF c = BYTE#47 THEN (* TagTerm '/' *)
@@ -14835,7 +14835,7 @@ END_FUNCTION_BLOCK
 // 							ELSE
 // 								mode := 100; (* Element *)
 // 							END_IF;
-// 							CTRL.TYP := 1; (* struktur-element *)
+// 							CTRL.TYP := 1; (* structure element *)
 // 							EXIT;
 // 						ELSIF c > BYTE#32  THEN (* Printable-Character *)
 // 							CTRL.TYP := 1; (* element with text *)
@@ -14849,12 +14849,12 @@ END_FUNCTION_BLOCK
 // 			END_WHILE;
 // 		END_IF;
 //
-// 		(* Neues Element gefunden*)
+// 		(* new element found*)
 // 		IF CTRL.TYP > 0 THEN
 //
-// 			(* Sonderprüfung auf Processing Instruction (PI) *)
+// 			(* special check for processing instruction (PI) *)
 // 			IF BUF[s1] = BYTE#63 THEN (* '?' for Processing Instruction *)
-// 				s1 := s1 + 1; (* führendes '?' auslassen *)
+// 				s1 := s1 + 1; (* skip leading '?' *)
 // 				CTRL.TYP := 5;
 // 			END_IF;
 // 			CTRL.BLOCK1_START := INT_TO_UINT(s1);
@@ -14864,7 +14864,7 @@ END_FUNCTION_BLOCK
 // 			CTRL.LEVEL := CTRL.LEVEL + UINT#1;
 //
 // 			IF path_overflow = FALSE THEN
-// 				(* Stringlänge überwachen *)
+// 				(* monitor string length *)
 // 				IF LEN(CTRL.PATH) + LEN(CTRL.ELEMENT) + 1 > 250 THEN
 // 					path_overflow := TRUE;
 // 					CTRL.PATH := 'OVERFLOW';
@@ -14894,7 +14894,7 @@ END_FUNCTION_BLOCK
 // 		CTRL.VALUE := '';
 // 		IF empty_tag = FALSE THEN
 // 			s1 := index;
-// 			(* suche '<' EndTag*)
+// 			(* search '<' end tag*)
 // 			WHILE (index <= stop) AND (BUF[index] <> BYTE#60) DO
 // 				index := index + 1;
 // 			END_WHILE;
@@ -15007,7 +15007,7 @@ END_FUNCTION_BLOCK
 // 				CTRL.BLOCK2_START := INT_TO_UINT(s1);
 // 				CTRL.BLOCK2_STOP  := INT_TO_UINT(e1);
 //
-// 				(* bei leeren "" ist start groesser als stop und wird somit zum leerstring *)
+// 				(* for empty "" start is greater than stop and so it becomes an empty string *)
 // 				CTRL.VALUE := BUFFER_TO_STRING(PT:=REF(BUF),SIZE:=INT_TO_UINT(stop + 1),START:=CTRL.BLOCK2_START,STOP:=CTRL.BLOCK2_STOP);
 // 				(* search next non white space charakter *)
 // 				WHILE (index <= stop AND BUF[index] <= BYTE#32) DO
@@ -15090,13 +15090,13 @@ END_FUNCTION_BLOCK
 //
 // 		CTRL.BLOCK1_START := INT_TO_UINT(s1);
 // 		IF LEN(e_code) > 0 THEN
-// 			(* Ende Kennung suchen *)
+// 			(* search end marker *)
 // 			e1 := BUFFER_SEARCH(PT:=REF(BUF),SIZE:=INT_TO_UINT(stop + 1),STR:=e_code,POS:=index,IGN:=FALSE);
 // 			CTRL.BLOCK1_STOP := INT_TO_UINT(e1 - 1);
-// 			index := e1 + LEN(e_code); (* naechstes element *)
+// 			index := e1 + LEN(e_code); (* next element *)
 // 		ELSE
-// 			(* suche '>' EndTag*)
-// 			index2 := 1; (* <> Paar zähler *)
+// 			(* search '>' end tag*)
+// 			index2 := 1; (* <> pair counter *)
 // 			WHILE (index <= stop AND index2 > 0) DO
 // 				c := BUF[index];
 // 				IF c = BYTE#60 THEN (* '<' TagBegin *)
@@ -15146,7 +15146,7 @@ END_FUNCTION_BLOCK
 // Commented out for beedance: it uses FLOAT_TO_REAL, which is commented out.
 // FUNCTION_BLOCK YAHOO_WEATHER
 // VAR_IN_OUT
-// 	IP_C : IP_C; (* IP_Control Verwaltungsstruktur *)
+// 	IP_C : IP_C; (* IP_Control management structure *)
 // 	S_BUF : NETWORK_BUFFER;
 // 	R_BUF : NETWORK_BUFFER;
 // 	YW : YAHOO_WEATHER_DATA;
@@ -15194,25 +15194,25 @@ END_FUNCTION_BLOCK
 // 		ERROR_C := DWORD#0;
 // 		ERROR_T := BYTE#0;
 // 		cycle := 0;
-//   		URL_DATA.DOMAIN := 'query.yahooapis.com'; (* Domainname für DNS_CLIENT *)
+//   		URL_DATA.DOMAIN := 'query.yahooapis.com'; (* domain name for DNS_CLIENT *)
 // 	END_IF;
 //
 // 40:	IF DNS_CLIENT.DONE THEN
 // 		state := 50;
 // 	ELSIF (DNS_CLIENT.ERROR > DWORD#00) THEN
-// 		(* Fehlerbehandlung *)
+// 		(* error handling *)
 // 		ERROR_C := DNS_CLIENT.ERROR;
 // 	ERROR_T := BYTE#01;
 // 		state   := 100;
 // 	END_IF;
 //
 // 50:   	(* Teil 1: http://query.yahooapis.com/v1/public/yql?q=select%20units,wind,atmosphere,astronomy,location%20from%20weather.forecast%20where%20woeid=551801%20AND%20u=%27c%27
-//              Teil 2: http://query.yahooapis.com/v1/public/yql?q=select%20item%20from%20weather.forecast%20where%20woeid=551801%20AND%20u=%27c%27 *)
+//              part 2: http://query.yahooapis.com/v1/public/yql?q=select%20item%20from%20weather.forecast%20where%20woeid=551801%20AND%20u=%27c%27 *)
 //
 // 	IF cycle = 0 THEN
-//   		URL_DATA.QUERY := 'q=select%20units,wind,atmosphere,astronomy,location%20from%20weather.forecast%20where%20woeid='; (* Teil 1 - infos *)
+//   		URL_DATA.QUERY := 'q=select%20units,wind,atmosphere,astronomy,location%20from%20weather.forecast%20where%20woeid='; (* part 1 - infos *)
 //   	ELSE
-//   		URL_DATA.QUERY := 'q=select%20item%20from%20weather.forecast%20where%20woeid='; (* Teil 2 - Tagesdaten *)
+//   		URL_DATA.QUERY := 'q=select%20item%20from%20weather.forecast%20where%20woeid='; (* part 2 - daily data *)
 //   	END_IF;
 //
 //   	URL_DATA.QUERY := CONCAT(URL_DATA.QUERY,LOCATION); (* location *)
@@ -15235,20 +15235,20 @@ END_FUNCTION_BLOCK
 // 		CTRL.WATCHDOG  := T#1ms;
 //
 // 	ELSIF (HTTP_GET.ERROR > DWORD#00) THEN
-// 		(* Fehlerbehandlung *)
+// 		(* error handling *)
 // 		ERROR_C := HTTP_GET.ERROR;
 // 		ERROR_T := BYTE#02;
 // 		state := 100;
 // 	END_IF;
 //
-// 80: XML_READER(CTRL:=CTRL,BUF:=R_BUF.BUFFER); (* XML Daten seriell lesen *)
-// 	IF CTRL.TYP < 98 THEN (* nur auswerten wenn kein Watchdog durchlauf *)
+// 80: XML_READER(CTRL:=CTRL,BUF:=R_BUF.BUFFER); (* read XML data serially *)
+// 	IF CTRL.TYP < 98 THEN (* evaluate only if not a watchdog pass *)
 // 		value_int := 0;
 // 		value_real := 0.0;
-// 		(* automatische konvertierung in real und int ausführen *)
+// 		(* perform automatic conversion to real and int *)
 // 		IF LEN(CTRL.VALUE) <= 20 THEN
 // 			v_real:=FLOAT_TO_REAL(FLT:=CTRL.VALUE);
-// 			IF CHK_REAL(v_real) = 0 THEN (* !!! prüft auf gültigen REAL Wert, ansonsten kann Twincat 2.x abstürzen !!!!  *)
+// 			IF CHK_REAL(v_real) = 0 THEN (* !!! checks for a valid REAL value, otherwise TwinCAT 2.x can crash !!!!  *)
 // 				value_real := v_real;
 // 				value_int := REAL_TO_INT(value_real);
 // 			END_IF;
@@ -15266,7 +15266,7 @@ END_FUNCTION_BLOCK
 // 		(*########################################################################*)
 //
 // 		IF cycle = 0 THEN
-// 	      		(* ------------ Teil 1 --------------*)
+// 	      		(* ------------ part 1 --------------*)
 // 	      		CASE UINT_TO_INT(CTRL.COUNT) OF
 // 	        		014: YW.location_city := CTRL.VALUE;
 // 	        		015: YW.location_country := CTRL.VALUE;
@@ -15286,7 +15286,7 @@ END_FUNCTION_BLOCK
 // 	        		041: YW.unit_temperature := CTRL.VALUE;
 // 	      		END_CASE;
 // 	    	ELSE
-// 	      		(* ------------ Teil 2 --------------*)
+// 	      		(* ------------ part 2 --------------*)
 // 	      		CASE UINT_TO_INT(CTRL.COUNT) OF
 // 	        		018: YW.GEO_LATITUDE := value_real;
 // 	        		022: YW.GEO_LONGITUDE := value_real;
@@ -15317,14 +15317,14 @@ END_FUNCTION_BLOCK
 // 	      	  		END_CASE;
 // 	      		END_CASE;
 // 	    	END_IF;
-// 	ELSIF CTRL.TYP = 99 THEN (* EXIT - letztes Element gelesen *)
+// 	ELSIF CTRL.TYP = 99 THEN (* EXIT - last element read *)
 // 		state := 100;
 // 	END_IF;
 //
 // 100:	(* UNLOCK HTTP DATA *)
 // 	IF (NOT HTTP_GET.DONE) THEN
 // 		IF cycle = 0 AND ERROR_T = BYTE#0 THEN
-// 			(* Teil 2 ausführen *)
+// 			(* run part 2 *)
 //     			state := 50;
 // 			cycle := cycle + 1;
 // 		ELSE
@@ -15344,7 +15344,7 @@ END_FUNCTION_BLOCK
 // 			IP4_DNS:=DWORD#00,
 // 			ACTIVATE:=state=40 (* DNS Start *)
 // 			);
-// (* nicht oder nicht direkt verwendete Parameter *)
+// (* parameters not used, or not used directly *)
 // (*	DWORD :=DNS_CLIENT.IP4;
 // 	BOOL  :=DNS_CLIENT.DONE;
 // 	BYTE  :=DNS_CLIENT.ERROR; *)
@@ -15356,12 +15356,12 @@ END_FUNCTION_BLOCK
 // 			R_BUF:=R_BUF,
 // 			IP4:=DNS_CLIENT.IP4,
 // 			GET:=state=60,
-// 			MODE:=BYTE#2, (* HTTP 1.1 mit persistenter Verbindung *)
+// 			MODE:=BYTE#2, (* HTTP 1.1 with persistent connection *)
 // 			UNLOCK_BUF:=state=100,
 // 			URL_DATA:=URL_DATA
 // 			);
 //
-// (* nicht oder nicht direkt verwendete Parameter *)
+// (* parameters not used, or not used directly *)
 // (*	STRING := HTTP_GET.HTTP_STATUS;
 // 	UINT :=HTTP_GET.HEADER_START;
 // 	UINT :=HTTP_GET.HEADER_STOP;
@@ -15644,47 +15644,47 @@ END_TYPE
 
 TYPE IP_C :
 STRUCT
-	C_MODE : BYTE;						(*W Mode: TCP/UCP AKTIV/PASSIV                               *)
-	C_PORT : WORD;						(*W Portnummer                                               *)
-	C_IP : DWORD;						(*W IP-Adresse gepackt wwxxyyzz = www.xxx.yyy.zzz            *)
-	C_STATE : BYTE;						(*R Verbindungsstatus ON/OFF + Flanke ON/OFF                 *)
-	C_ENABLE : BOOL;					(*W Freigabe für Connect                                     *)
-	R_OBSERVE : BOOL;					(*W Empfang ueberwachen                                      *)
-	TIME_RESET : BOOL;					(*W Alle Timer ruecksetzen                                   *)
+	C_MODE : BYTE;						(*W Mode: TCP/UDP ACTIVE/PASSIVE                               *)
+	C_PORT : WORD;						(*W port number                                               *)
+	C_IP : DWORD;						(*W IP address packed wwxxyyzz = www.xxx.yyy.zzz            *)
+	C_STATE : BYTE;						(*R connection status ON/OFF + edge ON/OFF                 *)
+	C_ENABLE : BOOL;					(*W enable for connect                                     *)
+	R_OBSERVE : BOOL;					(*W monitor receive                                      *)
+	TIME_RESET : BOOL;					(*W reset all timers                                   *)
 	ERROR : DWORD;					(*R vvwwxxyy (vv = CON_ERROR, ww = SEN_ERROR, xx = REC_ERROR *)
-	FIFO : IP_FIFO_DATA;					(*I IP FIFO Struktur                                         *)
-	MAILBOX : ARRAY [1..16] OF BYTE;	(*I Mailbox: Datenbereich für Bausteindatenaustausch         *)
+	FIFO : IP_FIFO_DATA;					(*I IP FIFO structure                                         *)
+	MAILBOX : ARRAY [1..16] OF BYTE;	(*I mailbox: data area for data exchange between blocks         *)
 END_STRUCT
 END_TYPE
 
 TYPE IP_FIFO_DATA :
 STRUCT
-	X : ARRAY [1..128] OF BYTE; 	(* IP_ID FIFO Speicher          *)
-	Y : ARRAY [1..128] OF BYTE; 	(* IP_ID Zähler                 *)
-	ID : BYTE;					(* höchste vergabene id         *)
-	MAX_ID : BYTE;				(* maximal Anmeldungen pro ID   *)
-	INIT : BOOL;					(* Initialisierung durchgeführt *)
-	EMPTY : BOOL;				(* FIFO leer                    *)
-	FULL : BOOL;					(* FIFO voll                    *)
-	TOP : INT;					(* maximale anzahl in FIFO      *)
-	NW : INT;					(* Schreibzeiger                *)
-	NR : INT;						(* Lesezeiger                   *)
+	X : ARRAY [1..128] OF BYTE; 	(* IP_ID FIFO memory          *)
+	Y : ARRAY [1..128] OF BYTE; 	(* IP_ID counter                 *)
+	ID : BYTE;					(* highest assigned id         *)
+	MAX_ID : BYTE;				(* maximum registrations per ID   *)
+	INIT : BOOL;					(* initialization done *)
+	EMPTY : BOOL;				(* FIFO empty                    *)
+	FULL : BOOL;					(* FIFO full                    *)
+	TOP : INT;					(* maximum number in FIFO      *)
+	NW : INT;					(* write pointer                *)
+	NR : INT;						(* read pointer                   *)
 END_STRUCT
 END_TYPE
 
 TYPE LOG_CONTROL :
 STRUCT
-	NEW_MSG : STRING(LOG_SIZE); (* neue Nachricht für den Datenbuffer *)
+	NEW_MSG : STRING(LOG_SIZE); (* new message for the data buffer *)
 	NEW_MSG_OPTION : DWORD;
 	LEVEL : BYTE;
-	SIZE : INT := LOG_MAX; (* Anzahl der Strings im LOG_DATA *)
-	RESET : BOOL; (* Nachrichtenbuffer löschen *)
+	SIZE : INT := LOG_MAX; (* number of strings in LOG_DATA *)
+	RESET : BOOL; (* clear message buffer *)
 	PRINTF : PRINTF_DATA; (* Array PRINTF Parameter *)
 	MSG : ARRAY [0..LOG_MAX] OF STRING(LOG_SIZE); (* Array Message *)
 	MSG_OPTION : ARRAY [0..LOG_MAX] OF DWORD; (* Array Options *)
-	UPDATE_COUNT : UINT; (* Updatezähler *)
-	IDX : INT; (* aktueller Nachrichten-Index *)
-	RING_MODE : BOOL; (* Bufferüberlauf erkannt *)
+	UPDATE_COUNT : UINT; (* update counter *)
+	IDX : INT; (* current message index *)
+	RING_MODE : BOOL; (* buffer overflow detected *)
 END_STRUCT
 END_TYPE
 
@@ -15798,24 +15798,24 @@ END_TYPE
 TYPE us_LOG_VIEWPORT :
 STRUCT
 	LINE_ARRAY : ARRAY [1..40] OF INT;
-	COUNT : INT; (* Anzahl der sichtbaren Nachtrichten *)
-	UPDATE_COUNT : UINT; (* Updatezähler *)
-	MOVE_TO_X : INT; (* Steuerung der Nachrichtenanzeige *)
-	UPDATE : BOOL; (* Daten wurden geändert -> neuzeichnen *)
+	COUNT : INT; (* number of visible messages *)
+	UPDATE_COUNT : UINT; (* update counter *)
+	MOVE_TO_X : INT; (* control of the message display *)
+	UPDATE : BOOL; (* data was changed -> redraw *)
 END_STRUCT
 END_TYPE
 
 TYPE us_TN_INPUT_CONTROL :
 STRUCT
-	bo_Enable: BOOL; (* Bearbeitung freigeben/sperren *)
-	bo_Update_all: BOOL; (* All Elemente neu zeichnen *)
-	bo_Reset_Fokus: BOOL; (* Fokus auf 1. Element setzen *)
-	in_Focus_at: INT; (* Controlelement mit aktivem Fokus *)
-	in_Count: INT; (* Anzahl der benutzen Control-Elemente *)
+	bo_Enable: BOOL; (* enable/disable processing *)
+	bo_Update_all: BOOL; (* redraw all elements *)
+	bo_Reset_Fokus: BOOL; (* set focus on 1st element *)
+	in_Focus_at: INT; (* control element with active focus *)
+	in_Count: INT; (* number of used control elements *)
 	in_ToolTip_X: INT; (* Tooltip Text X-Offset *)
 	in_ToolTip_Y: INT; (* Tooltip Text Y-Offset *)
 	by_ToolTip_Attr: BYTE; (* Tooltip Text Attribute *)
-	in_ToolTip_Size: INT; (* Tooltip Text länge *)
+	in_ToolTip_Size: INT; (* tooltip text length *)
 	usa_TN_INPUT_CONTROL_DATA: ARRAY [1..20] OF us_TN_INPUT_CONTROL_DATA;
 END_STRUCT
 END_TYPE
@@ -15829,68 +15829,68 @@ STRUCT
 	in_Title_Y_Offset: INT; (* Title Text Y-Offset *)
 	by_Title_Attr: BYTE; (* Title Text Attribute *)
 	st_Title_String: STRING; (* Title Text String *)
-	in_Cursor_X: INT; (* aktuelle Cursor X-Position *)
-	in_Cursor_Y: INT; (* aktuelle Cursor Y-Position *)
-	in_Type: INT; (* Type des Elements *)
+	in_Cursor_X: INT; (* current cursor X position *)
+	in_Cursor_Y: INT; (* current cursor Y position *)
+	in_Type: INT; (* type of the element *)
 	in_X: INT; (* Element X-Position *)
 	in_Y: INT; (* Element Y-Position *)
-	in_Cursor_Pos: INT; (* aktuelle Cursorposition *)
-	by_Attr_mF: BYTE; (* Text Attribute mit Fokus *)
-	by_Attr_oF: BYTE; (* Text Attribute ohne Fokus *)
-	in_selected: INT; (* Text Item wurde ausgewählt *)
-	st_Input_Mask: STRING; (* Text Eingabemaske *)
-	st_Input_Data: STRING(STRING_LENGTH); (* Text aktuelle Eingabedaten *)
-	st_Input_String: STRING; (* Text Kopie nach Return-Taste *)
-	st_Input_ToolTip: STRING; (* Text ToolTip (Eingabeinformation) *)
-	in_Input_Option: INT; (* Text Ausgabe-Optionen *)
-	bo_Input_Entered: BOOL; (* RETURN-Taste wurde betätigt *)
-	bo_Input_Hidden: BOOL; (* Text versteckete Eingabe mit '*' *)
-	bo_Input_Only_Num: BOOL; (* Text nur Nummerneingabe zulassen *)
-	bo_Focus: BOOL; (* Element besitzt den Fokus *)
-	bo_Update_Input: BOOL; (* Element wegen Benutzereingabe neuzeichnen *)
-	bo_Update_All: BOOL; (* Element komplett neuzeichnen *)
+	in_Cursor_Pos: INT; (* current cursor position *)
+	by_Attr_mF: BYTE; (* text attributes with focus *)
+	by_Attr_oF: BYTE; (* text attributes without focus *)
+	in_selected: INT; (* text item was selected *)
+	st_Input_Mask: STRING; (* text input mask *)
+	st_Input_Data: STRING(STRING_LENGTH); (* text current input data *)
+	st_Input_String: STRING; (* text copy after return key *)
+	st_Input_ToolTip: STRING; (* text tooltip (input information) *)
+	in_Input_Option: INT; (* text output options *)
+	bo_Input_Entered: BOOL; (* RETURN key was pressed *)
+	bo_Input_Hidden: BOOL; (* text hidden input with '*' *)
+	bo_Input_Only_Num: BOOL; (* text allow numeric input only *)
+	bo_Focus: BOOL; (* element has the focus *)
+	bo_Update_Input: BOOL; (* redraw element because of user input *)
+	bo_Update_All: BOOL; (* redraw element completely *)
 
 END_STRUCT
 END_TYPE
 
 TYPE us_TN_MENU :
 STRUCT
-	st_Menu_Text: STRING(STRING_LENGTH); (* X Menue Texte *)
-	in_Menu_E_Count: INT; (* Menue Elemente Anzahl *)
-	in_Y: INT; (* Menue Zeilennummer  Y-Position *)
-	in_X: INT; (* Menue Spaltennummer X-Position *)
-	by_Attr_mF: BYTE; (* Text Attribute mit Fokus *)
-	by_Attr_oF: BYTE; (* Text Attribute ohne Fokus *)
-	in_X_SM_new: INT; (* neue Sub-Menu X-Position *)
-	in_Y_SM_new: INT; (* neue Sub-Menu Y-Position *)
-	in_X_SM_old: INT; (* alte Sub-Menu X-Position *)
-	in_Y_SM_old: INT; (* alte Sub-Menu Y-Position *)
-	in_Cur_Menu_Item: INT; (* aktuelles Haupt-Menue *)
-	in_Cur_Sub_Item: INT; (* aktuelles Sub-Menue *)
+	st_Menu_Text: STRING(STRING_LENGTH); (* X menu texts *)
+	in_Menu_E_Count: INT; (* menu element count *)
+	in_Y: INT; (* menu line number  Y position *)
+	in_X: INT; (* menu column number X position *)
+	by_Attr_mF: BYTE; (* text attributes with focus *)
+	by_Attr_oF: BYTE; (* text attributes without focus *)
+	in_X_SM_new: INT; (* new submenu X position *)
+	in_Y_SM_new: INT; (* new submenu Y position *)
+	in_X_SM_old: INT; (* old submenu X position *)
+	in_Y_SM_old: INT; (* old submenu Y position *)
+	in_Cur_Menu_Item: INT; (* current main menu *)
+	in_Cur_Sub_Item: INT; (* current submenu *)
 	in_State: INT; (*   Menu status   *)
-	in_Menu_Selected: INT; (* X Menu-Item mit Enter angewwählt *)
-	bo_Create: BOOL; (* X Menu erzeugen *)
-	bo_Destroy: BOOL; (* X Menu entfernen *)
-	bo_Update: BOOL; (* X Menu updaten *)
+	in_Menu_Selected: INT; (* X menu item selected with enter *)
+	bo_Create: BOOL; (* X create menu *)
+	bo_Destroy: BOOL; (* X remove menu *)
+	bo_Update: BOOL; (* X update menu *)
 END_STRUCT
 END_TYPE
 
 TYPE us_TN_MENU_POPUP :
 STRUCT
-	st_Menu_Text: STRING(STRING_LENGTH); (* X Menue Texte *)
-	in_Menu_E_Count: INT; (* Menue Elemente Anzahl *)
-	in_X: INT; (* X Menue X-Position *)
-	in_Y: INT; (* X Menue Y-Position *)
-	in_Cols: INT; (* Menue Spaltenanzahl *)
-	in_Rows: INT; (* Menue Zeilenanzahl *)
-	in_Cur_Item: INT; (* X aktuelles Sub-Menue *)
-	by_Attr_mF: BYTE; (* X Text Attribute mit Fokus	*)
-	by_Attr_oF: BYTE; (* X Text Attribute ohne Fokus *)
-	by_Input_Exten_Code: BYTE; (* X Tastencode: Sondertasten *)
-	bo_Create: BOOL; (* X Popup-Menu erzeugen *)
-	bo_Destroy: BOOL; (* X Popup-Menu entfernen *)
-	bo_Update: BOOL; (* X Popup-Menu updaten *)
-	bo_Activ: BOOL; (*   Popup-Menu ist aktiv *)
+	st_Menu_Text: STRING(STRING_LENGTH); (* X menu texts *)
+	in_Menu_E_Count: INT; (* menu element count *)
+	in_X: INT; (* X menu X position *)
+	in_Y: INT; (* X menu Y position *)
+	in_Cols: INT; (* menu column count *)
+	in_Rows: INT; (* menu line count *)
+	in_Cur_Item: INT; (* X current submenu *)
+	by_Attr_mF: BYTE; (* X text attributes with focus	*)
+	by_Attr_oF: BYTE; (* X text attributes without focus *)
+	by_Input_Exten_Code: BYTE; (* X key code: special keys *)
+	bo_Create: BOOL; (* X create popup menu *)
+	bo_Destroy: BOOL; (* X remove popup menu *)
+	bo_Update: BOOL; (* X update popup menu *)
+	bo_Activ: BOOL; (*   popup menu is active *)
 END_STRUCT
 END_TYPE
 
@@ -15903,14 +15903,14 @@ STRUCT
 	by_Input_Exten_Code: BYTE;
 	by_Input_ASCII_Code: BYTE;
 	bo_Input_ASCII_IsNum: BOOL;
-	in_Page_Number: INT; (* aktive Seiten-Nr. *)
+	in_Page_Number: INT; (* active page no. *)
 	in_Cursor_X: INT; (* Cursor X-Position *)
 	in_Cursor_Y: INT; (* Cursor Y-Position *)
 	in_EOS_Offset: INT; (* End of String Offset *)
 	by_Clear_Screen_Attr: BYTE; (* Clear-Screen Attr *)
-	bo_Clear_Screen: BOOL; (* Clear-Screen auslösen *)
-	bo_Modal_Dialog: BOOL; (* Modaler Dialog ist aktiv *)
-	bo_Menue_Bar_Dialog: BOOL; (* Menue Dialog ist aktiv *)
+	bo_Clear_Screen: BOOL; (* trigger clear screen *)
+	bo_Modal_Dialog: BOOL; (* modal dialog is active *)
+	bo_Menue_Bar_Dialog: BOOL; (* menu dialog is active *)
 END_STRUCT
 END_TYPE
 

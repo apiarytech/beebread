@@ -1187,11 +1187,11 @@ func TRIME(str iec.STRING) iec.STRING {
 func UPPERCASE(str iec.STRING) iec.STRING { return mapChars(str, TO_UPPER) }
 
 // WEEKDAY_TO_STRING returns the name of the weekday wday, 1..7, in the
-// language lang, or the default language if lang is 0: the full name if lx
-// is 0 and two letters if lx is 2.
+// language lang, or the default language if lang is 0 or less, as in OSCAT
+// 3.36: the full name if lx is 0 and two letters if lx is 2.
 func WEEKDAY_TO_STRING(wday, lang, lx iec.INT) iec.STRING {
 	ly := LANGUAGE.DEFAULT
-	if lang != 0 {
+	if lang > 0 {
 		ly = min(lang, LANGUAGE.LMAX)
 	}
 	switch {

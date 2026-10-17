@@ -1,0 +1,118 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 840 672" width="840" height="672" role="img" aria-label="PackML state diagram with 17 states">
+  <title>PackML machine states (ISA-TR88.00.02-2015)</title>
+  <style>
+    :root { --bg:#ffffff; --fg:#18202b; --muted:#586374; --edge:#4a5566;
+      --reg-outer:#e4e9ef; --reg-mid:#ecf0f4; --reg-line:#c3ccd7;
+      --rest-fill:#ffffff; --rest-line:#18202b; --act-fill:#fbeed6; --act-line:#a86b12;
+      --exec-fill:#d9f0e1; --exec-line:#1f7a45; --cmd:#3d4757; }
+    @media (prefers-color-scheme: dark) { :root { --bg:#171d26; --fg:#e5eaf0; --muted:#98a3b3; --edge:#a7b1bf;
+      --reg-outer:#232c38; --reg-mid:#1e2631; --reg-line:#364355;
+      --rest-fill:#1b222c; --rest-line:#e5eaf0; --act-fill:#3a2a10; --act-line:#e0a24a;
+      --exec-fill:#13301f; --exec-line:#5cc58a; --cmd:#c9d1dc; } }
+    .bg { fill: var(--bg); }
+    .title { font-family: "IBM Plex Sans Condensed","Arial Narrow",Arial,sans-serif; font-weight:700; font-size:18px; fill:var(--fg); }
+    .std { font-family: "IBM Plex Mono",Consolas,monospace; font-size:9.5px; letter-spacing:0.04em; fill:var(--muted); }
+    .reg { stroke: var(--reg-line); stroke-width: 1; }
+    .reg.o { fill: var(--reg-outer); } .reg.m { fill: var(--reg-mid); }
+    .rl { font-family: "IBM Plex Mono",Consolas,monospace; font-size: 9px; fill: var(--muted); letter-spacing: 0.03em; }
+    .st rect { stroke-width: 1.5; }
+    .rest rect { fill: var(--rest-fill); stroke: var(--rest-line); }
+    .act rect { fill: var(--act-fill); stroke: var(--act-line); }
+    .exe rect { fill: var(--exec-fill); stroke: var(--exec-line); }
+    .st text { font-family: "IBM Plex Sans Condensed","Arial Narrow",Arial,sans-serif; font-weight: 600; font-size: 12.5px; fill: var(--fg); text-anchor: middle; dominant-baseline: middle; }
+    .st text.sub { font-family: "IBM Plex Mono",Consolas,monospace; font-weight: 400; font-size: 8.5px; fill: var(--muted); }
+    .st .ring { fill: none; stroke-width: 1; stroke: var(--rest-line); }
+    .e { fill: none; stroke: var(--edge); stroke-width: 1.3; }
+    .e.sc { stroke-dasharray: 4 3; }
+    .ah { fill: var(--edge); }
+    .c { font-family: "IBM Plex Mono",Consolas,monospace; font-size: 9.5px; fill: var(--cmd); text-anchor: middle; }
+    .c.s { text-anchor: start; }
+    .sw-rest{fill:var(--rest-fill);stroke:var(--rest-line);stroke-width:1.5} .sw-act{fill:var(--act-fill);stroke:var(--act-line);stroke-width:1.5}
+    .sw-final{fill:var(--final-fill);stroke:var(--final-line);stroke-width:1.5} .sw-exec{fill:var(--exec-fill);stroke:var(--exec-line);stroke-width:1.5}
+    .lg { font-family: "IBM Plex Sans",Arial,sans-serif; font-size: 10.5px; fill: var(--muted); }
+  </style>
+  <rect class="bg" x="0" y="0" width="840" height="672"/>
+  <defs><marker id="ah2" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="ah"/></marker></defs>
+
+  <g transform="translate(0,46)">
+    <rect class="reg o" x="8" y="30" width="824" height="465" rx="14"/>
+    <rect class="reg m" x="18" y="45" width="804" height="285" rx="12"/>
+    <text class="rl" x="18" y="41">ABORT APPLIES</text>
+    <text class="rl" x="28" y="58">STOP APPLIES</text>
+
+    <g marker-end="url(#ah2)">
+      <path class="e sc" d="M122,200 H156"/>
+      <path class="e" d="M260,200 H294"/>
+      <path class="e sc" d="M398,200 H432"/>
+      <path class="e sc" d="M536,200 H570"/>
+      <path class="e sc" d="M674,200 H708"/>
+      <path class="e" d="M760,180 V72 H70 V180"/>
+      <path class="e" d="M510,180 V155 H622 V130"/>
+      <path class="e sc" d="M570,110 H536"/>
+      <path class="e" d="M432,110 H398"/>
+      <path class="e sc" d="M346,130 V155 H458 V180"/>
+      <path class="e" d="M510,220 V245 H622 V270"/>
+      <path class="e sc" d="M570,290 H536"/>
+      <path class="e" d="M432,290 H398"/>
+      <path class="e sc" d="M346,270 V245 H458 V220"/>
+      <path class="e" d="M622,330 V370"/>
+      <path class="e sc" d="M570,390 H122"/>
+      <path class="e" d="M70,370 V220"/>
+      <path class="e sc" d="M70,440 V410"/>
+      <path class="e" d="M484,495 V535"/>
+      <path class="e sc" d="M432,555 H122"/>
+      <path class="e" d="M70,535 V480"/>
+    </g>
+    <text class="c" x="139" y="193">SC</text>
+    <text class="c" x="277" y="193">Start</text>
+    <text class="c" x="415" y="193">SC</text>
+    <text class="c" x="553" y="193">SC</text>
+    <text class="c" x="691" y="193">SC</text>
+    <text class="c" x="415" y="66">Reset</text>
+    <text class="c" x="568" y="150">Hold</text>
+    <text class="c" x="553" y="103">SC</text>
+    <text class="c" x="415" y="84">Unhold</text>
+    <text class="c" x="402" y="150">SC</text>
+    <text class="c" x="568" y="259">Suspend</text>
+    <text class="c" x="553" y="283">SC</text>
+    <text class="c" x="415" y="323">Unsuspend</text>
+    <text class="c" x="402" y="259">SC</text>
+    <text class="c s" x="630" y="354">Stop</text>
+    <text class="c" x="346" y="383">SC</text>
+    <text class="c s" x="78" y="300">Reset</text>
+    <text class="c s" x="78" y="429">SC</text>
+    <text class="c s" x="492" y="519">Abort</text>
+    <text class="c" x="278" y="548">SC</text>
+    <text class="c s" x="78" y="512">Clear</text>
+
+    <g class="st act"><rect x="18" y="180" width="104" height="40" rx="6"/><text x="70" y="201">Resetting</text></g>
+    <g class="st rest"><rect x="156" y="180" width="104" height="40" rx="6"/><text x="208" y="201">Idle</text></g>
+    <g class="st act"><rect x="294" y="180" width="104" height="40" rx="6"/><text x="346" y="201">Starting</text></g>
+    <g class="st exe"><rect x="432" y="180" width="104" height="40" rx="6"/><text x="484" y="201">Execute</text></g>
+    <g class="st act"><rect x="570" y="180" width="104" height="40" rx="6"/><text x="622" y="201">Completing</text></g>
+    <g class="st rest"><rect x="708" y="180" width="104" height="40" rx="6"/><text x="760" y="201">Complete</text></g>
+    <g class="st act"><rect x="294" y="90" width="104" height="40" rx="6"/><text x="346" y="111">Unholding</text></g>
+    <g class="st rest"><rect x="432" y="90" width="104" height="40" rx="6"/><text x="484" y="111">Held</text></g>
+    <g class="st act"><rect x="570" y="90" width="104" height="40" rx="6"/><text x="622" y="111">Holding</text></g>
+    <g class="st act"><rect x="294" y="270" width="104" height="40" rx="6"/><text x="346" y="291">Unsuspending</text></g>
+    <g class="st rest"><rect x="432" y="270" width="104" height="40" rx="6"/><text x="484" y="291">Suspended</text></g>
+    <g class="st act"><rect x="570" y="270" width="104" height="40" rx="6"/><text x="622" y="291">Suspending</text></g>
+    <g class="st rest"><rect x="18" y="370" width="104" height="40" rx="6"/><rect class="ring" x="14" y="366" width="112" height="48" rx="8"/><text x="70" y="385">Stopped</text><text class="sub" x="70" y="399">initial</text></g>
+    <g class="st act"><rect x="570" y="370" width="104" height="40" rx="6"/><text x="622" y="391">Stopping</text></g>
+    <g class="st act"><rect x="18" y="440" width="104" height="40" rx="6"/><text x="70" y="461">Clearing</text></g>
+    <g class="st rest"><rect x="18" y="535" width="104" height="40" rx="6"/><text x="70" y="556">Aborted</text></g>
+    <g class="st act"><rect x="432" y="535" width="104" height="40" rx="6"/><text x="484" y="556">Aborting</text></g>
+  </g>
+
+  <text class="std" x="12" y="22">ISA-TR88.00.02-2015 · MACHINE AND UNIT STATES</text>
+  <text class="title" x="12" y="44">PackML machine states</text>
+
+  <g transform="translate(12,658)">
+    <rect x="0" y="-9" width="22" height="13" rx="3" class="sw-rest"/><text class="lg" x="28" y="1">Wait state</text>
+    <rect x="110" y="-9" width="22" height="13" rx="3" class="sw-act"/><text class="lg" x="138" y="1">Acting state</text>
+    <rect x="230" y="-9" width="22" height="13" rx="3" class="sw-exec"/><text class="lg" x="258" y="1">Execute (dual)</text>
+    <line x1="360" y1="-3" x2="386" y2="-3" class="e"/><text class="lg" x="392" y="1">Command</text>
+    <line x1="460" y1="-3" x2="486" y2="-3" class="e sc"/><text class="lg" x="492" y="1">SC: state complete</text>
+  </g>
+</svg>

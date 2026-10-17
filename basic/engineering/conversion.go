@@ -55,24 +55,32 @@ func C_TO_K(celsius iec.REAL) iec.REAL {
 }
 
 // DEG_TO_DIR converts an angle in degrees to a compass direction in the
-// language l, or the default language if l is 0, with n = 1 for N, E, S, W,
-// 2 for 8 directions and 3 for 16.
+// language l, or the default language if l is 0 or less, with n = 1 for N,
+// E, S, W, 2 for 8 directions and 3 for 16. It is the empty string for an n
+// that leaves no directions, where OSCAT divides by 0. OSCAT reads outside
+// its table for a negative l; the port takes the default language, as OSCAT
+// 3.36 does in DIR_TO_DEG.
 func DEG_TO_DIR(deg, n, l iec.INT) iec.STRING {
 	ly := LANGUAGE.DEFAULT
-	if l != 0 {
+	if l > 0 {
 		ly = min(l, LANGUAGE.LMAX)
 	}
 	shl := func(x, s iec.INT) iec.INT { return iec.INT(SHL(uint16(x), s)) }
 	shr := func(x, s iec.INT) iec.INT { return iec.INT(SHR(uint16(x), s)) }
-	i := (shl(deg, n-1) + 45) / 90 % shl(2, n) * shr(8, n)
+	dirs := shl(2, n)
+	if dirs == 0 {
+		return ""
+	}
+	i := (shl(deg, n-1) + 45) / 90 % dirs * shr(8, n)
 	return LANGUAGE.DIRS[ly-1][LIMIT(0, i, 15)]
 }
 
 // DIR_TO_DEG converts a compass direction of up to 3 letters in the
-// language l, or the default language if l is 0, to degrees.
+// language l, or the default language if l is 0 or less, as in OSCAT 3.36,
+// to degrees.
 func DIR_TO_DEG(dir iec.STRING, l iec.INT) iec.INT {
 	ly := LANGUAGE.DEFAULT
-	if l != 0 {
+	if l > 0 {
 		ly = min(l, LANGUAGE.LMAX)
 	}
 	i := iec.INT(0)

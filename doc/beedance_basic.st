@@ -2351,7 +2351,7 @@ VAR
 	ly: INT;
 END_VAR
 
-IF L = 0 THEN ly := LANGUAGE.DEFAULT; ELSE ly := MIN(L, LANGUAGE.LMAX); END_IF;
+IF L <= 0 THEN ly := LANGUAGE.DEFAULT; ELSE ly := MIN(L, LANGUAGE.LMAX); END_IF; (* as OSCAT 3.36's DIR_TO_DEG *)
 DEG_TO_DIR := LANGUAGE.DIRS[ly, ((WORD_TO_INT(SHL(INT_TO_WORD(DEG),N-1)) + 45) / 90) MOD WORD_TO_INT(SHL(WORD#2,N))*WORD_TO_INT(SHR(WORD#8,N))];
 END_FUNCTION
 
@@ -2365,7 +2365,7 @@ VAR
 	i : INT;
 END_VAR
 
-IF L = 0 THEN ly := LANGUAGE.DEFAULT; ELSE ly := MIN(L, LANGUAGE.LMAX); END_IF;
+IF L <= 0 THEN ly := LANGUAGE.DEFAULT; ELSE ly := MIN(L, LANGUAGE.LMAX); END_IF; (* OSCAT 3.36 *)
 FOR i := 0 TO 15 DO
 	IF language.DIRS[ly, i] = DIR THEN EXIT; END_IF;
 END_FOR;
@@ -3801,19 +3801,19 @@ FUNCTION_BLOCK GEN_RDT
 
 VAR_INPUT
 	Enable		 : BOOL := TRUE ;
-	Min_Time_ms	: TIME := t#1s ; (* min Taktzeit *)
-	Max_Time_ms	: TIME := t#1.2s ; (* Max Taktzeit *)
-	TP_Q		 : TIME := t#100ms ; (* Zeit Ausgang auf TRUE *)
+	Min_Time_ms	: TIME := t#1s ; (* min cycle time *)
+	Max_Time_ms	: TIME := t#1.2s ; (* max cycle time *)
+	TP_Q		 : TIME := t#100ms ; (* time output is TRUE *)
 END_VAR
 VAR_OUTPUT
 	xQ		 : BOOL ;
 END_VAR
 VAR
-	(* Taktgenerator Simulation *)
-	tonRDMTimer	: TON ; (* Zeitbaustein Taktgenerator *)
-	tof_xQ		: TOF ; (* Ausschaltverz�gerung Taktgenerator *)
-	tRDMTime	: TIME ; (* Sollzeit *)
-	rRDMTime	: REAL ; (* Zufalswert Timer *)
+	(* clock generator simulation *)
+	tonRDMTimer	: TON ; (* timer block clock generator *)
+	tof_xQ		: TOF ; (* off-delay clock generator *)
+	tRDMTime	: TIME ; (* setpoint time *)
+	rRDMTime	: REAL ; (* random value timer *)
 END_VAR
 
 tonRDMTimer ( IN:= Enable , PT:= tRDMTime );
@@ -4267,10 +4267,10 @@ ELSE
 	in2 := in;
 END_IF;
 
-(* begrenze in auf die zul�ssigen werte *)
+(* limit in to the permitted values *)
 in2 := LIMIT(low, in2, high);
 
-(* Berechne den Ausgangswert *)
+(* calculate the output value *)
 Aout := REAL_TO_DWORD((in2 - low) / (high - low) * UDINT_TO_REAL(DWORD_TO_UDINT(SHL(ff,bits)) - 1));
 IF sx THEN Aout := SHL(ff,sign) OR Aout; END_IF;
 END_FUNCTION
@@ -4302,10 +4302,10 @@ ELSE
 	in2 := in;
 END_IF;
 
-(* begrenze in auf die zul�ssigen werte *)
+(* limit in to the permitted values *)
 in2 := LIMIT(low, in2, high);
 
-(* Berechne den Ausgangswert *)
+(* calculate the output value *)
 AOUT1 := SHL(REAL_TO_DWORD((in2 - low) / (high - low) * UDINT_TO_REAL(DWORD_TO_UDINT(SHL(ff,bit_n - Bit_0 + 1)) - 1)),Bit_0);
 IF sx THEN AOUT1 := SHL(ff,sign) OR AOUT1; END_IF;
 END_FUNCTION
@@ -5868,10 +5868,10 @@ VAR
 	register : BYTE;
 END_VAR
 
-(* flankenerkennung clk wird high und edge war high reset ist nicht aktiv und set ist nicht aktiv *)
+(* edge detection: clk goes high and edge was high, reset is not active and set is not active *)
 IF CLK AND edge AND NOT rst THEN
-	edge := FALSE;	(* flanke wurde erkannt und weitere flankenerkennung wird verhindert bis edge wieder true ist *)
-	(* hier ist der code f�r das flankenevent *)
+	edge := FALSE;	(* edge was detected; further edge detection is blocked until edge is true again *)
+	(* here is the code for the edge event *)
 	IF UP THEN						(*shift up *)
 		register := SHL(register,1);
 		register.0 := Din;
@@ -5886,8 +5886,8 @@ IF CLK AND edge AND NOT rst THEN
 		IF up THEN Dout := register.7; ELSE Dout := register.0; END_IF;
 	END_IF;
 END_IF;
-IF NOT clk THEN edge := TRUE; END_IF;	(* sobald clk wieder low wird warten auf n�chste flanke *)
-IF rst THEN									(* wenn reset aktiv dann ausgang r�cksetzen *)
+IF NOT clk THEN edge := TRUE; END_IF;	(* as soon as clk goes low again, wait for the next edge *)
+IF rst THEN									(* if reset is active, reset the output *)
 	register := 0;
 	Dout := FALSE;
 END_IF;
@@ -8172,39 +8172,39 @@ VAR_INPUT
 	SIZE : UINT;
 END_VAR
 VAR
-	stack_count: UINT;				(* Laufvariable Stack*)
-	stack: ARRAY[1..32] OF UINT;	(* Stackgr��e~ 1,6*Log(n)/log(2) *)
-										(* Stackgr��e 32 => ~1 Mio Elemente *)
-	links: UINT;						(* Anfangselement des Arrays *)
-	rechts: UINT;						(* Endelement des Arrays *)
-	pivot: REAL;						(* tempor�rer Schwellwert f�r Tauschbedingung *)
-	i: UINT;							(* Laufvariable1 *)
-	j: UINT;							(* Laufvariable2 *)
-	ende_innen: BOOL;				(* Ende innere Schleife *)
-	ende_aussen: BOOL;				(* Ende �u�ere Schleife *)
-	tmp: REAL;						(* Hilfsvariable zum Tauschen von Werten *)
+	stack_count: UINT;				(* loop variable stack*)
+	stack: ARRAY[1..32] OF UINT;	(* stack size ~ 1.6*Log(n)/log(2) *)
+										(* stack size 32 => ~1 million elements *)
+	links: UINT;						(* first element of the array *)
+	rechts: UINT;						(* last element of the array *)
+	pivot: REAL;						(* temporary threshold for the swap condition *)
+	i: UINT;							(* loop variable 1 *)
+	j: UINT;							(* loop variable 2 *)
+	ende_innen: BOOL;				(* end of inner loop *)
+	ende_aussen: BOOL;				(* end of outer loop *)
+	tmp: REAL;						(* helper variable for swapping values *)
 END_VAR
 
-(* Startwerte zur Arraygr��e *)
-links := 1;					(* Anfangselement des Arrays *)
-rechts := ((size) / 4);		(* Endelement des Arrays *)
-stack_count := 1;			(* Laufvariable Stack *)
+(* start values for the array size *)
+links := 1;					(* first element of the array *)
+rechts := ((size) / 4);		(* last element of the array *)
+stack_count := 1;			(* loop variable stack *)
 
-WHILE NOT ende_aussen DO						(* �u�ere Schleife *)
+WHILE NOT ende_aussen DO						(* outer loop *)
 	IF links < rechts THEN
-		pivot := PT^[((rechts+links) / 2)];			(* Wert des mittleren Elements als Pivot-Wert *)
+		pivot := PT^[((rechts+links) / 2)];			(* value of the middle element as pivot value *)
 		i := links -1;
 		j := rechts +1;
 
-		(* innere Schleife, teile Feld *)
+		(* inner loop, partition the array *)
 		ende_innen := FALSE;
 		REPEAT
 
-			(* steigende Reihenfolge *)
+			(* ascending order *)
 			REPEAT	i := i+1;	UNTIL (PT^[i] >= pivot) OR NOT (i < rechts)	END_REPEAT;
 			REPEAT	j := j-1;	UNTIL (PT^[j] <= pivot) OR NOT (j > links)	END_REPEAT;
 
-			(*sinkende Reihenfolge *)
+			(*descending order *)
 (*			REPEAT	i := i+1;	UNTIL (PT^[i] <= pivot) OR NOT (i < rechts)	END_REPEAT	*)
 (*			REPEAT	j := j-1;	UNTIL (PT^[j] >= pivot) OR NOT (j > links)	END_REPEAT	*)
 
@@ -8219,15 +8219,15 @@ WHILE NOT ende_aussen DO						(* �u�ere Schleife *)
 		UNTIL ende_innen END_REPEAT;
 
 		(* Push stack *)
-		stack[stack_count] := rechts;		(* rechten Teil sp�ter sortieren *)
+		stack[stack_count] := rechts;		(* sort the right part later *)
 		IF Stack_count < 32 THEN
 			stack_count := stack_count +1;
 		ELSE
 			ende_aussen := TRUE;
-			_ARRAY_SORT := FALSE;					(* Fehler: Stack zu klein *)
+			_ARRAY_SORT := FALSE;					(* error: stack too small *)
 		END_IF;
 
-		(* linken Teil sortiern *)
+		(* sort the left part *)
 		rechts := MAX(links, i-1);
 
 	ELSE
@@ -8239,7 +8239,7 @@ WHILE NOT ende_aussen DO						(* �u�ere Schleife *)
 			links := rechts+1;
 
 			(* pop stack *)
-			stack_count := stack_count -1;		(* jetzt rechten Teil sortierne *)
+			stack_count := stack_count -1;		(* now sort the right part *)
 			rechts:= stack[stack_count];
 		END_IF;
 
@@ -8247,7 +8247,7 @@ WHILE NOT ende_aussen DO						(* �u�ere Schleife *)
 
 END_WHILE;
 
-_ARRAY_SORT := TRUE;				(* Sortierung beendet *)
+_ARRAY_SORT := TRUE;				(* sorting finished *)
 END_FUNCTION
 
 FUNCTION ARRAY_AVG : REAL
@@ -9830,7 +9830,11 @@ VAR_INPUT
 	M : INT;
 END_VAR
 
-INC := (X + D + M + 1) MOD (M + 1);
+IF M + 1 > 0 THEN (* OSCAT 3.36: no MOD 0 *)
+	INC := (X + D + M + 1) MOD (M + 1);
+ELSE
+	INC := 0;
+END_IF;
 END_FUNCTION
 
 FUNCTION INC1 : INT
@@ -9858,7 +9862,11 @@ VAR
 END_VAR
 
 tmp := U - L + 1;
-INC2 := (X + D - L + tmp) MOD tmp + L;
+IF tmp <> 0 THEN (* OSCAT 3.36: no MOD 0 *)
+	INC2 := (X + D - L + tmp) MOD tmp + L;
+ELSE
+	INC2 := L;
+END_IF;
 END_FUNCTION
 
 FUNCTION INV : REAL
@@ -10051,19 +10059,19 @@ END_FUNCTION
 
 FUNCTION REAL_TO_FRAC : FRACTION
 VAR_INPUT
-	X : REAL;					(* in einen Bruch umzuwandelnder Wert *)
-	N : INT;					(* maximale Gr��e des Nenners *)
+	X : REAL;					(* value to be converted into a fraction *)
+	N : INT;					(* maximum size of the denominator *)
 END_VAR
 VAR
-	temp : DINT;				(* Merker f�r Berechnungen *)
+	temp : DINT;				(* flag for calculations *)
 
-	sign: BOOL;					(* Vorzeichen vom Eingangswert *)
-	X_gerundet: DINT;			(* Wert von Bruch, auf ganze Zahl gerundet *)
-	X_ohne_Nachkomma: REAL;		(* Wert von Bruch, ohne Nachkommastellen *)
-	Numerator:       DINT := 1;	(* Initialwert Zaehler  *)
-	Denominator:     DINT := 0;	(* Initialwert Nenner *)
-	Numerator_old:   DINT := 0;	(* Initialwert Zaehler der letzten Berechnung  *)
-	Denominator_old: DINT := 1;	(* Initialwert Zaehler der letzten Berechnung   *)
+	sign: BOOL;					(* sign of the input value *)
+	X_gerundet: DINT;			(* value of fraction, rounded to an integer *)
+	X_ohne_Nachkomma: REAL;		(* value of fraction, without decimal places *)
+	Numerator:       DINT := 1;	(* initial value numerator  *)
+	Denominator:     DINT := 0;	(* initial value denominator *)
+	Numerator_old:   DINT := 0;	(* initial value numerator of the last calculation  *)
+	Denominator_old: DINT := 1;	(* initial value numerator of the last calculation   *)
 
 END_VAR
 VAR
@@ -10073,33 +10081,33 @@ END_VAR
 X_work := X;
 
 IF X_work < 0.0 THEN
-	sign := TRUE;								(* Vorzeichen merken *)
-	X_work := ABS(X_work);								(* Absolutwert berechnen *)
+	sign := TRUE;								(* remember sign *)
+	X_work := ABS(X_work);								(* calculate absolute value *)
 END_IF;
 
 REPEAT
 	X_gerundet := REAL_TO_DINT(X_work);
 
-	(* Zaehler berechnen *)
-	temp := numerator * X_gerundet + numerator_old;		(* Zaehler um Vorkammawert erweitern *)
-	numerator_old := numerator;							(* Zaehler der letzten Berechnung speichern *)
-	numerator := temp;									(* Zaehler dieser Berechnung speichern *)
+	(* calculate numerator *)
+	temp := numerator * X_gerundet + numerator_old;		(* extend numerator by the integer part *)
+	numerator_old := numerator;							(* store numerator of the last calculation *)
+	numerator := temp;									(* store numerator of this calculation *)
 
-	(* Nenner berechnen *)
-	temp := denominator * X_gerundet + denominator_old;	(* Nenner um Vorkammawert erweitern *)
-	denominator_old := denominator;						(* Nenner der letzten Berechnung speichern *)
-	denominator := temp;								(* Nenner dieser Berechnung speichern *)
+	(* calculate denominator *)
+	temp := denominator * X_gerundet + denominator_old;	(* extend denominator by the integer part *)
+	denominator_old := denominator;						(* store denominator of the last calculation *)
+	denominator := temp;								(* store denominator of this calculation *)
 
-	(* Restwert berechnen *)
+	(* calculate remainder *)
 	X_ohne_Nachkomma := DINT_TO_REAL(X_gerundet);
-	IF X_work = X_ohne_Nachkomma THEN						(* Bruch geht ohne Rest auf *)
-		IF ABS(denominator) <= N THEN						(* kein Rundungsfehler *)
-			numerator_old := numerator;					(* Numerator_old wird von Funktion zur�ckgegeben *)
-			denominator_old := denominator;			(* Denominator_old wird von Funktion zur�ckgegeben *)
+	IF X_work = X_ohne_Nachkomma THEN						(* fraction divides without remainder *)
+		IF ABS(denominator) <= N THEN						(* no rounding error *)
+			numerator_old := numerator;					(* Numerator_old is returned by the function *)
+			denominator_old := denominator;			(* Denominator_old is returned by the function *)
 		END_IF
-		EXIT;											(* keine weitere Berechnung notwendig *)
+		EXIT;											(* no further calculation necessary *)
 	ELSE
-		X_work := 1.0 / (X_work - X_ohne_Nachkomma);				(* Kehrwert vom Rest -> Neuer Bruch *)
+		X_work := 1.0 / (X_work - X_ohne_Nachkomma);				(* reciprocal of the remainder -> new fraction *)
 	END_IF
 
 UNTIL
@@ -10681,16 +10689,16 @@ END_FUNCTION
 // 	pt : REF_TO BYTE;
 // END_VAR
 //
-// (* pointer f�r die ausgabe ermitteln *)
+// (* determine pointer for the output *)
 // pt := REF(BYTE_TO_STRB);
-// (* die 8 ausgabecharacter ermitteln und schreiben *)
+// (* determine and write the 8 output characters *)
 // FOR i := 1 TO 8 DO
 // 	pt^ := BOOL_TO_BYTE(in.7) + 48;
 // 	in := SHL(in,1);
 // 	pt := pt + 1;
 // END_FOR;
 //
-// (* der ausgabestring muss noch mit 0 abgeschlossen werden *)
+// (* the output string still has to be terminated with 0 *)
 // pt^ := 0;
 // END_FUNCTION
 
@@ -11131,16 +11139,16 @@ END_FUNCTION
 // 	i: INT;
 // END_VAR
 //
-// (* pointer f�r die ausgabe ermitteln *)
+// (* determine pointer for the output *)
 // pt := REF(DWORD_TO_STRB);
-// (* die 8 ausgabecharacter ermitteln und schreiben *)
+// (* determine and write the 8 output characters *)
 // FOR i := 1 TO 32 DO
 // 	pt^:= BOOL_TO_BYTE(in.31) + 48;
 // 	in := SHL(in,1);
 // 	pt := pt + 1;
 // END_FOR;
 //
-// (* der ausgabestring muss nochg mit 0 abgeschlossen werden *)
+// (* the output string still has to be terminated with 0 *)
 // pt^ := 0;
 // END_FUNCTION
 
@@ -12473,19 +12481,19 @@ END_FUNCTION
 // END_VAR
 //
 // CASE in OF
-// 	196:	(* � *)
+// 	196:	(* Ä *)
 // 		TO_UML := 'Ae';
-// 	214:	(* � *)
+// 	214:	(* Ö *)
 // 		TO_UML := 'Oe';
-// 	220:	(* � *)
+// 	220:	(* Ü *)
 // 		TO_UML := 'Ue';
-// 	223:	(* � *)
+// 	223:	(* ß *)
 // 		TO_UML := 'ss';
-// 	228:	(* � *)
+// 	228:	(* ä *)
 // 		TO_UML := 'ae';
-// 	246:	(* � *)
+// 	246:	(* ö *)
 // 		TO_UML := 'oe';
-// 	252:	(* � *)
+// 	252:	(* ü *)
 // 		TO_UML := 'ue';
 // ELSE
 // 	TO_UML := CHR_TO_STRING(IN);
@@ -12586,7 +12594,7 @@ VAR
 	ly : INT;
 END_VAR
 
-IF LANG = 0 THEN ly := LANGUAGE.DEFAULT; ELSE ly := MIN(LANG, LANGUAGE.LMAX); END_IF;
+IF LANG <= 0 THEN ly := LANGUAGE.DEFAULT; ELSE ly := MIN(LANG, LANGUAGE.LMAX); END_IF; (* OSCAT 3.36 *)
 IF wday < 1 OR wday > 7 THEN
 	RETURN;
 ELSIF LX = 0 THEN
@@ -13206,7 +13214,7 @@ ELSE
 	lx := MIN(language.LMAX, LANGU);
 END_IF;
 
-(* berechnung von ostern f�r das aktuelle jahr *)
+(* calculate easter for the current year *)
 jahr := YEAR_OF_DATE(date_in);
 ostern := EASTER(jahr);
 wdx := DAY_OF_WEEK(DATE_IN);
@@ -13756,24 +13764,24 @@ VAR
 	wm: INT;
 END_VAR
 
-(* berechne den 1.1 des jahres von idate. *)
+(* calculate january 1st of the year of idate. *)
 yr := YEAR_OF_DATE(idate);
 d1 := YEAR_BEGIN(yr);
-(* wochentag von d1 *)
+(* weekday of d1 *)
 w1 := DAY_OF_WEEK(d1);
-(* offset des montags der eletzten KW des vorjahres *)
-(* wenn der erste tag des jahres gr��er als donnerstag ist dann beginnt die letzte kw am montag davor *)
-(* wenn der erste tag des jahres ein donnerstag oder kleiner ist beginnt die erste kw 2 montage davor *)
+(* offset of the monday of the last calendar week of the previous year *)
+(* if the first day of the year is later than thursday, the last calendar week starts on the monday before *)
+(* if the first day of the year is a thursday or earlier, the first calendar week starts 2 mondays before *)
 IF w1 < 5 THEN
 	ds := ULINT_TO_DWORD(DATE_TO_ULINT(d1) - INT_TO_ULINT(w1+6) * 86400);
 ELSE
 	ds := ULINT_TO_DWORD(DATE_TO_ULINT(d1) - INT_TO_ULINT(w1-1) * 86400);
 END_IF;
 
-(* kalenderwoche des eingangsdatums *)
+(* calendar week of the input date *)
 WORK_WEEK := ULINT_TO_INT((DATE_TO_ULINT(idate) - DWORD_TO_ULINT(ds)) / 604800);
 
-(* korrektur wenn work_week = 0 *)
+(* correction if work_week = 0 *)
 IF work_week = 0 THEN
 	(* work_week needs to be 53 when 1.jan of the year before is thursday or dec 31. is thursday. *)
 	(* first and last weekday of a year is equal and one more day for a leap_year. *)
@@ -13868,8 +13876,8 @@ STRUCT
 													'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So',
 													'Lu', 'Ma', 'Me', 'Je', 'Ve', 'Sa', 'Di';
 	MONTHS : ARRAY[1..3, 1..12] OF STRING(10) :=	'January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December',
-													'Januar', 'Februar', 'M�rz', 'April', 'Mai', 'Juni', 'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember',
-													'Janvier', 'F�vrier', 'mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Ao�t', 'Septembre', 'Octobre', 'Novembre', 'Decembre';
+													'Januar', 'Februar', 'März', 'April', 'Mai', 'Juni', 'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember',
+													'Janvier', 'Février', 'mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Decembre';
 	MONTHS3 : ARRAY[1..3, 1..12] OF STRING(3) :=	'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
 													'Jan', 'Feb', 'Mrz', 'Apr', 'Mai', 'Jun', 'Jul', 'Aug', 'Sep', 'Okt', 'Nov', 'Dez',
 													'Jan', 'Fev', 'Mar', 'Avr', 'Mai', 'Jun', 'Jul', 'Aou', 'Sep', 'Oct', 'Nov', 'Dec';
@@ -13882,7 +13890,7 @@ END_TYPE
 TYPE CONSTANTS_LOCATION :
 STRUCT
 	(* location setup *)
-	DEFAULT : INT := 1; (* 1=germany, 2=austria 3=france 4=belgium-german 5= italien-S�dtirol *)
+	DEFAULT : INT := 1; (* 1=germany, 2=austria 3=france 4=belgium-german 5= italy-south tyrol *)
 	LMAX : INT := 5;
 
 	(* language spoken in the location *)
@@ -13893,7 +13901,7 @@ END_TYPE
 
 TYPE CONSTANTS_MATH :
 STRUCT
-	PI : REAL := 	3.14159265358979323846264338327950288;		(* Kreiszahl PI *)
+	PI : REAL := 	3.14159265358979323846264338327950288;		(* circle constant PI *)
 	PI2 : REAL := 	6.28318530717958647692528676655900576;	(* PI * 2 *)
 	PI4 : REAL :=  12.56637061435917295385057353311801152;	(* PI * 4 *)
 	PI05 : REAL :=  1.5707963267949;							(* PI / 2 *)
@@ -13901,19 +13909,19 @@ STRUCT
 	PI_INV : REAL := 0.318309886183791;						(* 1 / PI *)
 	E : REAL := 	2.71828182845904523536028747135266249;		(* Euler constant e *)
 	E_INV : REAL := 0.367879441171442;							(* 1 / e *)
-	SQ2 : REAL :=	1.4142135623731;							(* Wurzel von 2 *)
+	SQ2 : REAL :=	1.4142135623731;							(* square root of 2 *)
 	FACTS : ARRAY[0..12] OF DINT := 1,1,2,6,24,120,720,5040,40320,362880,3628800,39916800,479001600;
 END_STRUCT
 END_TYPE
 
 TYPE CONSTANTS_PHYS :
 STRUCT
-	C : REAL := 299792458.0;				(* Lichtgeschwindigkeit in m/s *)
-	E : REAL := 1.60217653E-19;				(* elementarladung in Colomb = A * s *)
-	G : REAL := 9.80665; 						(* Erdbeschleunigung in m / s� *)
-	T0 : REAL := -273.15;						(* absoluter Nullpunkt in �C *)
-	RU : REAL := 8.314472; 					(* Universelle Gaskonstante in J / (mol � K) *)
-	PN : REAL := 101325.0;					(* NormalDruck in Pa *)
+	C : REAL := 299792458.0;				(* speed of light in m/s *)
+	E : REAL := 1.60217653E-19;				(* elementary charge in coulomb = A * s *)
+	G : REAL := 9.80665; 						(* gravitational acceleration in m / s² *)
+	T0 : REAL := -273.15;						(* absolute zero in °C *)
+	RU : REAL := 8.314472; 					(* universal gas constant in J / (mol · K) *)
+	PN : REAL := 101325.0;					(* standard pressure in Pa *)
 END_STRUCT
 END_TYPE
 
@@ -13921,10 +13929,10 @@ TYPE CONSTANTS_SETUP :
 STRUCT
 	(* setup Parameters *)
 	EXTENDED_ASCII : BOOL := TRUE;
-	CHARNAMES : ARRAY[1..4] OF STRING(253) := ';"&quot;&&amp;<&lt;>&gt;�&euro;�&nbsp;�&iexcl;�&cent;�&pound;�&curren;�&yen;�&brvbar;�&sect;�&uml;�&copy;�&ordf;�&laquo;�&not;�&shy;�&reg;�&macr;�&deg;�&plusmn;�&sup2;�&sup3;�&acute;�&micro;�&para;�&middot;�&cedil;�&sup1;�&ordm;�&raquo;�&frac14;�&Ucirc;',
-		';�&frac34;�&iquest;�&Agrave;�&Aacute;�&Acirc;�&Atilde;�&Auml;�&Aring;�&AElig;�&Ccedil;�&Egrave;�&Eacute;�&Ecirc;�&Euml;�&Igrave;�&Iacute;�&Icirc;�&Iuml;�&ETH;�&Ntilde;�&Ograve;�&Oacute;�&Ocirc;�&Otilde;�&Ouml;�&times;�&Oslash;�&Ugrave;�&Uacute;�&frac12;',
-		';�&Uuml;�&Yacute;�&THORN;�&szlig;�&agrave;�&aacute;�&acirc;�&atilde;�&auml;�&aring;�&aelig;�&ccedil;�&egrave;�&eacute;�&ecirc;�&euml;�&igrave;�&iacute;�&icirc;�&iuml;�&eth;�&ntilde;�&ograve;�&oacute;�&ocirc;�&otilde;�&ouml;�&divide;�&oslash;�&ugrave;',
-		';�&uacute;�&ucirc;�&uuml;�&yacute;�&thorn;�&yuml;';
+	CHARNAMES : ARRAY[1..4] OF STRING(253) := ';"&quot;&&amp;<&lt;>&gt;&euro; &nbsp;¡&iexcl;¢&cent;£&pound;¤&curren;¥&yen;¦&brvbar;§&sect;¨&uml;©&copy;ª&ordf;«&laquo;¬&not;­&shy;®&reg;¯&macr;°&deg;±&plusmn;²&sup2;³&sup3;´&acute;µ&micro;¶&para;·&middot;¸&cedil;¹&sup1;º&ordm;»&raquo;¼&frac14;Û&Ucirc;',
+		';¾&frac34;¿&iquest;À&Agrave;Á&Aacute;Â&Acirc;Ã&Atilde;Ä&Auml;Å&Aring;Æ&AElig;Ç&Ccedil;È&Egrave;É&Eacute;Ê&Ecirc;Ë&Euml;Ì&Igrave;Í&Iacute;Î&Icirc;Ï&Iuml;Ð&ETH;Ñ&Ntilde;Ò&Ograve;Ó&Oacute;Ô&Ocirc;Õ&Otilde;Ö&Ouml;×&times;Ø&Oslash;Ù&Ugrave;Ú&Uacute;½&frac12;',
+		';Ü&Uuml;Ý&Yacute;Þ&THORN;ß&szlig;à&agrave;á&aacute;â&acirc;ã&atilde;ä&auml;å&aring;æ&aelig;ç&ccedil;è&egrave;é&eacute;ê&ecirc;ë&euml;ì&igrave;í&iacute;î&icirc;ï&iuml;ð&eth;ñ&ntilde;ò&ograve;ó&oacute;ô&ocirc;õ&otilde;ö&ouml;÷&divide;ø&oslash;ù&ugrave;',
+		';ú&uacute;û&ucirc;ü&uuml;ý&yacute;þ&thorn;ÿ&yuml;';
 	MTH_OFS : ARRAY[1..12] OF INT := 0,31,59,90,120,151,181,212,243,273,304,334;
 	DECADES : ARRAY[0..8] OF REAL := 1.0,10.0,100.0,1000.0,10000.0,100000.0,1000000.0,10000000.0,100000000.0;
 END_STRUCT

@@ -58,6 +58,8 @@ func TestStrings(t *testing.T) {
 		{"MONTH_TO_STRING out of range", MONTH_TO_STRING(13, 1, 0), ""},
 		{"WEEKDAY_TO_STRING", WEEKDAY_TO_STRING(7, 1, 0), "Sunday"},
 		{"WEEKDAY_TO_STRING 2", WEEKDAY_TO_STRING(1, 2, 2), "Mo"},
+		// A negative language is the default one, as in OSCAT 3.36.
+		{"WEEKDAY_TO_STRING -1", WEEKDAY_TO_STRING(7, -1, 0), WEEKDAY_TO_STRING(7, 0, 0)},
 		{"REAL_TO_STRF", REAL_TO_STRF(3.14159, 2, "."), "3.14"},
 		{"REAL_TO_STRF small", REAL_TO_STRF(-0.05, 3, ","), "-0,050"},
 		{"REAL_TO_STRF 0 digits", REAL_TO_STRF(2.6, 0, "."), "3"},

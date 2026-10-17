@@ -1369,7 +1369,7 @@ VAR
 	init: BOOL;
 END_VAR
 
-(* l�sche die millisekunden bei sunrise und sunset *)
+(* clear the milliseconds of sunrise and sunset *)
 SUN_RISE := DWORD_TO_TOD(TOD_TO_DWORD(SUN_RISE) / 1000 * 1000);
 SUN_SET := DWORD_TO_TOD(TOD_TO_DWORD(SUN_SET) / 1000 * 1000);
 
@@ -1863,7 +1863,7 @@ IF rst OR over_temp OR state = 0 THEN
 		fail := FALSE;
 		state := 1;
 	ELSE
-		(* normaler reset *)
+		(* normal reset *)
 		motor := FALSE;
 		coil1 := FALSE;
 		coil2 := FALSE;
@@ -1910,7 +1910,7 @@ CASE state OF
 		motor := TRUE;
 		state := 3;
 		last_change := tx;
-	(* pre_heat_time ist abgelaufen und oil_temp ist nicht aktiv *)
+	(* pre_heat_time has elapsed and oil_temp is not active *)
 	ELSIF tx - last_change >= pre_heat_time AND NOT oil_temp THEN
 		state := 7;
 		pre_heat := FALSE;
@@ -1924,7 +1924,7 @@ CASE state OF
 		last_change := tx;
 	END_IF;
 
-3:	(* abwarten bis z�ndung eingeschaltet werden kann *)
+3:	(* wait until ignition can be switched on *)
 	IF tx - last_change >= pre_vent_time - pre_ignite_time THEN
 		ignite := TRUE;
 		state := 4;
@@ -1938,17 +1938,17 @@ CASE state OF
 		last_change := tx;
 	END_IF;
 
-4:	(* warten bis oelzufuhr geoeffnet werden darf *)
+4:	(* wait until the oil supply may be opened *)
 	IF tx - last_change >= pre_ignite_time THEN
 		coil1 := TRUE;
 		state := 5;
 		last_change := tx;
 	END_IF;
 
-5:	(* warten auf flammwaechter und falls noetig abschalten *)
+5:	(* wait for the flame monitor and shut off if necessary *)
 	IF tx - last_change >= safety_time OR flame THEN
 		IF NOT flame THEN
-			(* notabschaltung da flammwaechster nicht angesprochen hat *)
+			(* emergency shutdown because the flame monitor did not respond *)
 			state := 7;
 			motor := FALSE;
 			coil1 := FALSE;
@@ -1962,9 +1962,9 @@ CASE state OF
 		END_IF;
 	END_IF;
 
-6:	(* brenner l�uft, flammueberwachung und nach ablauf der nachigniteszeit ignite abschalten *)
+6:	(* burner running, flame monitoring, and switch off ignite after the post-ignite time has elapsed *)
 	IF NOT flame AND NOT multiple_ignition THEN
-		(* notabschaltung da flammwaechster keine flamme meldet *)
+		(* emergency shutdown because the flame monitor reports no flame *)
 		state := 7;
 		motor := FALSE;
 		coil1 := FALSE;
@@ -1980,7 +1980,7 @@ CASE state OF
 		last_change := tx;
 	ELSE
 		IF tx - last_change >= post_ignite_time THEN
-			(* post_ignite_time abgelaufen, ignite abschalten *)
+			(* post_ignite_time elapsed, switch off ignite *)
 			ignite := FALSE;
 		END_IF;
 		IF tx - last_change >= stage2_delay AND stage2 THEN
@@ -1991,7 +1991,7 @@ CASE state OF
 	END_IF;
 END_CASE;
 
-(* abschaltung wenn kein eingangssignal *)
+(* shut off if there is no input signal *)
 IF NOT in THEN
 	state := 1;
 	motor := FALSE;
@@ -2002,12 +2002,12 @@ IF NOT in THEN
 	last_change := tx;
 END_IF;
 
-(* runtimez�hler *)
+(* runtime counter *)
 timer1(in := flame AND in AND motor AND coil1 AND NOT coil2, seconds := runtime1, cycles := cycles);
 timer2(in := flame AND in AND motor AND coil1 AND coil2, seconds := runtime2, cycles := cycles2);
 KWH := UDINT_TO_REAL(runtime1) * KW1 / 3600.0 + UDINT_TO_REAL(runtime2) * KW2 / 3600.0;
 
-(* zeit fuer naechsten aufruf merken *)
+(* remember time for the next call *)
 last := tx;
 
 (* set fail output IF ERROR and Status  if normal operation *)

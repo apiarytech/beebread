@@ -17,6 +17,25 @@ import (
 	"testing"
 )
 
+// TestNoLostCharacters checks that no cleaned source holds U+FFFD, which an
+// editor writes for a character it could not read: the ISO 8859-1
+// characters of OSCAT's month names and comments were lost so once, and
+// put back from the exports of OSCAT BASIC 3.35 and BUILDING 1.00 in
+// github.com/eclipse-oscat/oscat-libs-archive.
+func TestNoLostCharacters(t *testing.T) {
+	for _, lib := range []string{"basic", "building", "network"} {
+		data, err := os.ReadFile("../../doc/beedance_" + lib + ".st")
+		if err != nil {
+			t.Fatal(err)
+		}
+		for i, line := range strings.Split(string(data), "\n") {
+			if strings.ContainsRune(line, '�') {
+				t.Errorf("doc/beedance_%s.st:%d holds U+FFFD: %.80s", lib, i+1, line)
+			}
+		}
+	}
+}
+
 // golden checks that doc/beedance_<lib>.st is what stclean -refs makes of
 // it, with the POUs testdata/<lib>.exclude names and the commented out POUs
 // of the cleaned libraries uses: that the POUs it comments out, and why, are

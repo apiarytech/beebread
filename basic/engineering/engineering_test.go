@@ -550,6 +550,17 @@ func TestConversions(t *testing.T) {
 	if DIR_TO_DEG("SW", 1) != 225 || DIR_TO_DEG("ONO", 2) != 68 {
 		t.Error("DIR_TO_DEG")
 	}
+	// Where OSCAT 3.35 divides by 0, DEG_TO_DIR gives '' instead of a
+	// panic; a negative language is the default one, as in OSCAT 3.36.
+	if got := DEG_TO_DIR(90, -1, 0); got != "" {
+		t.Errorf("DEG_TO_DIR with n = -1 = %q", got)
+	}
+	if got, want := DEG_TO_DIR(90, 1, -1), DEG_TO_DIR(90, 1, 0); got != want || got == "" {
+		t.Errorf("DEG_TO_DIR in language -1 = %q, want %q", got, want)
+	}
+	if got, want := DIR_TO_DEG("SW", -1), DIR_TO_DEG("SW", 0); got != want {
+		t.Errorf("DIR_TO_DEG in language -1 = %d, want %d", got, want)
+	}
 	var tp TEMPERATURE
 	tp.INIT()
 	tp.C = 100

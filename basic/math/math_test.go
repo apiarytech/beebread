@@ -158,6 +158,11 @@ func TestIntegerFunctions(t *testing.T) {
 		{"INC1(1,3)", int64(INC1(1, 3)), 2},
 		{"INC2(5,1,3,5)", int64(INC2(5, 1, 3, 5)), 3},
 		{"INC2(3,-1,3,5)", int64(INC2(3, -1, 3, 5)), 5},
+		// Where OSCAT 3.35 takes MOD 0, the ports give what 3.36 does.
+		{"INC(2,1,-1)", int64(INC(2, 1, -1)), 0},
+		{"INC(2,1,-5)", int64(INC(2, 1, -5)), 0},
+		{"INC(-2,0,32767)", int64(INC(-2, 0, 32767)), 32766},
+		{"INC2(4,1,5,4)", int64(INC2(4, 1, 5, 4)), 5},
 		{"SGN(-2)", int64(SGN(-2)), -1},
 		{"SGN(0)", int64(SGN(0)), 0},
 		{"SGN(2)", int64(SGN(2)), 1},

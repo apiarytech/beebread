@@ -40,6 +40,8 @@ See the package documentation of `basic` for the details.
 
 The OSCAT sources, cleaned for beedance, are in `doc/`: `beedance_basic.st`, `beedance_building.st` and `beedance_network.st`. Pointers are written as beedance's references (`REF_TO`, `REF()`); a POU beedance cannot run, such as one that reads the bytes of a STRING through a pointer, is commented out with the reason, and still has a Go port.
 
+The originals of BASIC 3.35 and BUILDING 1.00 are the exports in the [OSCAT archive](https://github.com/eclipse-oscat/oscat-libs-archive) (`OSCAT_BASIC_LIB/ARCHIVE/rel335/OSCAT_BASIC_335.TXT`, `OSCAT_BUILDING_LIB/Archive/rel100/OSCAT_BUILDING_100.TXT`); their ISO 8859-1 characters, such as the é of `'Février'`, were put back from them. From BASIC 3.36, which is in the archive only as a library, the source and the port take the fixes of `INC` and `INC2` (no `MOD 0`) and of `DIR_TO_DEG` and `WEEKDAY_TO_STRING` (a negative language is the default one), and `DEG_TO_DIR` takes a negative language the same way. 3.36 is not ported as a whole: its `_BUFFER_INIT` writes only the first byte of the buffer, and its `MONTH_TO_STRING` drops the 3.35 check of a negative language (CVE-2024-6876).
+
 `go run ./tools/oscatcov` reports what of `doc/beedance_basic.st` is ported, by kind; its test fails if anything is not.
 
 All of OSCAT BUILDING 1.00, 57 functions and function blocks, is ported too, built on the BASIC port. Its source, cleaned for IEC 61131-3 by `go run ./tools/stclean` (see its documentation), is `doc/beedance_building.st`, which beedance reads; the Go port follows the cleaned source:
