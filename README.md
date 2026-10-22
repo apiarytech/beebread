@@ -97,6 +97,11 @@ You can contribute in several ways:
 
 When contributing, please strive to write clean, idiomatic Go code.
 
+See [CONTRIBUTING.md](CONTRIBUTING.md) for how to file issues and submit
+code (contributors sign the [CLA](CLA.md) once, because beebread is
+dual-licensed) and [SECURITY.md](SECURITY.md) for reporting a
+vulnerability privately.
+
 ## Original OSCAT Library
 
 The original OSCAT Basic and Building library source files in IEC 61131-3 Structured Text can be found at the official OSCAT libs archive on GitHub:
