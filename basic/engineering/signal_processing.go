@@ -166,7 +166,10 @@ func (d *DELAY) Execute(now time.Time) {
 	default:
 		d.OUT = d.buf[d.i]
 		d.buf[d.i] = d.IN
-		d.i = math.INC1(d.i, d.N)
+		// Wrap at the buffer's length, not at N: OSCAT wraps at N, which
+		// for N > 32 indexes past the 32-entry buffer (a bounds fault on a
+		// PLC, a panic in Go). N above 32 delays by 32 scans.
+		d.i = math.INC1(d.i, stop+1)
 	}
 }
 

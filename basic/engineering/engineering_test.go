@@ -1010,3 +1010,33 @@ func TestGenerators(t *testing.T) {
 		t.Error("GEN_RDT made no pulses")
 	}
 }
+
+// TestDelayLargeNIssue3 covers issue #3: N above 32 must not index past the
+// 32-entry buffer; it delays by 32 scans.
+func TestDelayLargeNIssue3(t *testing.T) {
+	d := DELAY{N: 40}
+	now := time.Now()
+	d.IN = 0
+	d.Execute(now) // the first scan fills the buffer
+	for i := 1; i <= 45; i++ {
+		d.IN = iec.REAL(i)
+		d.Execute(now)
+		want := iec.REAL(0)
+		if i > 32 {
+			want = iec.REAL(i - 32)
+		}
+		if d.OUT != want {
+			t.Fatalf("scan %d: OUT = %v, want %v", i, d.OUT, want)
+		}
+	}
+	// A normal N still delays by N scans.
+	d = DELAY{N: 3}
+	d.Execute(now)
+	for i := 1; i <= 6; i++ {
+		d.IN = iec.REAL(i)
+		d.Execute(now)
+		if want := iec.REAL(max(i-3, 0)); d.OUT != want {
+			t.Fatalf("N=3 scan %d: OUT = %v, want %v", i, d.OUT, want)
+		}
+	}
+}
