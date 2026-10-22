@@ -186,3 +186,56 @@ func TestReadHTTP(t *testing.T) {
 		t.Errorf("Content-Length: %q", r.READ_HTTP)
 	}
 }
+
+// TestDNSClientMalformedReplyIssue4 covers issue #4: a reply whose last
+// record runs past its end is reported, not read past the buffer.
+func TestDNSClientMalformedReplyIssue4(t *testing.T) {
+	for _, size := range []iec.UINT{4096, 5000} {
+		k := newConn()
+		d := DNS_CLIENT{client: client{IP_C: &k.c, S_BUF: &k.s, R_BUF: &k.r}}
+		d.INIT()
+		// One 2-byte label, then 1-byte labels, then the end of the name at
+		// index 4093: the record's fixed part would run past the reply.
+		b := &k.r.BUFFER
+		b[0], b[1], b[2] = 2, 'a', 'b'
+		for i := 3; i < 4093; i += 2 {
+			b[i], b[i+1] = 1, 'a'
+		}
+		b[4093] = 0
+		k.r.SIZE = size
+		d.state, d.anc, d.i = 40, 1, 0
+		func() {
+			defer func() {
+				if r := recover(); r != nil {
+					t.Fatalf("SIZE %d: DNS_CLIENT panicked: %v", size, r)
+				}
+			}()
+			for n := 0; n < 5000 && d.state == 40; n++ {
+				d.Execute(time.Now())
+			}
+		}()
+		if d.ERROR != 254 || d.DONE {
+			t.Errorf("SIZE %d: ERROR %d, DONE %v; want 254 and FALSE", size, d.ERROR, d.DONE)
+		}
+	}
+}
+
+// TestDNSRevClientOversizedReply: a SIZE larger than the buffer must not
+// make DNS_REV_CLIENT read past it (found with issue #4).
+func TestDNSRevClientOversizedReply(t *testing.T) {
+	k := newConn()
+	d := DNS_REV_CLIENT{client: client{IP_C: &k.c, S_BUF: &k.s, R_BUF: &k.r}}
+	d.INIT()
+	k.r.BUFFER[1] = d.tid
+	for i := 12; i < len(k.r.BUFFER); i++ {
+		k.r.BUFFER[i] = 1
+	}
+	k.r.SIZE = 6000
+	d.state = 30
+	defer func() {
+		if r := recover(); r != nil {
+			t.Fatalf("DNS_REV_CLIENT panicked: %v", r)
+		}
+	}()
+	d.Execute(time.Now())
+}

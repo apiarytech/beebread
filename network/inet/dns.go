@@ -106,8 +106,8 @@ func dnsConnect(c *network.IP_C, ip iec.DWORD) {
 
 // DNS_CLIENT finds the IPv4 address IP4 of DOMAIN with the DNS server
 // IP4_DNS, on a rising edge of ACTIVATE: DONE when found, else ERROR, the
-// DNS error, 255 for no address, or the error of the connection. A DOMAIN
-// that is an address is its address.
+// DNS error, 255 for no address, 254 for a reply too short for its records,
+// or the error of the connection. A DOMAIN that is an address is its address.
 type DNS_CLIENT struct {
 	client
 	ACTIVATE iec.BOOL
@@ -127,6 +127,7 @@ type DNS_CLIENT struct {
 	rrStop       iec.BOOL
 	ttlLast      iec.DWORD
 	ttlTmp       iec.DWORD
+	malformed    iec.BOOL // a record ran past the end of the reply
 }
 
 // INIT resets the block.
@@ -156,6 +157,7 @@ func (d *DNS_CLIENT) Execute(now time.Time) {
 		} else {
 			d.ipState = 1 // ask for the connection
 			d.ttlLast = 0
+			d.malformed = false
 			d.domainCopy = d.DOMAIN
 			d.state = 10
 		}
@@ -186,9 +188,15 @@ func (d *DNS_CLIENT) Execute(now time.Time) {
 			}
 		}
 	case 40:
+		// The reply ends at SIZE, or at the end of the buffer if SIZE is larger.
+		// A hostile or broken reply must not make the block read past it.
+		end := iec.INT(rb.SIZE)
+		if n := iec.INT(len(rb.BUFFER)); end > n {
+			end = n
+		}
 		if d.anc > 0 {
 			d.anc--
-			for iec.UINT(d.i) < rb.SIZE {
+			for d.i < end {
 				x := rb.BUFFER[d.i]
 				if !d.rrStop {
 					switch {
@@ -204,7 +212,17 @@ func (d *DNS_CLIENT) Execute(now time.Time) {
 					continue
 				}
 				d.rrStop = false
+				// TYPE, CLASS, TTL and RDLENGTH follow the name: 10 bytes at
+				// d.i..d.i+9, then an A record's 4-byte address at d.i+10..d.i+13.
+				if d.i+9 >= end {
+					d.malformed, d.anc = true, 0
+					break
+				}
 				if rb.BUFFER[d.i+1] == 1 && rb.BUFFER[d.i+3] == 1 { // type A, class IN
+					if d.i+14 > end {
+						d.malformed, d.anc = true, 0
+						break
+					}
 					d.i += 4
 					d.ttlTmp = logic.DWORD_OF_BYTE(rb.BUFFER[d.i], rb.BUFFER[d.i+1], rb.BUFFER[d.i+2], rb.BUFFER[d.i+3])
 					d.i += 6
@@ -220,9 +238,12 @@ func (d *DNS_CLIENT) Execute(now time.Time) {
 				break
 			}
 		} else {
-			if d.IP4 > 0 {
+			switch {
+			case d.IP4 > 0:
 				d.DONE = true
-			} else {
+			case bool(d.malformed):
+				d.ERROR = 254 // the reply ended inside a record
+			default:
 				d.ERROR = 255 // no address
 			}
 			d.state = 99
@@ -301,8 +322,14 @@ func (d *DNS_REV_CLIENT) Execute(now time.Time) {
 		} else if sb.SIZE == 0 && d.tid == rb.BUFFER[1] && rb.SIZE >= iec.UINT(d.i+12) {
 			d.ERROR = iec.DWORD(rb.BUFFER[3] & 0x0F)
 			if d.ERROR == 0 {
+				// The reply ends at SIZE, or at the end of the buffer if SIZE
+				// is larger; a broken reply must not make the block read past it.
+				end := iec.INT(rb.SIZE)
+				if n := iec.INT(len(rb.BUFFER)); end > n {
+					end = n
+				}
 				// The name of the answer, the last in it.
-				d.i = iec.INT(rb.SIZE) - 2
+				d.i = end - 2
 				for rb.BUFFER[d.i] > 0 {
 					if d.i == 0 {
 						break
@@ -311,7 +338,7 @@ func (d *DNS_REV_CLIENT) Execute(now time.Time) {
 				}
 				d.i += 2
 				d.p1 = d.i + 1
-				for iec.UINT(d.i) < rb.SIZE {
+				for d.i < end {
 					d.dl = iec.INT(rb.BUFFER[d.i])
 					if d.dl > 0 {
 						rb.BUFFER[d.i] = 46 // a dot for each length
