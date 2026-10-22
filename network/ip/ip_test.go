@@ -187,3 +187,62 @@ func TestFIFO(t *testing.T) {
 		t.Fatalf("after the first leaves: states %d %d", st1, st2)
 	}
 }
+
+// TestUDPServerRepliesToSenderIssue1 covers issue #1: in UDP server mode 5 a
+// reply goes to the sender's own port, and to the latest sender.
+func TestUDPServerRepliesToSenderIssue1(t *testing.T) {
+	probe, err := net.ListenPacket("udp4", "127.0.0.1:0")
+	if err != nil {
+		t.Skip(err)
+	}
+	port := probe.LocalAddr().(*net.UDPAddr).Port
+	probe.Close()
+
+	var c network.IP_C
+	var s, r network.NETWORK_BUFFER
+	x := IP_CONTROL{IP_C: &c, S_BUF: &s, R_BUF: &r}
+	x.INIT()
+	x.PORT, x.TIME_OUT = iec.WORD(port), iec.TIME(time.Second)
+	c.C_MODE = 5 // UDP server: answers whoever sends
+	c.C_ENABLE = true
+	scan(t, x.Execute, func() bool { return c.C_STATE == 255 })
+
+	server := &net.UDPAddr{IP: net.IPv4(127, 0, 0, 1), Port: port}
+	for _, msg := range []string{"first", "second"} {
+		// Each client sends from its own ephemeral port, not from C_PORT.
+		cl, err := net.ListenUDP("udp4", &net.UDPAddr{IP: net.IPv4(127, 0, 0, 1)})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err := cl.WriteTo([]byte(msg), server); err != nil {
+			t.Fatal(err)
+		}
+		scan(t, x.Execute, func() bool { return get(&r) == msg })
+		r.SIZE = 0
+		put(&s, "re: "+msg)
+		got := make(chan string, 1)
+		go func() {
+			buf := make([]byte, 64)
+			cl.SetReadDeadline(time.Now().Add(3 * time.Second))
+			n, _, err := cl.ReadFrom(buf)
+			if err != nil {
+				got <- "error: " + err.Error()
+				return
+			}
+			got <- string(buf[:n])
+		}()
+		var reply string
+		scan(t, x.Execute, func() bool {
+			select {
+			case reply = <-got:
+				return true
+			default:
+				return false
+			}
+		})
+		if reply != "re: "+msg {
+			t.Errorf("client %q got %q, want %q", msg, reply, "re: "+msg)
+		}
+		cl.Close()
+	}
+}

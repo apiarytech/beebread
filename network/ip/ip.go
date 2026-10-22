@@ -118,6 +118,7 @@ type control struct {
 	sActive    iec.BOOL
 	sStatus    iec.BYTE
 	sIPStr     iec.STRING
+	sPort      iec.UDINT // the port replies go to: C_PORT, or in mode 5 the sender's port
 	sIPExist   iec.BOOL
 	rStatus    iec.BYTE
 	rCount     iec.INT
@@ -187,9 +188,9 @@ func (x *control) run(now time.Time, c *network.IP_C, b buffers, IP iec.DWORD, P
 		}
 		// The receiver, unless mode 5 answers whoever sends.
 		if x.cMode < 5 {
-			x.sIPStr, x.sIPExist = x.cIPStr, true
+			x.sIPStr, x.sPort, x.sIPExist = x.cIPStr, iec.UDINT(x.cPort), true
 		} else {
-			x.sIPStr, x.sIPExist = "", false
+			x.sIPStr, x.sPort, x.sIPExist = "", 0, false
 		}
 	}
 
@@ -381,8 +382,13 @@ func (x *control) run(now time.Time, c *network.IP_C, b buffers, IP iec.DWORD, P
 							*b.rSize = 0
 						} else {
 							x.bytesRecv = iec.DINT(f.NRECBYTES)
-							if !x.sIPExist {
-								x.sIPStr, x.sIPExist = f.SREMOTEHOST, true
+							// Mode 5 answers whoever sent the last datagram, at
+							// the port it sent from. (OSCAT kept the first
+							// sender's IP and replied to C_PORT, so a client
+							// on an ephemeral port, such as SNTP_CLIENT, never
+							// got an answer.)
+							if x.cMode == 5 {
+								x.sIPStr, x.sPort, x.sIPExist = f.SREMOTEHOST, f.NREMOTEPORT, true
 							}
 						}
 					}
@@ -449,7 +455,7 @@ func (x *control) run(now time.Time, c *network.IP_C, b buffers, IP iec.DWORD, P
 			f.BEXECUTE = false
 			f.Execute(now)
 			f.BEXECUTE, f.SSRVNETID, f.HSOCKET, f.CBLEN, f.SRC = true, srv, x.socket, iec.UDINT(x.sCurSize), src
-			f.SREMOTEHOST, f.NREMOTEPORT, f.TTIMEOUT = x.sIPStr, iec.UDINT(x.cPort), TIME_OUT
+			f.SREMOTEHOST, f.NREMOTEPORT, f.TTIMEOUT = x.sIPStr, x.sPort, TIME_OUT
 			f.Execute(now)
 			f.BEXECUTE = false
 		} else {
