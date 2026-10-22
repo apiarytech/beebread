@@ -19,6 +19,7 @@ import (
 	"time"
 
 	. "github.com/apiarytech/beebread/basic"
+	"github.com/apiarytech/beebread/network"
 	td "github.com/apiarytech/beebread/basic/time_date"
 	"github.com/apiarytech/royaljelly/iec"
 )
@@ -141,5 +142,21 @@ func TestTelnetPrint(t *testing.T) {
 	}
 	if !strings.HasPrefix(out.String(), "\x1b[?7l") {
 		t.Errorf("the screen setup: %q", out.String())
+	}
+}
+
+// TestTelnetLogBackColorIssue5 covers issue #5: TELNET_LOG takes the
+// background colour from the option's second byte.
+func TestTelnetLogBackColorIssue5(t *testing.T) {
+	k := newConn()
+	k.c.C_STATE = 255 // connected
+	lc := network.NewLOG_CONTROL()
+	lc.IDX = 1
+	lc.MSG[1] = "hello"
+	lc.MSG_OPTION[1] = 0x0402 // background 4, foreground 2
+	tl := TELNET_LOG{IP_C: &k.c, S_BUF: &k.s, LOG_CL: &lc, ENABLE: true}
+	tl.Execute(time.Now())
+	if tl.print.BACK_COLOR != 4 || tl.print.FRONT_COLOR != 2 {
+		t.Errorf("BACK_COLOR %d, FRONT_COLOR %d; want 4 and 2", tl.print.BACK_COLOR, tl.print.FRONT_COLOR)
 	}
 }

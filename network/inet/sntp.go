@@ -534,7 +534,10 @@ func (t *TELNET_LOG) Execute(now time.Time) {
 		p := &t.print
 		p.IP_C, p.S_BUF, p.ENABLE, p.SEND = c, t.S_BUF, t.ENABLE, t.send
 		p.TEXT = lc.MSG[t.pi]
-		p.BACK_COLOR = iec.BYTE(SHL(lc.MSG_OPTION[t.pi], 8))
+		// The background colour is the option's second byte. OSCAT shifts
+		// left here (SHL), which always gives 0; the port and its ST source
+		// shift right, as intended.
+		p.BACK_COLOR = iec.BYTE(SHR(lc.MSG_OPTION[t.pi], 8))
 		p.FRONT_COLOR = iec.BYTE(lc.MSG_OPTION[t.pi])
 		p.Execute(now)
 		t.READY = p.READY
