@@ -1,2 +1,7 @@
 # Auto detect text files and perform LF normalization
 * text=auto
+
+# stclean writes the cleaned OSCAT sources with CRLF, and its tests check
+# that they still have it, so check them out with CRLF on every system.
+# (The repository stores them with LF.)
+doc/*.st text eol=crlf
