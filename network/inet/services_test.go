@@ -19,8 +19,8 @@ import (
 	"time"
 
 	. "github.com/apiarytech/beebread/basic"
-	"github.com/apiarytech/beebread/network"
 	td "github.com/apiarytech/beebread/basic/time_date"
+	"github.com/apiarytech/beebread/network"
 	"github.com/apiarytech/royaljelly/iec"
 )
 

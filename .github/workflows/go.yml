@@ -1,0 +1,84 @@
+name: Go
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+env:
+  # Fail instead of silently downloading a newer toolchain, so each matrix
+  # entry really tests the Go version it names.
+  GOTOOLCHAIN: local
+
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-latest
+          - macos-latest
+          - windows-latest
+        go:
+          - 'go.mod' # Minimum version: the go directive in go.mod.
+          - 'stable'
+    runs-on: ${{ matrix.os }}
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Go (minimum, from go.mod)
+      if: matrix.go == 'go.mod'
+      uses: actions/setup-go@v5
+      with:
+        go-version-file: go.mod
+
+    - name: Set up Go (stable)
+      if: matrix.go != 'go.mod'
+      uses: actions/setup-go@v5
+      with:
+        go-version: ${{ matrix.go }}
+
+    - name: Build
+      run: go build -v ./...
+
+    - name: Vet
+      run: go vet ./...
+
+    # TestSNTP needs UDP port 123, which an unprivileged runner can't bind;
+    # it skips itself there.
+    - name: Test
+      run: go test -v ./...
+
+  lint-race:
+    name: Format and race detector
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: 'stable'
+
+    - name: Check formatting
+      run: |
+        unformatted=$(gofmt -l .)
+        if [ -n "$unformatted" ]; then
+          echo "These files need gofmt:"
+          echo "$unformatted"
+          exit 1
+        fi
+
+    - name: Check line endings of the cleaned OSCAT sources
+      run: |
+        for f in doc/*.st; do
+          if ! grep -q $'\r$' "$f"; then
+            echo "$f is not checked out with CRLF (see .gitattributes)"
+            exit 1
+          fi
+        done
+
+    - name: Test with race detector
+      run: go test -race -count=1 ./...
