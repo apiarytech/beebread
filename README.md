@@ -1,4 +1,4 @@
-# BeeBread: Industrial-Grade Automation Logic in Go
+# <img src="doc/icon/png/beebread-512.png" alt="" width="48" align="center"> BeeBread: Industrial-Grade Automation Logic in Go!
 
 `beebread` is a comprehensive Go library that ports the highly-regarded OSCAT (Open Source Community for Automation Technology) `basic`, `building` and `network` libraries from their original IEC 61131-3 Structured Text (ST) to idiomatic Go.
 
