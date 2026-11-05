@@ -1,3 +1,12 @@
 {
-   "signedContributors": []
+  "signedContributors": [
+    {
+      "name": "apiarytech",
+      "id": 266671293,
+      "comment_id": 6650404752,
+      "created_at": "2026-11-05T05:19:53Z",
+      "repoId": 1320684954,
+      "pullRequestNo": 11
+    }
+  ]
 }
